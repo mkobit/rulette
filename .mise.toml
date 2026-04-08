@@ -1,3 +1,6 @@
+[env]
+MISE_RUST_COMPONENTS = "clippy,rustfmt"
+
 [tools]
 rust = "1.94.1"
 "github:nextest-rs/nextest" = "cargo-nextest-0.9.132"
