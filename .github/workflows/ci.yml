@@ -31,6 +31,9 @@ jobs:
         with:
           version: v2026.4.5
 
+      - name: Install Rust components
+        run: rustup component add rustfmt clippy
+
       - name: Set up Rust cache
         uses: Swatinem/rust-cache@v2
 
