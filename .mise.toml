@@ -1,0 +1,20 @@
+[tools]
+rust = "1.94.1"
+"cargo:cargo-dist" = "0.31.0"
+"cargo:cargo-nextest" = "0.9.132"
+
+[tasks.build]
+description = "Build the project"
+run = "cargo build"
+
+[tasks.test]
+description = "Run tests"
+run = "cargo nextest run"
+
+[tasks.lint]
+description = "Run linter"
+run = "cargo clippy -- -D warnings"
+
+[tasks.release]
+description = "Build release artifacts"
+run = "cargo dist build"

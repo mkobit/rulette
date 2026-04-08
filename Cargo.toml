@@ -1,0 +1,21 @@
+[package]
+name = "rulette"
+version = "0.1.0"
+edition = "2021"
+authors = ["Michael Kobit <mkobit@google.com>"]
+description = "Stateless CLI compiler for AI skills (Markdown/TOML -> JSON Sinks)"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+pulldown-cmark = "0.10"
+anyhow = "1.0"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "rulette"
+path = "src/main.rs"
