@@ -1,7 +1,7 @@
 [tools]
 rust = "1.94.1"
-"cargo:cargo-dist" = "0.31.0"
-"cargo:cargo-nextest" = "0.9.132"
+"github:nextest-rs/nextest" = "cargo-nextest-0.9.132"
+"github:axodotdev/cargo-dist" = "v0.31.0"
 
 [tasks.build]
 description = "Build the project"
