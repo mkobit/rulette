@@ -31,13 +31,10 @@ jobs:
         with:
           version: v2026.4.5
 
-      - name: Install Rust components
-        run: rustup component add rustfmt clippy
-
-      - name: Set up Rust cache
+      - name: Set up rust cache
         uses: Swatinem/rust-cache@v2
 
-      - name: Check Formatting
+      - name: Check formatting
         run: cargo fmt --check
 
       - name: Lint
@@ -50,10 +47,13 @@ jobs:
         run: cargo nextest run
 
   audit:
-    name: Security Audit
+    name: Security audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: rustsec/audit-check@v2.0.0
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Run audit check
+        uses: rustsec/audit-check@v2.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
