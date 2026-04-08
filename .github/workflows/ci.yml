@@ -26,6 +26,9 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Install rust toolchain
+        run: rustup show
+
       - name: Install mise
         uses: jdx/mise-action@v4
         with:
