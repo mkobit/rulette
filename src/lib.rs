@@ -1,3 +1,3 @@
-pub mod ir;
-pub mod frontend;
 pub mod backend;
+pub mod frontend;
+pub mod ir;
