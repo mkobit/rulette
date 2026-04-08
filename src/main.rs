@@ -1,5 +1,5 @@
-use clap::{Parser, ValueEnum};
 use anyhow::Result;
+use clap::{Parser, ValueEnum};
 
 #[derive(Parser)]
 #[command(author, version, about)]

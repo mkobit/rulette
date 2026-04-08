@@ -1,3 +1,11 @@
-pub mod ir;
-pub mod frontend;
 pub mod backend;
+pub mod frontend;
+pub mod ir;
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {
+        assert_eq!(2 + 2, 4);
+    }
+}

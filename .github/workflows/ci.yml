@@ -10,23 +10,35 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+env:
+  RUST_BACKTRACE: 1
+
 jobs:
   test:
     name: Build, lint, and test
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Install rust toolchain
+        run: rustup show
+
       - name: Install mise
         uses: jdx/mise-action@v4
         with:
           version: v2026.4.5
+
+      - name: Set up rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --check
 
       - name: Lint
         run: cargo clippy -- -D warnings
@@ -36,3 +48,15 @@ jobs:
 
       - name: Test
         run: cargo nextest run
+
+  audit:
+    name: Security audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Run audit check
+        uses: rustsec/audit-check@v2.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
