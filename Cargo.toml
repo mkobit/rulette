@@ -2,8 +2,9 @@
 name = "rulette"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.94.1"
 authors = ["Michael Kobit <mkobit@google.com>"]
-description = "Stateless CLI compiler for AI skills (Markdown/TOML -> JSON Sinks)"
+description = "Stateless CLI tool for transforming AI rules and skills across systems"
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
@@ -19,3 +20,8 @@ path = "src/lib.rs"
 [[bin]]
 name = "rulette"
 path = "src/main.rs"
+
+[profile.release]
+lto = true
+strip = true
+codegen-units = 1
