@@ -1,28 +1,13 @@
 # Rulette context
 
-## Core identity
-Rulette is a stateless Rust CLI compiler for AI skills.
-It transforms Markdown and TOML input into structured JSON sinks or other derived formats.
-The tool operates without local state or an initialization phase.
-
-## Mental model
-The architecture follows a standard compiler pattern consisting of a frontend, IR, and backend.
-The frontend handles parsing of Markdown and TOML content.
-The IR represents the intermediate data structure of the skill.
-The backend emits the IR into specific platform formats.
-
-## Tech stack
-Rust stable is the primary language.
-Clap provides the CLI framework.
-Serde handles data serialization and deserialization.
-Pulldown-cmark parses Markdown content.
-
 ## Hard constraints
-Input is restricted to stdin or explicit file paths.
-Output is directed to stdout or specified file destinations.
-Centralized configuration files are not supported.
+The binary must be fully static with no runtime dependencies.
+The CLI is a thin wrapper; all logic lives in the library.
+No initialization phase, no local state, no configuration files.
 
-## Architectural style
-The source code uses a modular directory structure.
-Core logic remains decoupled from CLI boilerplate and I/O.
-The project mirrors patterns found in the Mise and Jules repositories.
+## Inputs
+Single files (path or stdin) and tar archives containing multiple files are both valid inputs.
+
+## Pipeline
+Between parsing and emission, the IR passes through an ordered transformation pipeline (filter, map, rename, merge) before reaching any backend.
+New backends are additive and do not affect existing ones.
