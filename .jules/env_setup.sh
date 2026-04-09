@@ -21,6 +21,7 @@ fi
 echo "Installing tools with mise..."
 mise trust
 mise install
+rustup show
 
 # Activate mise
 eval "$(mise activate bash)"
