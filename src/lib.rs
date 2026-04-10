@@ -2,6 +2,7 @@ pub mod agent_skills;
 pub mod backend;
 pub mod claude;
 pub mod cli;
+pub mod cursor;
 pub mod frontend;
 pub mod gemini;
 
