@@ -1,4 +1,4 @@
-use crate::ir::Skill;
+use crate::agent_skills::Skill;
 use anyhow::Result;
 
 pub trait Emitter {
