@@ -3,6 +3,7 @@ pub mod backend;
 pub mod claude;
 pub mod cli;
 pub mod frontend;
+pub mod gemini;
 
 #[cfg(test)]
 mod tests {
