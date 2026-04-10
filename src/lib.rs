@@ -1,5 +1,6 @@
 pub mod agent_skills;
 pub mod backend;
+pub mod claude;
 pub mod frontend;
 
 #[cfg(test)]
