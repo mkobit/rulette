@@ -130,7 +130,6 @@ mod tests {
 
         assert!(valid.validate().is_ok());
 
-        // Test serialization and deserialization
         let json = serde_json::to_string(&valid).unwrap();
         let deserialized: SkillMetadata = serde_json::from_str(&json).unwrap();
         assert_eq!(valid.name, deserialized.name);
@@ -171,7 +170,6 @@ mod tests {
     fn test_schema_generation() {
         let schema = schemars::schema_for!(SkillMetadata);
         let schema_json = serde_json::to_string_pretty(&schema).unwrap();
-        // Just checking that we can serialize the schema without error
         assert!(schema_json.contains("\"title\": \"SkillMetadata\""));
         assert!(schema_json.contains("\"name\""));
         assert!(schema_json.contains("\"description\""));
