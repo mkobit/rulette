@@ -46,11 +46,21 @@ impl std::fmt::Display for ValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::InvalidNameLength => write!(f, "name length must be between 1 and 64 characters"),
-            Self::InvalidNameCharacters => write!(f, "name may only contain lowercase alphanumeric characters and hyphens"),
+            Self::InvalidNameCharacters => write!(
+                f,
+                "name may only contain lowercase alphanumeric characters and hyphens"
+            ),
             Self::InvalidNameEdges => write!(f, "name must not start or end with a hyphen"),
-            Self::InvalidNameConsecutiveHyphens => write!(f, "name must not contain consecutive hyphens"),
-            Self::InvalidDescriptionLength => write!(f, "description length must be between 1 and 1024 characters"),
-            Self::InvalidCompatibilityLength => write!(f, "compatibility length must not exceed 500 characters"),
+            Self::InvalidNameConsecutiveHyphens => {
+                write!(f, "name must not contain consecutive hyphens")
+            }
+            Self::InvalidDescriptionLength => write!(
+                f,
+                "description length must be between 1 and 1024 characters"
+            ),
+            Self::InvalidCompatibilityLength => {
+                write!(f, "compatibility length must not exceed 500 characters")
+            }
         }
     }
 }
@@ -64,7 +74,11 @@ impl SkillMetadata {
             return Err(ValidationError::InvalidNameLength);
         }
 
-        if !self.name.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-') {
+        if !self
+            .name
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+        {
             return Err(ValidationError::InvalidNameCharacters);
         }
 
@@ -100,7 +114,8 @@ mod tests {
     fn test_valid_skill_metadata() {
         let valid = SkillMetadata {
             name: "pdf-processing".to_string(),
-            description: "Extract PDF text, fill forms, merge files. Use when handling PDFs.".to_string(),
+            description: "Extract PDF text, fill forms, merge files. Use when handling PDFs."
+                .to_string(),
             version: Some("1.0".to_string()),
             license: Some("Apache-2.0".to_string()),
             compatibility: Some("Designed for Claude Code".to_string()),
@@ -146,7 +161,10 @@ mod tests {
         assert_eq!(meta.validate(), Err(ValidationError::InvalidNameEdges));
 
         meta.name = "pdf--processing".to_string();
-        assert_eq!(meta.validate(), Err(ValidationError::InvalidNameConsecutiveHyphens));
+        assert_eq!(
+            meta.validate(),
+            Err(ValidationError::InvalidNameConsecutiveHyphens)
+        );
     }
 
     #[test]
