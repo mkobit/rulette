@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+/// See [Gemini API Documentation](https://ai.google.dev/api/rest/v1beta/tools#FunctionDeclaration) for details on the structure of Gemini tools.
 pub struct GeminiSkill {
     pub name: String,
     pub description: String,
