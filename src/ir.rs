@@ -70,7 +70,7 @@ impl std::error::Error for ValidationError {}
 impl SkillMetadata {
     pub fn validate(&self) -> Result<(), ValidationError> {
         let name_len = self.name.chars().count();
-        if name_len < 1 || name_len > 64 {
+        if !(1..=64).contains(&name_len) {
             return Err(ValidationError::InvalidNameLength);
         }
 
@@ -91,7 +91,7 @@ impl SkillMetadata {
         }
 
         let desc_len = self.description.chars().count();
-        if desc_len < 1 || desc_len > 1024 {
+        if !(1..=1024).contains(&desc_len) {
             return Err(ValidationError::InvalidDescriptionLength);
         }
 
