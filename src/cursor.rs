@@ -14,6 +14,9 @@ pub struct CursorMetadata {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub globs: Option<String>,
+
+    #[serde(rename = "alwaysApply", skip_serializing_if = "Option::is_none")]
+    pub always_apply: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
