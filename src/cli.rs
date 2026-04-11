@@ -75,5 +75,6 @@ pub enum Format {
     Gemini,
     Claude,
     Cursor,
+    Codex,
     Ir,
 }
