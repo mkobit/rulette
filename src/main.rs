@@ -6,55 +6,26 @@ fn main() -> Result<()> {
     let args = Cli::parse();
 
     match args.command {
-        Commands::Add {
-            package,
+        Commands::Transform {
+            input,
             out,
-            format,
+            from,
+            to,
+            jq,
         } => {
-            println!("Adding package: {}", package);
-            if let Some(o) = out {
-                println!("Output path: {:?}", o);
-            }
-            if let Some(f) = format {
-                println!("Format: {:?}", f);
-            }
-        }
-        Commands::List { source, json } => {
-            if let Some(s) = source {
-                println!("Listing skills from: {}", s);
-            } else {
-                println!("Listing local skills");
-            }
-            if json {
-                println!("Outputting as JSON");
+            println!("Transforming input: {}", input);
+            println!("Output path: {}", out);
+            println!("From format: {:?}", from);
+            println!("To format: {:?}", to);
+            if let Some(j) = jq {
+                println!("JQ filter: {}", j);
             }
         }
-        Commands::Init { name, out } => {
-            if let Some(n) = name {
-                println!("Initializing skill: {}", n);
-            } else {
-                println!("Initializing skill");
-            }
-            if let Some(o) = out {
-                println!("Output path: {:?}", o);
-            }
-        }
-        Commands::Transform { input, out, format } => {
-            if let Some(i) = input {
-                println!("Transforming input file: {:?}", i);
-            } else {
-                println!("Transforming from stdin");
-            }
-            if let Some(o) = out {
-                println!("Output path: {:?}", o);
-            }
-            println!("Target format: {:?}", format);
-        }
-        Commands::Inspect { input } => {
-            if let Some(i) = input {
-                println!("Inspecting file: {:?}", i);
-            } else {
-                println!("Inspecting from stdin");
+        Commands::Inspect { input, from, jq } => {
+            println!("Inspecting input: {}", input);
+            println!("From format: {:?}", from);
+            if let Some(j) = jq {
+                println!("JQ filter: {}", j);
             }
         }
     }

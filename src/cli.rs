@@ -1,5 +1,4 @@
 use clap::{Parser, Subcommand, ValueEnum};
-use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -15,66 +14,61 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Add/Fetch a skill package and output it
-    Add {
-        /// The skill package to fetch (e.g., vercel-labs/agent-skills)
-        package: String,
-
-        /// Output file path (writes to stdout if not provided)
-        #[arg(short, long)]
-        out: Option<PathBuf>,
-
-        /// Transform to target format
-        #[arg(short, long, value_enum)]
-        format: Option<Format>,
-    },
-
-    /// List available skills
-    List {
-        /// Directory or remote package to list skills from
-        source: Option<String>,
-
-        /// Output as JSON
-        #[arg(long)]
-        json: bool,
-    },
-
-    /// Initialize a new skill
-    Init {
-        /// Name of the skill to create
-        name: Option<String>,
-
-        /// Output file path (writes to stdout if not provided)
-        #[arg(short, long)]
-        out: Option<PathBuf>,
-    },
-
-    /// Transform an existing skill
+    /// Transform skills from one format to another
     Transform {
-        /// Input file path (reads from stdin if not provided)
-        input: Option<PathBuf>,
+        /// Input source (file, directory, URL, archive, or "-" for stdin)
+        #[arg(default_value = "-")]
+        input: String,
 
-        /// Output file path (writes to stdout if not provided)
-        #[arg(short, long)]
-        out: Option<PathBuf>,
+        /// Output destination (file path, directory, or "-" for stdout)
+        #[arg(short, long, default_value = "-")]
+        out: String,
+
+        /// Input format (auto-detected if not specified)
+        #[arg(short, long, value_enum, default_value_t = InputFormat::Auto)]
+        from: InputFormat,
 
         /// Target output format
-        #[arg(short, long, value_enum, default_value_t = Format::Ir)]
-        format: Format,
+        #[arg(short, long, value_enum, default_value_t = OutputFormat::Ir)]
+        to: OutputFormat,
+
+        /// Apply a jq filter to the internal representation before outputting
+        #[arg(long)]
+        jq: Option<String>,
     },
 
-    /// Inspect a skill and output its internal representation (IR)
+    /// Inspect a skill source and output its internal representation (IR)
     Inspect {
-        /// Input file path (reads from stdin if not provided)
-        input: Option<PathBuf>,
+        /// Input source (file, directory, URL, archive, or "-" for stdin)
+        #[arg(default_value = "-")]
+        input: String,
+
+        /// Input format (auto-detected if not specified)
+        #[arg(short, long, value_enum, default_value_t = InputFormat::Auto)]
+        from: InputFormat,
+
+        /// Apply a jq filter to the internal representation before outputting
+        #[arg(long)]
+        jq: Option<String>,
     },
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
-pub enum Format {
+pub enum InputFormat {
+    Auto,
     Gemini,
     Claude,
     Cursor,
     Codex,
+    AgentSkills,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
+pub enum OutputFormat {
+    Gemini,
+    Claude,
+    Cursor,
+    Codex,
+    AgentSkills,
     Ir,
 }
