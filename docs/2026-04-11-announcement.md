@@ -1,6 +1,6 @@
 # Why Rulette exists: the case for a compiler
 
-_2026-04-11_
+2026-04-11
 
 ## The AI tooling fragmentation problem
 
@@ -31,7 +31,7 @@ None produce reproducible output.
 All require a JavaScript runtime.
 
 For a security-conscious organization, this is unacceptable.
-AI coding rules are *system prompts* — they control what code your AI assistant writes.
+AI coding rules are _system prompts_ — they control what code your AI assistant writes.
 A compromised rule can instruct an AI to introduce vulnerabilities, exfiltrate code, or ignore security policies.
 This is not theoretical; prompt injection in shared rules has been demonstrated repeatedly.
 
@@ -127,7 +127,7 @@ rulette fetch some-repo --allow-mutable --no-verify
 
 All commands are flat and top-level, like `protoc` and `jq`:
 
-```
+```text
 rulette parse               Parse any rule format into IR
 rulette emit                Emit IR to any target format
 rulette convert             Parse + emit in one step (the 80% case)

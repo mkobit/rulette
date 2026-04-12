@@ -6,29 +6,17 @@ fn main() -> Result<()> {
     let args = Cli::parse();
 
     match args.command {
-        Commands::Transform {
-            input,
-            out,
-            from,
-            to,
-            jq,
-        } => {
-            println!("Transforming input: {}", input);
-            println!("Output path: {}", out);
-            println!("From format: {:?}", from);
-            println!("To format: {:?}", to);
-            if let Some(j) = jq {
-                println!("JQ filter: {}", j);
-            }
-        }
-        Commands::Inspect { input, from, jq } => {
-            println!("Inspecting input: {}", input);
-            println!("From format: {:?}", from);
-            if let Some(j) = jq {
-                println!("JQ filter: {}", j);
-            }
-        }
+        Commands::Parse(args) => args.execute(),
+        Commands::Emit(args) => args.execute(),
+        Commands::Convert(args) => args.execute(),
+        Commands::Inspect(args) => args.execute(),
+        Commands::Schema(args) => args.execute(),
+        Commands::Transform(args) => args.execute(),
+        Commands::Validate(args) => args.execute(),
+        Commands::Fetch(args) => args.execute(),
+        Commands::Lock(args) => args.execute(),
+        Commands::Verify(args) => args.execute(),
+        Commands::Archive(args) => args.execute(),
+        Commands::Unarchive(args) => args.execute(),
     }
-
-    Ok(())
 }
