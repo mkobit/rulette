@@ -1,6 +1,6 @@
 # Landscape analysis
 
-_2026-04-11_
+2026-04-11
 
 ## The problem
 
@@ -57,7 +57,7 @@ Rulesync is a TypeScript CLI (v7.28.0, 995 stars, 3,243 commits, 215 releases) t
 Rulesync is the closest existing tool and the most direct comparison.
 
 | Dimension | Rulesync | Rulette |
-|---|---|---|
+| --- | --- | --- |
 | Architecture | Config-to-template generator | Compiler with typed IR |
 | Runtime | Node.js / TypeScript | Static binary, zero deps |
 | Config format | `rulesync.jsonc` | None (CLI args + pipes) |
@@ -76,7 +76,7 @@ These are complementary positions — Rulette could even consume rulesync-genera
 ## Common gaps across all existing tools
 
 | Gap | Impact |
-|---|---|
+| --- | --- |
 | No content-addressable storage | Cannot verify rules haven't been tampered with |
 | No pinned versions | Builds are non-reproducible |
 | JavaScript runtime required | Cannot run in hermetic build environments (Bazel, Nix) |
