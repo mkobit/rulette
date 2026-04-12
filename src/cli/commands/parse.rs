@@ -1,8 +1,5 @@
 use crate::cli::formats::InputFormat;
-use crate::frontend::parse;
 use clap::Args;
-use std::fs;
-use std::io::{self, Read};
 
 #[derive(Args, Debug)]
 pub struct ParseArgs {
@@ -25,33 +22,11 @@ pub struct ParseArgs {
 
 impl ParseArgs {
     pub fn execute(&self) -> anyhow::Result<()> {
-        let mut combined_entities = vec![];
-
-        for input_path in &self.input {
-            let content = if input_path == "-" {
-                let mut buffer = String::new();
-                io::stdin().read_to_string(&mut buffer)?;
-                buffer
-            } else {
-                fs::read_to_string(input_path)?
-            };
-
-            let doc = parse(&content, self.from)?;
-            combined_entities.extend(doc.entities);
-        }
-
-        let doc = crate::RuletteDocument {
-            entities: combined_entities,
-        };
-
-        let output_json = serde_json::to_string_pretty(&doc)?;
-
-        if let Some(out_path) = &self.out {
-            fs::write(out_path, output_json)?;
-        } else {
-            println!("{}", output_json);
-        }
-
+        println!("Executing 'parse' command:");
+        println!("  Input: {:?}", self.input);
+        println!("  From: {:?}", self.from);
+        println!("  Out: {:?}", self.out);
+        println!("  Strict: {}", self.strict);
         Ok(())
     }
 }
