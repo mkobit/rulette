@@ -9,12 +9,15 @@ No initialization phase, no local state, no configuration files.
 ## Documentation Reference
 
 For product requirements, goals, and milestones, see:
+
 - `docs/2026-04-11-prd.md`
 
 For CLI command documentation and options, see:
+
 - `docs/2026-04-11-man-page.md`
 
 For context on why Rulette exists and how it compares to alternatives, see:
+
 - `docs/2026-04-11-announcement.md`
 - `docs/2026-04-11-landscape.md`
 
