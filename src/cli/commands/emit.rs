@@ -1,7 +1,10 @@
-use crate::backend::{AgentSkillsEmitter, ClaudeEmitter, CursorEmitter, Emitter};
+use crate::backend::{
+    AgentSkillsEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter, CursorEmitter, Emitter,
+    GeminiEmitter, WindsurfEmitter,
+};
 use crate::cli::formats::OutputFormat;
 use crate::RuletteDocument;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::Args;
 use std::fs;
 use std::io::{self, Read};
@@ -94,9 +97,12 @@ impl EmitArgs {
             OutputFormat::Claude => ClaudeEmitter.emit(&doc, strict)?,
             OutputFormat::CursorMdc => CursorEmitter.emit(&doc, strict)?,
             OutputFormat::AgentSkills => AgentSkillsEmitter.emit(&doc, strict)?,
+            OutputFormat::Copilot => CopilotEmitter.emit(&doc, strict)?,
+            OutputFormat::Windsurf => WindsurfEmitter.emit(&doc, strict)?,
+            OutputFormat::Gemini => GeminiEmitter.emit(&doc, strict)?,
+            OutputFormat::Codex => CodexEmitter.emit(&doc, strict)?,
             OutputFormat::IrJson => serde_json::to_string_pretty(&doc)?,
             OutputFormat::IrToml => toml::to_string(&doc)?,
-            _ => return Err(anyhow!("Target format not yet supported for emitting")),
         };
 
         if let Some(mut path) = resolve_output_path(&self.to, &self.scope, self.out.as_ref()) {
