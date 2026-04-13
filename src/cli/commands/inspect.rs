@@ -20,7 +20,7 @@ pub struct InspectArgs {
 }
 
 impl InspectArgs {
-    pub fn execute(&self) -> anyhow::Result<()> {
+    pub fn execute(&self, strict: bool) -> anyhow::Result<()> {
         let mut combined_entities = vec![];
 
         for input_path in &self.input {
@@ -51,7 +51,7 @@ impl InspectArgs {
 
         if let Some(target) = &self.target {
             println!("\n=== Dry-run Emission to {:?} ===", target);
-            let strict = false;
+
             let output = match target {
                 OutputFormat::Claude => ClaudeEmitter.emit(&doc, strict)?,
                 OutputFormat::CursorMdc => CursorEmitter.emit(&doc, strict)?,
