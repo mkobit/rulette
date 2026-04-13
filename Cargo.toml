@@ -15,6 +15,7 @@ pulldown-cmark = "0.13"
 anyhow = "1.0"
 schemars = { version = "1.2", features = ["derive"] }
 serde_yaml = "0.9.34"
+clap-markdown = "0.1.5"
 
 [lib]
 path = "src/lib.rs"
@@ -27,3 +28,7 @@ path = "src/main.rs"
 lto = true
 strip = true
 codegen-units = 1
+
+[[bin]]
+name = "gen_docs"
+path = "src/bin/gen_docs.rs"
