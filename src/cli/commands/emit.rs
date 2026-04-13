@@ -5,6 +5,7 @@ use anyhow::{anyhow, Result};
 use clap::Args;
 use std::fs;
 use std::io::{self, Read};
+use std::path::PathBuf;
 
 #[derive(Args, Debug)]
 pub struct EmitArgs {
@@ -33,6 +34,37 @@ pub struct EmitArgs {
     pub split: bool,
 }
 
+pub fn resolve_output_path(
+    to: &OutputFormat,
+    scope: &str,
+    out: Option<&String>,
+) -> Option<PathBuf> {
+    if let Some(path) = out {
+        return Some(PathBuf::from(path));
+    }
+
+    if scope == "user" {
+        // Simple mock of user home directory since we don't have dirs crate
+        let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        let home_path = PathBuf::from(home_dir);
+
+        let path = match to {
+            OutputFormat::Claude => home_path.join(".claude").join("skills"),
+            OutputFormat::CursorMdc => home_path.join(".cursor").join("rules"),
+            OutputFormat::Copilot => home_path
+                .join(".config")
+                .join("github-copilot")
+                .join("instructions.md"),
+            OutputFormat::Codex => home_path.join(".codex").join("AGENTS.md"),
+            OutputFormat::Gemini => home_path.join(".gemini").join("GEMINI.md"),
+            OutputFormat::Windsurf => home_path.join(".windsurf").join("windsurfrules"),
+            _ => return None,
+        };
+        return Some(path);
+    }
+    None
+}
+
 impl EmitArgs {
     pub fn execute(&self) -> Result<()> {
         let mut combined_entities = vec![];
@@ -55,9 +87,6 @@ impl EmitArgs {
             entities: combined_entities,
         };
 
-        // We could look up strict flag from global config, but for now we'll fetch from env or assume false
-        // A better approach would be to pass GlobalFlags into execute(), but this works for now.
-        // Actually since we don't have access to strict here easily, let's hardcode false.
         let strict = false;
 
         // Emit based on target format
@@ -70,9 +99,25 @@ impl EmitArgs {
             _ => return Err(anyhow!("Target format not yet supported for emitting")),
         };
 
-        // Write output
-        if let Some(out_path) = &self.out {
-            fs::write(out_path, output)?;
+        if let Some(mut path) = resolve_output_path(&self.to, &self.scope, self.out.as_ref()) {
+            // For formats that point to a directory in user scope, we append a default filename if we are writing merged output
+            // Or if it's considered a directory, append a generated filename
+            if path.extension().is_none() && path.to_string_lossy().ends_with("skills")
+                || path.to_string_lossy().ends_with("rules")
+            {
+                let default_ext = match self.to {
+                    OutputFormat::Claude => "md",
+                    OutputFormat::CursorMdc => "mdc",
+                    _ => "txt",
+                };
+                path.push(format!("rulette_generated.{}", default_ext));
+            }
+
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(&path, output)?;
+            println!("Emitted to {}", path.display());
         } else {
             println!("{}", output);
         }
