@@ -46,17 +46,20 @@ impl Emitter for CursorEmitter {
             match entity {
                 Entity::Rule(rule) => {
                     output.push_str("---\n");
-                    if let Some(desc) = &rule.metadata.description {
-                        output.push_str(&format!("description: {}\n", desc));
+                    #[derive(serde::Serialize)]
+                    struct CursorRuleMeta<'a> {
+                        #[serde(skip_serializing_if = "Option::is_none")]
+                        description: Option<&'a String>,
+                        #[serde(flatten)]
+                        extra: std::collections::HashMap<String, serde_json::Value>,
                     }
-                    for (k, v) in &rule.metadata.extra {
-                        if k == "name" {
-                            continue;
-                        }
-                        if let serde_json::Value::String(s) = v {
-                            output.push_str(&format!("{}: {}\n", k, s));
-                        }
-                    }
+                    let mut extra = rule.metadata.extra.clone();
+                    extra.remove("name");
+                    let meta = CursorRuleMeta {
+                        description: rule.metadata.description.as_ref(),
+                        extra,
+                    };
+                    output.push_str(&serde_yaml::to_string(&meta).unwrap());
                     output.push_str("---\n");
                     output.push_str(&rule.body);
                     output.push_str("\n\n");
@@ -74,12 +77,23 @@ impl Emitter for CursorEmitter {
                         );
                     }
                     output.push_str("---\n");
-                    output.push_str(&format!("description: {}\n", skill.metadata.description));
-                    for (k, v) in &skill.metadata.extra {
-                        if let serde_json::Value::String(s) = v {
-                            output.push_str(&format!("{}: {}\n", k, s));
-                        }
+                    #[derive(serde::Serialize)]
+                    struct CursorSkillMeta<'a> {
+                        description: &'a String,
+                        #[serde(flatten)]
+                        extra: &'a std::collections::HashMap<String, serde_json::Value>,
                     }
+                    let meta = CursorSkillMeta {
+                        description: &skill.metadata.description,
+                        extra: &skill.metadata.extra,
+                    };
+                    let yaml = serde_yaml::to_string(&meta).unwrap();
+                    // serde_yaml outputs `extra: {}` when flattened field is empty instead of omitting it. Let's fix this for simple empty extra.
+                    let yaml = yaml.replace(
+                        "
+{}", "",
+                    );
+                    output.push_str(&yaml);
                     output.push_str("---\n");
                     output.push_str(&skill.body);
                     output.push_str("\n\n");
@@ -97,25 +111,7 @@ impl Emitter for AgentSkillsEmitter {
             match entity {
                 Entity::Skill(skill) => {
                     output.push_str("---\n");
-                    output.push_str(&format!("name: {}\n", skill.metadata.name));
-                    output.push_str(&format!("description: {}\n", skill.metadata.description));
-                    if let Some(v) = &skill.metadata.version {
-                        output.push_str(&format!("version: {}\n", v));
-                    }
-                    if let Some(l) = &skill.metadata.license {
-                        output.push_str(&format!("license: {}\n", l));
-                    }
-                    if let Some(c) = &skill.metadata.compatibility {
-                        output.push_str(&format!("compatibility: {}\n", c));
-                    }
-                    if let Some(a) = &skill.metadata.allowed_tools {
-                        output.push_str(&format!("allowed-tools: {}\n", a));
-                    }
-                    for (k, v) in &skill.metadata.extra {
-                        if let serde_json::Value::String(s) = v {
-                            output.push_str(&format!("{}: {}\n", k, s));
-                        }
-                    }
+                    output.push_str(&serde_yaml::to_string(&skill.metadata).unwrap());
                     output.push_str("---\n");
                     output.push_str(&skill.body);
                     output.push_str("\n\n");
@@ -129,24 +125,33 @@ impl Emitter for AgentSkillsEmitter {
                         eprintln!("Warning: Lossy conversion: Rule to Skill requires default metadata generation");
                     }
                     output.push_str("---\n");
-                    if let Some(serde_json::Value::String(name)) = rule.metadata.extra.get("name") {
-                        output.push_str(&format!("name: {}\n", name));
+                    #[derive(serde::Serialize)]
+                    struct AgentSkillRuleMeta {
+                        name: String,
+                        description: String,
+                        #[serde(flatten)]
+                        extra: std::collections::HashMap<String, serde_json::Value>,
+                    }
+                    let name = if let Some(serde_json::Value::String(n)) =
+                        rule.metadata.extra.get("name")
+                    {
+                        n.clone()
                     } else {
-                        output.push_str("name: generated-skill\n");
-                    }
-                    if let Some(desc) = &rule.metadata.description {
-                        output.push_str(&format!("description: {}\n", desc));
+                        "generated-skill".to_string()
+                    };
+                    let description = if let Some(desc) = &rule.metadata.description {
+                        desc.clone()
                     } else {
-                        output.push_str("description: Generated from rule\n");
-                    }
-                    for (k, v) in &rule.metadata.extra {
-                        if k == "name" {
-                            continue;
-                        }
-                        if let serde_json::Value::String(s) = v {
-                            output.push_str(&format!("{}: {}\n", k, s));
-                        }
-                    }
+                        "Generated from rule".to_string()
+                    };
+                    let mut extra = rule.metadata.extra.clone();
+                    extra.remove("name");
+                    let meta = AgentSkillRuleMeta {
+                        name,
+                        description,
+                        extra,
+                    };
+                    output.push_str(&serde_yaml::to_string(&meta).unwrap());
                     output.push_str("---\n");
                     output.push_str(&rule.body);
                     output.push_str("\n\n");

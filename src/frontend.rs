@@ -48,27 +48,32 @@ fn parse_agent_skills(input: &str, filename: Option<&str>) -> Result<Skill> {
     };
 
     if let Some(fm) = frontmatter {
-        for line in fm.lines() {
-            if let Some((k, v)) = line.split_once(':') {
-                let k = k.trim();
-                let v = v.trim().trim_matches(|c| c == '"' || c == '\'');
-                match k {
-                    "name" => metadata.name = v.to_string(),
-                    "description" => metadata.description = v.to_string(),
-                    "version" => metadata.version = Some(v.to_string()),
-                    "license" => metadata.license = Some(v.to_string()),
-                    "compatibility" => metadata.compatibility = Some(v.to_string()),
-                    "allowed-tools" => metadata.allowed_tools = Some(v.to_string()),
-                    _ => {
-                        metadata
-                            .extra
-                            .insert(k.to_string(), serde_json::Value::String(v.to_string()));
-                    }
-                }
+        #[derive(serde::Deserialize)]
+        struct FmParse {
+            name: Option<String>,
+            description: Option<String>,
+            version: Option<String>,
+            license: Option<String>,
+            compatibility: Option<String>,
+            #[serde(rename = "allowed-tools")]
+            allowed_tools: Option<String>,
+            #[serde(flatten)]
+            extra: HashMap<String, serde_json::Value>,
+        }
+        if let Ok(parsed_fm) = serde_yaml::from_str::<FmParse>(fm) {
+            if let Some(name) = parsed_fm.name {
+                metadata.name = name;
             }
+            if let Some(desc) = parsed_fm.description {
+                metadata.description = desc;
+            }
+            metadata.version = parsed_fm.version;
+            metadata.license = parsed_fm.license;
+            metadata.compatibility = parsed_fm.compatibility;
+            metadata.allowed_tools = parsed_fm.allowed_tools;
+            metadata.extra = parsed_fm.extra;
         }
     }
-
     if metadata.name == "unnamed-skill" {
         if let Some(name) = extract_name_from_filename(filename) {
             metadata.name = name;
@@ -91,22 +96,17 @@ fn parse_cursor_mdc(input: &str, filename: Option<&str>) -> Result<Rule> {
     let mut metadata = RuleMetadata::default();
 
     if let Some(fm) = frontmatter {
-        for line in fm.lines() {
-            if let Some((k, v)) = line.split_once(':') {
-                let k = k.trim();
-                let v = v.trim().trim_matches(|c| c == '"' || c == '\'');
-                match k {
-                    "description" => metadata.description = Some(v.to_string()),
-                    _ => {
-                        metadata
-                            .extra
-                            .insert(k.to_string(), serde_json::Value::String(v.to_string()));
-                    }
-                }
-            }
+        #[derive(serde::Deserialize)]
+        struct FmParse {
+            description: Option<String>,
+            #[serde(flatten)]
+            extra: HashMap<String, serde_json::Value>,
+        }
+        if let Ok(parsed_fm) = serde_yaml::from_str::<FmParse>(fm) {
+            metadata.description = parsed_fm.description;
+            metadata.extra = parsed_fm.extra;
         }
     }
-
     if !metadata.extra.contains_key("name") {
         if let Some(name) = extract_name_from_filename(filename) {
             metadata
