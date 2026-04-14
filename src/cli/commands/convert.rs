@@ -46,7 +46,7 @@ pub struct ConvertArgs {
 }
 
 impl ConvertArgs {
-    pub fn execute(&self) -> Result<()> {
+    pub fn execute(&self, strict: bool) -> Result<()> {
         let mut combined_entities = vec![];
 
         for input_path in &self.input {
@@ -94,7 +94,6 @@ impl ConvertArgs {
             entities: combined_entities,
         };
 
-        let strict = false;
         let output = match self.to {
             OutputFormat::Claude => ClaudeEmitter.emit(&doc, strict)?,
             OutputFormat::CursorMdc => CursorEmitter.emit(&doc, strict)?,

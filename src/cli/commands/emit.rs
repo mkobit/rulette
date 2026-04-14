@@ -69,7 +69,7 @@ pub fn resolve_output_path(
 }
 
 impl EmitArgs {
-    pub fn execute(&self) -> Result<()> {
+    pub fn execute(&self, strict: bool) -> Result<()> {
         let mut combined_entities = vec![];
 
         // Parse IR JSON from inputs
@@ -82,15 +82,19 @@ impl EmitArgs {
                 fs::read_to_string(input_path)?
             };
 
-            let doc: RuletteDocument = serde_json::from_str(&content)?;
+            let filename = if input_path == "-" {
+                None
+            } else {
+                Some(input_path.as_str())
+            };
+            let doc =
+                crate::frontend::parse(&content, crate::cli::formats::InputFormat::Auto, filename)?;
             combined_entities.extend(doc.entities);
         }
 
         let doc = RuletteDocument {
             entities: combined_entities,
         };
-
-        let strict = false;
 
         // Emit based on target format
         let output = match self.to {
