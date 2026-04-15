@@ -23,6 +23,30 @@ pub enum Entity {
     Rule(Rule),
     #[serde(rename = "skill")]
     Skill(agent_skills::Skill),
+    #[serde(rename = "mcp-server")]
+    McpServer(McpServer),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct McpServer {
+    pub metadata: McpServerMetadata,
+    pub config: McpServerConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct McpServerMetadata {
+    pub name: String,
+    #[serde(flatten)]
+    pub extra: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct McpServerConfig {
+    pub command: String,
+    #[serde(default)]
+    pub args: Vec<String>,
+    #[serde(default)]
+    pub env: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

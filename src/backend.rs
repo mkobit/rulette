@@ -18,6 +18,15 @@ impl Emitter for ClaudeEmitter {
                     output.push_str(&rule.body);
                     output.push_str("\n\n");
                 }
+                Entity::McpServer(mcp) => {
+                    if strict {
+                        return Err(anyhow::anyhow!(
+                            "Lossy conversion: McpServer to target format drops metadata"
+                        ));
+                    } else {
+                        eprintln!("Warning: Lossy conversion: McpServer '{}' to target format drops metadata", mcp.metadata.name);
+                    }
+                }
                 Entity::Skill(skill) => {
                     // Lossy conversion warning: Skills lose some metadata when converted to basic rules
                     if strict {
@@ -64,6 +73,15 @@ impl Emitter for CursorEmitter {
                     output.push_str(&rule.body);
                     output.push_str("\n\n");
                 }
+                Entity::McpServer(mcp) => {
+                    if strict {
+                        return Err(anyhow::anyhow!(
+                            "Lossy conversion: McpServer to target format drops metadata"
+                        ));
+                    } else {
+                        eprintln!("Warning: Lossy conversion: McpServer '{}' to target format drops metadata", mcp.metadata.name);
+                    }
+                }
                 Entity::Skill(skill) => {
                     // Lossy conversion warning
                     if strict {
@@ -109,6 +127,15 @@ impl Emitter for AgentSkillsEmitter {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
+                Entity::McpServer(mcp) => {
+                    if strict {
+                        return Err(anyhow::anyhow!(
+                            "Lossy conversion: McpServer to target format drops metadata"
+                        ));
+                    } else {
+                        eprintln!("Warning: Lossy conversion: McpServer '{}' to target format drops metadata", mcp.metadata.name);
+                    }
+                }
                 Entity::Skill(skill) => {
                     output.push_str("---\n");
                     output.push_str(&serde_yaml::to_string(&skill.metadata).unwrap());
@@ -175,6 +202,15 @@ impl Emitter for CopilotEmitter {
                     output.push_str(&rule.body);
                     output.push_str("\n\n");
                 }
+                Entity::McpServer(mcp) => {
+                    if strict {
+                        return Err(anyhow::anyhow!(
+                            "Lossy conversion: McpServer to target format drops metadata"
+                        ));
+                    } else {
+                        eprintln!("Warning: Lossy conversion: McpServer '{}' to target format drops metadata", mcp.metadata.name);
+                    }
+                }
                 Entity::Skill(skill) => {
                     if strict {
                         return Err(anyhow!("Lossy conversion: Skill to Copilot drops metadata"));
@@ -201,6 +237,15 @@ impl Emitter for WindsurfEmitter {
                 Entity::Rule(rule) => {
                     output.push_str(&rule.body);
                     output.push_str("\n\n");
+                }
+                Entity::McpServer(mcp) => {
+                    if strict {
+                        return Err(anyhow::anyhow!(
+                            "Lossy conversion: McpServer to target format drops metadata"
+                        ));
+                    } else {
+                        eprintln!("Warning: Lossy conversion: McpServer '{}' to target format drops metadata", mcp.metadata.name);
+                    }
                 }
                 Entity::Skill(skill) => {
                     if strict {
@@ -231,6 +276,15 @@ impl Emitter for GeminiEmitter {
                     output.push_str(&rule.body);
                     output.push_str("\n\n");
                 }
+                Entity::McpServer(mcp) => {
+                    if strict {
+                        return Err(anyhow::anyhow!(
+                            "Lossy conversion: McpServer to target format drops metadata"
+                        ));
+                    } else {
+                        eprintln!("Warning: Lossy conversion: McpServer '{}' to target format drops metadata", mcp.metadata.name);
+                    }
+                }
                 Entity::Skill(skill) => {
                     if strict {
                         return Err(anyhow!("Lossy conversion: Skill to Gemini drops metadata"));
@@ -258,6 +312,15 @@ impl Emitter for CodexEmitter {
                 Entity::Rule(rule) => {
                     output.push_str(&rule.body);
                     output.push_str("\n\n");
+                }
+                Entity::McpServer(mcp) => {
+                    if strict {
+                        return Err(anyhow::anyhow!(
+                            "Lossy conversion: McpServer to target format drops metadata"
+                        ));
+                    } else {
+                        eprintln!("Warning: Lossy conversion: McpServer '{}' to target format drops metadata", mcp.metadata.name);
+                    }
                 }
                 Entity::Skill(skill) => {
                     if strict {

@@ -87,6 +87,11 @@ impl ConvertArgs {
                         skill.metadata.description = desc.clone();
                     }
                 }
+                crate::Entity::McpServer(mcp) => {
+                    if let Some(name) = &self.name {
+                        mcp.metadata.name = name.clone();
+                    }
+                }
             }
         }
 
