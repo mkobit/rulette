@@ -27,7 +27,9 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
             vec![Entity::Skill(parse_agent_skills(input, filename)?)]
         }
         InputFormat::CursorMdc => vec![Entity::Rule(parse_cursor_mdc(input, filename)?)],
-        InputFormat::Claude => vec![Entity::Rule(parse_claude(input, filename)?)],
+        InputFormat::Claude | InputFormat::Codex => {
+            vec![Entity::Rule(parse_claude(input, filename)?)]
+        }
         _ => return Err(anyhow!("Unsupported input format for parsing")),
     };
 

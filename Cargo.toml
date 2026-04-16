@@ -29,6 +29,12 @@ lto = true
 strip = true
 codegen-units = 1
 
+[dev-dependencies]
+assert_cmd = "2.2.0"
+insta = "1.47.2"
+predicates = "3.1.4"
+tempfile = "3.27.0"
+
 [[bin]]
 name = "gen_docs"
 path = "src/bin/gen_docs.rs"
