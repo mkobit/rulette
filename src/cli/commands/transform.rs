@@ -1,8 +1,9 @@
 use clap::Args;
+use serde::Deserialize;
 use std::collections::HashSet;
 
 use crate::cli::formats::InputFormat;
-use crate::RuletteDocument;
+use crate::{Entity, RuletteDocument};
 use std::fs;
 use std::io::{self, Read};
 
@@ -12,7 +13,7 @@ pub struct TransformArgs {
     #[arg(default_value = "-")]
     pub input: Vec<String>,
 
-    /// Keep only rules matching expression
+    /// Keep only rules matching expression (e.g., 'license == "MIT"')
     #[arg(long)]
     pub filter: Option<String>,
 
@@ -32,10 +33,6 @@ pub struct TransformArgs {
     #[arg(long)]
     pub config: Option<String>,
 
-    /// Pipe each rule body through a shell command
-    #[arg(long)]
-    pub shell: Option<String>,
-
     /// Remove duplicate entities
     #[arg(long)]
     pub dedup: bool,
@@ -43,6 +40,87 @@ pub struct TransformArgs {
     /// Target output format (currently only IrJson is fully supported here)
     #[arg(short, long)]
     pub out: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+struct TransformConfig {
+    #[serde(default)]
+    filter: Option<String>,
+    #[serde(default)]
+    exclude: Option<String>,
+    #[serde(default)]
+    rename: Option<String>,
+    #[serde(default)]
+    set: Option<String>,
+    #[serde(default)]
+    dedup: Option<bool>,
+}
+
+fn match_expr(entity: &Entity, expr: &str) -> bool {
+    let parts: Vec<&str> = expr.split("==").collect();
+    if parts.len() == 2 {
+        let key = parts[0].trim();
+        let val = parts[1].trim().trim_matches(|c| c == '"' || c == '\'');
+
+        if let Ok(json_val) = serde_json::to_value(entity) {
+            if let Some(metadata) = json_val.get("metadata") {
+                if let Some(field) = metadata.get(key) {
+                    if field.as_str() == Some(val) {
+                        return true;
+                    }
+                }
+                if let Some(extra) = metadata.get("extra") {
+                    if let Some(field) = extra.get(key) {
+                        if field.as_str() == Some(val) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if let Ok(json) = serde_json::to_string(entity) {
+        if json.contains(expr) {
+            return true;
+        }
+    }
+    false
+}
+
+fn rename_field(entity: &mut Entity, from: &str, to: &str) {
+    match entity {
+        Entity::Rule(rule) => {
+            if let Some(val) = rule.metadata.extra.remove(from) {
+                rule.metadata.extra.insert(to.to_string(), val);
+            }
+        }
+        Entity::Skill(skill) => {
+            if let Some(val) = skill.metadata.extra.remove(from) {
+                skill.metadata.extra.insert(to.to_string(), val);
+            }
+        }
+        Entity::McpServer(mcp) => {
+            if let Some(val) = mcp.metadata.extra.remove(from) {
+                mcp.metadata.extra.insert(to.to_string(), val);
+            }
+        }
+    }
+}
+
+fn set_field(entity: &mut Entity, key: &str, value: &str) {
+    let json_val = serde_json::Value::String(value.to_string());
+    match entity {
+        Entity::Rule(rule) => {
+            rule.metadata.extra.insert(key.to_string(), json_val);
+        }
+        Entity::Skill(skill) => {
+            skill.metadata.extra.insert(key.to_string(), json_val);
+        }
+        Entity::McpServer(mcp) => {
+            mcp.metadata.extra.insert(key.to_string(), json_val);
+        }
+    }
 }
 
 impl TransformArgs {
@@ -67,10 +145,65 @@ impl TransformArgs {
             combined_entities.extend(doc.entities);
         }
 
-        if self.dedup {
+        let mut run_filter = self.filter.clone();
+        let mut run_exclude = self.exclude.clone();
+        let mut run_rename = self.rename.clone();
+        let mut run_set = self.set.clone();
+        let mut run_dedup = self.dedup;
+
+        if let Some(config_path) = &self.config {
+            let config_str = fs::read_to_string(config_path)?;
+            let config: TransformConfig = toml::from_str(&config_str)?;
+            if run_filter.is_none() {
+                run_filter = config.filter;
+            }
+            if run_exclude.is_none() {
+                run_exclude = config.exclude;
+            }
+            if run_rename.is_none() {
+                run_rename = config.rename;
+            }
+            if run_set.is_none() {
+                run_set = config.set;
+            }
+            if !run_dedup {
+                run_dedup = config.dedup.unwrap_or(false);
+            }
+        }
+
+        if let Some(filter_expr) = &run_filter {
+            combined_entities.retain(|entity| match_expr(entity, filter_expr));
+        }
+
+        if let Some(exclude_expr) = &run_exclude {
+            combined_entities.retain(|entity| !match_expr(entity, exclude_expr));
+        }
+
+        if let Some(rename_expr) = &run_rename {
+            let parts: Vec<&str> = rename_expr.split('=').collect();
+            if parts.len() == 2 {
+                let from = parts[0].trim();
+                let to = parts[1].trim();
+                for entity in &mut combined_entities {
+                    rename_field(entity, from, to);
+                }
+            }
+        }
+
+        if let Some(set_expr) = &run_set {
+            let parts: Vec<&str> = set_expr.split('=').collect();
+            if parts.len() == 2 {
+                let key = parts[0].trim();
+                let val = parts[1].trim();
+                for entity in &mut combined_entities {
+                    set_field(entity, key, val);
+                }
+            }
+        }
+
+        if run_dedup {
             let mut seen = HashSet::new();
             combined_entities.retain(|entity| {
-                // Determine uniqueness using JSON representation
                 let json = serde_json::to_string(entity).unwrap();
                 seen.insert(json)
             });
