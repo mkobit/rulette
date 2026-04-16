@@ -1,0 +1,3 @@
+[submodule "tests/fixtures/anthropic-quickstarts"]
+	path = tests/fixtures/anthropic-quickstarts
+	url = https://github.com/anthropics/anthropic-quickstarts

@@ -1,0 +1,16 @@
+---
+source: tests/cli_tests/parse_tests.rs
+expression: output
+---
+{
+  "entities": [
+    {
+      "kind": "skill",
+      "metadata": {
+        "name": "example.skill",
+        "description": "This skill allows an agent to perform file system operations safely by constraining the scope of ope"
+      },
+      "body": "# File System Operations\n\nThis skill allows an agent to perform file system operations safely by constraining the scope of operations to the current directory and disallowing destructive operations like `rm -rf`.\n\n## Instructions\n\n1. Use standard bash commands to explore the filesystem.\n2. Read files using the `read` tool.\n3. Write files using the `write` tool.\n4. Do NOT execute any `rm` commands.\n"
+    }
+  ]
+}
