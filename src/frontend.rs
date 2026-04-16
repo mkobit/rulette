@@ -8,10 +8,11 @@ use std::path::Path;
 pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result<RuletteDocument> {
     let entities = match format {
         InputFormat::Auto => {
-            // Attempt basic detection based on input content
-            // We can't rely on filename here since we get the string content directly.
-            // But we'll try to guess based on frontmatter or tags.
-            // If it has frontmatter, guess MDC/AgentSkills.
+            if input.trim_start().starts_with('{') {
+                if let Ok(doc) = serde_json::from_str::<RuletteDocument>(input) {
+                    return Ok(doc);
+                }
+            }
             if input.starts_with("---\n") {
                 if input.contains("name:") && input.contains("description:") {
                     vec![Entity::Skill(parse_agent_skills(input, filename)?)]
@@ -19,9 +20,16 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
                     vec![Entity::Rule(parse_cursor_mdc(input, filename)?)]
                 }
             } else {
-                // Default to Claude rule if we can't tell, or just plain rule
                 vec![Entity::Rule(parse_claude(input, filename)?)]
             }
+        }
+        InputFormat::IrJson => {
+            let doc: RuletteDocument = serde_json::from_str(input)?;
+            return Ok(doc);
+        }
+        InputFormat::IrToml => {
+            let doc: RuletteDocument = toml::from_str(input)?;
+            return Ok(doc);
         }
         InputFormat::SkillMd | InputFormat::AgentSkills => {
             vec![Entity::Skill(parse_agent_skills(input, filename)?)]

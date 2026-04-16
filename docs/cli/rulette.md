@@ -185,12 +185,13 @@ Apply transformations to IR (v0.1.1)
 
 ###### **Options:**
 
-* `--filter <FILTER>` — Keep only rules matching expression
+* `--filter <FILTER>` — Keep only rules matching expression (e.g., 'license == "MIT"')
 * `--exclude <EXCLUDE>` — Remove rules matching expression
 * `--rename <RENAME>` — Rename a metadata field value (from=to)
 * `--set <SET>` — Set a metadata field (field=value)
 * `--config <CONFIG>` — Load transform pipeline from TOML file
-* `--shell <SHELL>` — Pipe each rule body through a shell command
+* `--dedup` — Remove duplicate entities
+* `-o`, `--out <OUT>` — Target output format (currently only IrJson is fully supported here)
 
 
 
