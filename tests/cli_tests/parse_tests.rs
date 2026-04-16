@@ -14,7 +14,8 @@ fn test_claude_skill_parsing() {
         .success();
 
     let output = str::from_utf8(&assert.get_output().stdout).unwrap();
-    assert_snapshot!(output);
+    let normalized_output = output.replace("\r\n", "\n");
+    assert_snapshot!(normalized_output);
 }
 
 #[test]
@@ -29,7 +30,8 @@ fn test_agent_skills_parsing() {
         .success();
 
     let output = str::from_utf8(&assert.get_output().stdout).unwrap();
-    assert_snapshot!(output);
+    let normalized_output = output.replace("\r\n", "\n");
+    assert_snapshot!(normalized_output);
 }
 
 #[test]
@@ -44,5 +46,6 @@ fn test_codex_parsing() {
         .success();
 
     let output = str::from_utf8(&assert.get_output().stdout).unwrap();
-    assert_snapshot!(output);
+    let normalized_output = output.replace("\r\n", "\n");
+    assert_snapshot!(normalized_output);
 }
