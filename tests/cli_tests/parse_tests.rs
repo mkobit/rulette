@@ -37,7 +37,7 @@ fn test_codex_parsing() {
     let mut cmd = Command::cargo_bin("rulette").unwrap();
     let assert = cmd
         .arg("parse")
-        .arg("tests/fixtures/anthropic-quickstarts/CLAUDE.md")
+        .arg("tests/fixtures/codex/CLAUDE.md")
         .arg("--from")
         .arg("codex")
         .assert()
