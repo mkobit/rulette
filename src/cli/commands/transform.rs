@@ -204,8 +204,11 @@ impl TransformArgs {
         if run_dedup {
             let mut seen = HashSet::new();
             combined_entities.retain(|entity| {
-                let json = serde_json::to_string(entity).unwrap();
-                seen.insert(json)
+                if let Ok(json) = serde_json::to_string(entity) {
+                    seen.insert(json)
+                } else {
+                    false
+                }
             });
         }
 
