@@ -60,10 +60,14 @@ impl Emitter for CursorEmitter {
                         #[serde(skip_serializing_if = "Option::is_none")]
                         description: Option<&'a String>,
                         #[serde(flatten)]
-                        extra: std::collections::HashMap<String, serde_json::Value>,
+                        extra: std::collections::HashMap<&'a String, &'a serde_json::Value>,
                     }
-                    let mut extra = rule.metadata.extra.clone();
-                    extra.remove("name");
+                    let extra: std::collections::HashMap<_, _> = rule
+                        .metadata
+                        .extra
+                        .iter()
+                        .filter(|(k, _)| k.as_str() != "name")
+                        .collect();
                     let meta = CursorRuleMeta {
                         description: rule.metadata.description.as_ref(),
                         extra,
@@ -153,26 +157,30 @@ impl Emitter for AgentSkillsEmitter {
                     }
                     output.push_str("---\n");
                     #[derive(serde::Serialize)]
-                    struct AgentSkillRuleMeta {
-                        name: String,
-                        description: String,
+                    struct AgentSkillRuleMeta<'a> {
+                        name: &'a str,
+                        description: &'a str,
                         #[serde(flatten)]
-                        extra: std::collections::HashMap<String, serde_json::Value>,
+                        extra: std::collections::HashMap<&'a String, &'a serde_json::Value>,
                     }
                     let name = if let Some(serde_json::Value::String(n)) =
                         rule.metadata.extra.get("name")
                     {
-                        n.clone()
+                        n.as_str()
                     } else {
-                        "generated-skill".to_string()
+                        "generated-skill"
                     };
                     let description = if let Some(desc) = &rule.metadata.description {
-                        desc.clone()
+                        desc.as_str()
                     } else {
-                        "Generated from rule".to_string()
+                        "Generated from rule"
                     };
-                    let mut extra = rule.metadata.extra.clone();
-                    extra.remove("name");
+                    let extra: std::collections::HashMap<_, _> = rule
+                        .metadata
+                        .extra
+                        .iter()
+                        .filter(|(k, _)| k.as_str() != "name")
+                        .collect();
                     let meta = AgentSkillRuleMeta {
                         name,
                         description,
