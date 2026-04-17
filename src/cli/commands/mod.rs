@@ -8,5 +8,5 @@ pub mod parse;
 pub mod schema;
 pub mod transform;
 pub mod unarchive;
-pub mod validate;
+
 pub mod verify;
