@@ -164,6 +164,51 @@ mod tests {
             meta.validate(),
             Err(ValidationError::InvalidNameConsecutiveHyphens)
         );
+
+        meta.name = "a".repeat(65);
+        assert_eq!(meta.validate(), Err(ValidationError::InvalidNameLength));
+    }
+
+    #[test]
+    fn test_invalid_description() {
+        let mut meta = SkillMetadata {
+            name: "valid-name".to_string(),
+            description: "".to_string(),
+            version: None,
+            license: None,
+            compatibility: None,
+            metadata: HashMap::new(),
+            allowed_tools: None,
+            extra: HashMap::new(),
+        };
+        assert_eq!(
+            meta.validate(),
+            Err(ValidationError::InvalidDescriptionLength)
+        );
+
+        meta.description = "a".repeat(1025);
+        assert_eq!(
+            meta.validate(),
+            Err(ValidationError::InvalidDescriptionLength)
+        );
+    }
+
+    #[test]
+    fn test_invalid_compatibility() {
+        let mut meta = SkillMetadata {
+            name: "valid-name".to_string(),
+            description: "valid description".to_string(),
+            version: None,
+            license: None,
+            compatibility: Some("a".repeat(501)),
+            metadata: HashMap::new(),
+            allowed_tools: None,
+            extra: HashMap::new(),
+        };
+        assert_eq!(
+            meta.validate(),
+            Err(ValidationError::InvalidCompatibilityLength)
+        );
     }
 
     #[test]
