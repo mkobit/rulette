@@ -91,6 +91,7 @@ pub struct McpServer {
 pub struct McpServerMetadata {
     pub name: String,
     #[serde(flatten)]
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub extra: HashMap<String, serde_json::Value>,
 }
 
@@ -117,6 +118,7 @@ pub struct RuleMetadata {
     pub activation: Option<Activation>,
 
     #[serde(flatten)]
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub extra: HashMap<String, serde_json::Value>,
 }
 
