@@ -11,6 +11,54 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ActivationMode {
+    Always,
+    Glob,
+    Pattern,
+    Manual,
+    Model,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
+pub struct Activation {
+    pub mode: Vec<ActivationMode>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub globs: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pattern: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+pub enum HookEventKind {
+    PreToolUse,
+    PostToolUse,
+    Notification,
+    Stop,
+    SubagentStop,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct HookEvent {
+    pub event: HookEventKind,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub matcher: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub command: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ToolAccessRule {
+    pub tool: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pattern: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RuletteDocument {
     pub entities: Vec<Entity>,
@@ -25,6 +73,12 @@ pub enum Entity {
     Skill(agent_skills::Skill),
     #[serde(rename = "mcp-server")]
     McpServer(McpServer),
+    #[serde(rename = "hook")]
+    Hook(Hook),
+    #[serde(rename = "agent")]
+    Agent(Agent),
+    #[serde(rename = "permissions")]
+    Permissions(Permissions),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -59,7 +113,73 @@ pub struct Rule {
 pub struct RuleMetadata {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(rename = "rulette:activation", skip_serializing_if = "Option::is_none")]
+    pub activation: Option<Activation>,
 
+    #[serde(flatten)]
+    pub extra: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct Hook {
+    pub metadata: HookMetadata,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct HookMetadata {
+    pub name: String,
+    #[serde(rename = "rulette:hook-event", skip_serializing_if = "Option::is_none")]
+    pub hook_event: Option<HookEvent>,
+    #[serde(flatten)]
+    pub extra: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct Agent {
+    pub metadata: AgentMetadata,
+    pub body: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct AgentMetadata {
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(
+        rename = "rulette:tool-access",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub tool_access: Option<Vec<ToolAccessRule>>,
+    #[serde(
+        rename = "rulette:agent-tools",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub agent_tools: Option<Vec<String>>,
+    #[serde(rename = "rulette:models", skip_serializing_if = "Option::is_none")]
+    pub models: Option<Vec<String>>,
+    #[serde(flatten)]
+    pub extra: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct Permissions {
+    pub metadata: PermissionsMetadata,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PermissionsMetadata {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(
+        rename = "rulette:tool-access",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub tool_access: Option<Vec<ToolAccessRule>>,
+    #[serde(
+        rename = "rulette:settings-overrides",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub settings_overrides: Option<serde_json::Value>,
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
 }
@@ -70,5 +190,16 @@ mod tests {
     #[test]
     fn it_works() {
         assert_eq!(2 + 2, 4);
+    }
+}
+
+#[cfg(test)]
+mod generated_schema_tests {
+    #[test]
+    fn test_schema_generation_for_new_entities() {
+        let _ = schemars::schema_for!(crate::Hook);
+        let _ = schemars::schema_for!(crate::Agent);
+        let _ = schemars::schema_for!(crate::Permissions);
+        let _ = schemars::schema_for!(crate::Activation);
     }
 }

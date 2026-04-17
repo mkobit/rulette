@@ -69,6 +69,9 @@ impl ConvertArgs {
 
         for entity in &mut combined_entities {
             match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
                 crate::Entity::Rule(rule) => {
                     if let Some(name) = &self.name {
                         rule.metadata
