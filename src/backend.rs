@@ -14,6 +14,9 @@ impl Emitter for ClaudeEmitter {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
                 Entity::Rule(rule) => {
                     output.push_str(&rule.body);
                     output.push_str("\n\n");
@@ -53,6 +56,9 @@ impl Emitter for CursorEmitter {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
                 Entity::Rule(rule) => {
                     output.push_str("---\n");
                     #[derive(serde::Serialize)]
@@ -127,6 +133,9 @@ impl Emitter for AgentSkillsEmitter {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
                 Entity::McpServer(mcp) => {
                     if strict {
                         return Err(anyhow::anyhow!(
@@ -198,6 +207,9 @@ impl Emitter for CopilotEmitter {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
                 Entity::Rule(rule) => {
                     output.push_str(&rule.body);
                     output.push_str("\n\n");
@@ -234,6 +246,9 @@ impl Emitter for WindsurfEmitter {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
                 Entity::Rule(rule) => {
                     output.push_str(&rule.body);
                     output.push_str("\n\n");
@@ -272,6 +287,9 @@ impl Emitter for GeminiEmitter {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
                 Entity::Rule(rule) => {
                     output.push_str(&rule.body);
                     output.push_str("\n\n");
@@ -309,6 +327,9 @@ impl Emitter for CodexEmitter {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
                 Entity::Rule(rule) => {
                     output.push_str(&rule.body);
                     output.push_str("\n\n");
