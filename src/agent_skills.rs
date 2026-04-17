@@ -29,6 +29,7 @@ pub struct SkillMetadata {
     pub allowed_tools: Option<String>,
 
     #[serde(flatten)]
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub extra: HashMap<String, serde_json::Value>,
 }
 
