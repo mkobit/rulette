@@ -205,10 +205,14 @@ impl TransformArgs {
 
         if run_dedup {
             let mut seen = HashSet::new();
-            combined_entities.retain(|entity| {
-                let json = serde_json::to_string(entity).unwrap();
-                seen.insert(json)
-            });
+            let mut unique_entities = Vec::new();
+            for entity in combined_entities {
+                let json = serde_json::to_string(&entity)?;
+                if seen.insert(json) {
+                    unique_entities.push(entity);
+                }
+            }
+            combined_entities = unique_entities;
         }
 
         let doc = RuletteDocument {
