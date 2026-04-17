@@ -1,0 +1,9 @@
+[submodule "tests/fixtures/third_party/claude-code"]
+	path = tests/fixtures/third_party/claude-code
+	url = https://github.com/anthropics/claude-code.git
+[submodule "tests/fixtures/third_party/conductor"]
+	path = tests/fixtures/third_party/conductor
+	url = https://github.com/gemini-cli-extensions/conductor.git
+[submodule "tests/fixtures/third_party/agency-agents"]
+	path = tests/fixtures/third_party/agency-agents
+	url = https://github.com/msitarzewski/agency-agents.git

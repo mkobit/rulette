@@ -20,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          submodules: true
       - uses: DavidAnson/markdownlint-cli2-action@v19
         with:
           globs: '**/*.md'
@@ -30,6 +32,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
+        with:
+          submodules: true
 
       - name: Install Rust toolchain
         run: rustup show
@@ -54,6 +58,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
+        with:
+          submodules: true
 
       - name: Install Rust toolchain
         run: rustup show
@@ -70,6 +76,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
+        with:
+          submodules: true
 
       - name: Run security audit
         uses: rustsec/audit-check@v2

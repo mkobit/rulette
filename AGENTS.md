@@ -29,3 +29,8 @@ Single files (path or stdin) and tar archives containing multiple files are both
 
 Between parsing and emission, the IR passes through an ordered transformation pipeline (filter, map, rename, merge) before reaching any backend.
 New backends are additive and do not affect existing ones.
+
+## Third-Party Fixtures
+
+Third-party repositories are used as test fixtures and are stored as Git submodules in `tests/fixtures/third_party/`.
+Please refer to [tests/fixtures/third_party/AGENTS.md](tests/fixtures/third_party/AGENTS.md) for guidelines on interacting with them.
