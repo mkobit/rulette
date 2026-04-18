@@ -53,7 +53,39 @@ fn fetch_with_retries(
     }
 }
 
+fn cleanup_old_fixtures(fixture: &Fixture, out_dir: &Path) {
+    if !out_dir.exists() {
+        return;
+    }
+
+    let current_dir_name = format!("{}-{}", fixture.repo, fixture.sha);
+    let repo_prefix = format!("{}-", fixture.repo);
+
+    if let Ok(entries) = fs::read_dir(out_dir) {
+        for entry in entries.flatten() {
+            if let Ok(file_type) = entry.file_type() {
+                if file_type.is_dir() {
+                    let file_name = entry.file_name();
+                    let name_str = file_name.to_string_lossy();
+
+                    // If it belongs to the same repo but is a DIFFERENT sha, remove it.
+                    if name_str.starts_with(&repo_prefix) && name_str != current_dir_name {
+                        println!(
+                            "cargo:warning=Cleaning up old fixture directory: {}",
+                            name_str
+                        );
+                        let _ = fs::remove_dir_all(entry.path());
+                    }
+                }
+            }
+        }
+    }
+}
+
 fn download_and_extract(fixture: &Fixture, out_dir: &Path, github_token: Option<&String>) {
+    // First, prune any stale versions of this fixture to prevent unbounded growth
+    cleanup_old_fixtures(fixture, out_dir);
+
     let extract_dir = out_dir.join(format!("{}-{}", fixture.repo, fixture.sha));
     let marker_file = extract_dir.join(".extracted");
 
@@ -66,7 +98,7 @@ fn download_and_extract(fixture: &Fixture, out_dir: &Path, github_token: Option<
         return;
     }
 
-    // Clean up partial extractions
+    // Clean up partial extractions for this specific SHA
     if extract_dir.exists() {
         fs::remove_dir_all(&extract_dir).expect("Failed to clean up incomplete extract directory");
     }
