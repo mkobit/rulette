@@ -107,6 +107,7 @@ fn download_and_extract(fixture: &Fixture, out_dir: &Path) {
 }
 
 fn main() {
+    println!("cargo:rerun-if-changed=build.rs");
     let out_dir = env::var("OUT_DIR").expect("OUT_DIR not set");
     let out_path = Path::new(&out_dir);
 
