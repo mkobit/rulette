@@ -14,6 +14,9 @@ impl Emitter for ClaudeEmitter {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
                 Entity::Rule(rule) => {
                     output.push_str(&rule.body);
                     output.push_str("\n\n");
@@ -53,6 +56,9 @@ impl Emitter for CursorEmitter {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
                 Entity::Rule(rule) => {
                     output.push_str("---\n");
                     #[derive(serde::Serialize)]
@@ -60,6 +66,7 @@ impl Emitter for CursorEmitter {
                         #[serde(skip_serializing_if = "Option::is_none")]
                         description: Option<&'a String>,
                         #[serde(flatten)]
+                        #[serde(skip_serializing_if = "std::collections::HashMap::is_empty")]
                         extra: std::collections::HashMap<&'a String, &'a serde_json::Value>,
                     }
                     let extra: std::collections::HashMap<_, _> = rule
@@ -103,18 +110,16 @@ impl Emitter for CursorEmitter {
                     struct CursorSkillMeta<'a> {
                         description: &'a String,
                         #[serde(flatten)]
-                        extra: &'a std::collections::HashMap<String, serde_json::Value>,
+                        #[serde(skip_serializing_if = "std::collections::HashMap::is_empty")]
+                        extra: std::collections::HashMap<&'a String, &'a serde_json::Value>,
                     }
+                    let extra: std::collections::HashMap<_, _> =
+                        skill.metadata.extra.iter().collect();
                     let meta = CursorSkillMeta {
                         description: &skill.metadata.description,
-                        extra: &skill.metadata.extra,
+                        extra,
                     };
                     let yaml = serde_yaml::to_string(&meta).unwrap();
-                    // serde_yaml outputs `extra: {}` when flattened field is empty instead of omitting it. Let's fix this for simple empty extra.
-                    let yaml = yaml.replace(
-                        "
-{}", "",
-                    );
                     output.push_str(&yaml);
                     output.push_str("---\n");
                     output.push_str(&skill.body);
@@ -131,6 +136,9 @@ impl Emitter for AgentSkillsEmitter {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
                 Entity::McpServer(mcp) => {
                     if strict {
                         return Err(anyhow::anyhow!(
@@ -161,6 +169,7 @@ impl Emitter for AgentSkillsEmitter {
                         name: &'a str,
                         description: &'a str,
                         #[serde(flatten)]
+                        #[serde(skip_serializing_if = "std::collections::HashMap::is_empty")]
                         extra: std::collections::HashMap<&'a String, &'a serde_json::Value>,
                     }
                     let name = if let Some(serde_json::Value::String(n)) =
@@ -206,6 +215,9 @@ impl Emitter for CopilotEmitter {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
                 Entity::Rule(rule) => {
                     output.push_str(&rule.body);
                     output.push_str("\n\n");
@@ -242,6 +254,9 @@ impl Emitter for WindsurfEmitter {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
                 Entity::Rule(rule) => {
                     output.push_str(&rule.body);
                     output.push_str("\n\n");
@@ -280,6 +295,9 @@ impl Emitter for GeminiEmitter {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
                 Entity::Rule(rule) => {
                     output.push_str(&rule.body);
                     output.push_str("\n\n");
@@ -317,6 +335,9 @@ impl Emitter for CodexEmitter {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
                 Entity::Rule(rule) => {
                     output.push_str(&rule.body);
                     output.push_str("\n\n");
