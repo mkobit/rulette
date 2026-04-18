@@ -15,9 +15,6 @@ fn main() -> Result<()> {
         Commands::Schema(args) => args.execute(),
         Commands::Transform(args) => args.execute(),
         Commands::Validate(args) => args.execute(),
-        Commands::Fetch(args) => args.execute(),
-        Commands::Lock(args) => args.execute(),
-        Commands::Verify(args) => args.execute(),
         Commands::Archive(args) => args.execute(),
         Commands::Unarchive(args) => args.execute(),
     }

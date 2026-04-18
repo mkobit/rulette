@@ -12,9 +12,6 @@ This document contains the help content for the `rulette` command-line program.
 * [`rulette schema`↴](#rulette-schema)
 * [`rulette transform`↴](#rulette-transform)
 * [`rulette validate`↴](#rulette-validate)
-* [`rulette fetch`↴](#rulette-fetch)
-* [`rulette lock`↴](#rulette-lock)
-* [`rulette verify`↴](#rulette-verify)
 * [`rulette archive`↴](#rulette-archive)
 * [`rulette unarchive`↴](#rulette-unarchive)
 
@@ -33,9 +30,6 @@ Stateless CLI tool for transforming AI rules and skills across systems
 * `schema` — Output JSON Schema for the IR or a specific target format
 * `transform` — Apply transformations to IR (v0.1.1)
 * `validate` — Validate rules against the IR schema and optional policy constraints (v0.1.1)
-* `fetch` — Fetch rules from a remote source (v0.2)
-* `lock` — Generate or update a lockfile from a manifest (v0.2)
-* `verify` — Verify that fetched content matches the lockfile (v0.2)
 * `archive` — Bundle rules into a content-addressed tar archive (v0.2)
 * `unarchive` — Extract and verify a content-addressed archive (v0.2)
 
@@ -211,66 +205,6 @@ Validate rules against the IR schema and optional policy constraints (v0.1.1)
 
 * `--policy <POLICY>` — Policy file (TOML) defining additional constraints
 * `--strict` — Treat warnings as errors
-
-
-
-## `rulette fetch`
-
-Fetch rules from a remote source (v0.2)
-
-**Usage:** `rulette fetch [OPTIONS] <SOURCE>`
-
-###### **Arguments:**
-
-* `<SOURCE>` — Source to fetch rules from
-
-###### **Options:**
-
-* `--lockfile <LOCKFILE>` — Lockfile to verify against (default: rules.lock)
-
-  Default value: `rules.lock`
-* `--allow-mutable` — Allow fetching without pinned version
-* `--no-verify` — Skip integrity verification (requires --allow-mutable)
-* `-o`, `--out <OUT>` — Output path
-
-
-
-## `rulette lock`
-
-Generate or update a lockfile from a manifest (v0.2)
-
-**Usage:** `rulette lock [OPTIONS] [MANIFEST]`
-
-###### **Arguments:**
-
-* `<MANIFEST>` — Manifest file (rulette.toml)
-
-###### **Options:**
-
-* `-o`, `--out <OUT>` — Lockfile output path (default: rules.lock)
-
-  Default value: `rules.lock`
-* `--update <UPDATE>` — Update only the named package
-
-
-
-## `rulette verify`
-
-Verify that fetched content matches the lockfile (v0.2)
-
-**Usage:** `rulette verify [OPTIONS] [LOCKFILE]`
-
-###### **Arguments:**
-
-* `<LOCKFILE>` — Lockfile to verify
-
-  Default value: `rules.lock`
-
-###### **Options:**
-
-* `--vendor <VENDOR>` — Vendor directory to verify
-
-  Default value: `vendor/rules/`
 
 
 
