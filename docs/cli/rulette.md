@@ -11,9 +11,6 @@ This document contains the help content for the `rulette` command-line program.
 * [`rulette inspect`↴](#rulette-inspect)
 * [`rulette schema`↴](#rulette-schema)
 * [`rulette transform`↴](#rulette-transform)
-* [`rulette validate`↴](#rulette-validate)
-* [`rulette archive`↴](#rulette-archive)
-* [`rulette unarchive`↴](#rulette-unarchive)
 
 ## `rulette`
 
@@ -29,9 +26,6 @@ Stateless CLI tool for transforming AI rules and skills across systems
 * `inspect` — Pretty-print the IR for debugging
 * `schema` — Output JSON Schema for the IR or a specific target format
 * `transform` — Apply transformations to IR (v0.1.1)
-* `validate` — Validate rules against the IR schema and optional policy constraints (v0.1.1)
-* `archive` — Bundle rules into a content-addressed tar archive (v0.2)
-* `unarchive` — Extract and verify a content-addressed archive (v0.2)
 
 ###### **Options:**
 
@@ -60,7 +54,7 @@ Parse one or more input files (or stdin) into the Rulette IR
 
   Default value: `auto`
 
-  Possible values: `auto`, `skill-md`, `agent-skills`, `claude`, `cursor-mdc`, `cursor-legacy`, `codex`, `windsurf`, `copilot`, `gemini`, `ir-json`, `ir-toml`
+  Possible values: `auto`, `skill-md`, `agent-skills`, `claude`, `cursor-mdc`, `cursor-legacy`, `cursor-mcp`, `codex`, `windsurf`, `copilot`, `gemini`, `ir-json`, `ir-toml`
 
 * `-o`, `--out <OUT>` — Write output to file instead of stdout
 * `--strict` — Fail on parse warnings
@@ -114,7 +108,7 @@ Parse input and emit to a target format in one step
 
   Default value: `auto`
 
-  Possible values: `auto`, `skill-md`, `agent-skills`, `claude`, `cursor-mdc`, `cursor-legacy`, `codex`, `windsurf`, `copilot`, `gemini`, `ir-json`, `ir-toml`
+  Possible values: `auto`, `skill-md`, `agent-skills`, `claude`, `cursor-mdc`, `cursor-legacy`, `cursor-mcp`, `codex`, `windsurf`, `copilot`, `gemini`, `ir-json`, `ir-toml`
 
 * `--to <TO>` — Target output format
 
@@ -186,60 +180,6 @@ Apply transformations to IR (v0.1.1)
 * `--config <CONFIG>` — Load transform pipeline from TOML file
 * `--dedup` — Remove duplicate entities
 * `-o`, `--out <OUT>` — Target output format (currently only IrJson is fully supported here)
-
-
-
-## `rulette validate`
-
-Validate rules against the IR schema and optional policy constraints (v0.1.1)
-
-**Usage:** `rulette validate [OPTIONS] [INPUT]...`
-
-###### **Arguments:**
-
-* `<INPUT>` — Input files or directories (or "-" for stdin)
-
-  Default value: `-`
-
-###### **Options:**
-
-* `--policy <POLICY>` — Policy file (TOML) defining additional constraints
-* `--strict` — Treat warnings as errors
-
-
-
-## `rulette archive`
-
-Bundle rules into a content-addressed tar archive (v0.2)
-
-**Usage:** `rulette archive [OPTIONS] [INPUT]...`
-
-###### **Arguments:**
-
-* `<INPUT>` — Input files or directories to archive
-
-###### **Options:**
-
-* `-o`, `--out <OUT>` — Output archive path
-* `--compress <COMPRESS>` — Compression (none, gzip, zstd; default: gzip)
-
-  Default value: `gzip`
-
-
-
-## `rulette unarchive`
-
-Extract and verify a content-addressed archive (v0.2)
-
-**Usage:** `rulette unarchive [OPTIONS] <ARCHIVE>`
-
-###### **Arguments:**
-
-* `<ARCHIVE>` — Archive file to extract
-
-###### **Options:**
-
-* `-o`, `--out <OUT>` — Extraction directory
 
 
 

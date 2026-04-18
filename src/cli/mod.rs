@@ -39,13 +39,4 @@ pub enum Commands {
 
     /// Apply transformations to IR (v0.1.1)
     Transform(commands::transform::TransformArgs),
-
-    /// Validate rules against the IR schema and optional policy constraints (v0.1.1)
-    Validate(commands::validate::ValidateArgs),
-
-    /// Bundle rules into a content-addressed tar archive (v0.2)
-    Archive(commands::archive::ArchiveArgs),
-
-    /// Extract and verify a content-addressed archive (v0.2)
-    Unarchive(commands::unarchive::UnarchiveArgs),
 }
