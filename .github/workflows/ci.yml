@@ -42,6 +42,8 @@ jobs:
         with:
           path: target/fixtures
           key: fixtures-${{ runner.os }}-${{ hashFiles('build.rs') }}
+          restore-keys: |
+            fixtures-${{ runner.os }}-
 
       - name: Check formatting
         run: cargo fmt --check
@@ -74,6 +76,8 @@ jobs:
         with:
           path: target/fixtures
           key: fixtures-${{ runner.os }}-${{ hashFiles('build.rs') }}
+          restore-keys: |
+            fixtures-${{ runner.os }}-
 
       - name: Test
         env:

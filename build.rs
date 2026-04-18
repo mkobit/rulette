@@ -55,14 +55,20 @@ fn fetch_with_retries(
 
 fn download_and_extract(fixture: &Fixture, out_dir: &Path, github_token: Option<&String>) {
     let extract_dir = out_dir.join(format!("{}-{}", fixture.repo, fixture.sha));
+    let marker_file = extract_dir.join(".extracted");
 
-    if extract_dir.exists() {
+    if extract_dir.exists() && marker_file.exists() {
         println!(
             "cargo:rustc-env={}={}",
             fixture.env_name,
             extract_dir.display()
         );
         return;
+    }
+
+    // Clean up partial extractions
+    if extract_dir.exists() {
+        fs::remove_dir_all(&extract_dir).expect("Failed to clean up incomplete extract directory");
     }
 
     let primary = fixture.primary_url();
@@ -115,6 +121,8 @@ fn download_and_extract(fixture: &Fixture, out_dir: &Path, github_token: Option<
             entry.unpack(&dest_path).expect("Failed to unpack file");
         }
     }
+
+    fs::File::create(&marker_file).expect("Failed to write extraction marker file");
 
     println!(
         "cargo:rustc-env={}={}",
