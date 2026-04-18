@@ -12,6 +12,7 @@ This document contains the help content for the `rulette` command-line program.
 * [`rulette schema`↴](#rulette-schema)
 * [`rulette transform`↴](#rulette-transform)
 
+
 ## `rulette`
 
 Stateless CLI tool for transforming AI rules and skills across systems
@@ -180,6 +181,7 @@ Apply transformations to IR (v0.1.1)
 * `--config <CONFIG>` — Load transform pipeline from TOML file
 * `--dedup` — Remove duplicate entities
 * `-o`, `--out <OUT>` — Target output format (currently only IrJson is fully supported here)
+
 
 
 
