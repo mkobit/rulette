@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_invalid_compatibility() {
-        let mut meta = SkillMetadata {
+        let meta = SkillMetadata {
             name: "valid-name".to_string(),
             description: "valid description".to_string(),
             version: None,
