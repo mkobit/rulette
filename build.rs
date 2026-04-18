@@ -1,6 +1,7 @@
 use std::env;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 struct Fixture {
     env_name: &'static str,
@@ -25,7 +26,34 @@ impl Fixture {
     }
 }
 
-fn download_and_extract(fixture: &Fixture, out_dir: &Path) {
+fn fetch_with_retries(
+    url: &str,
+    github_token: Option<&String>,
+) -> Result<ureq::http::Response<ureq::Body>, ureq::Error> {
+    let mut retries = 3;
+    loop {
+        let mut req = ureq::get(url);
+        if let Some(token) = github_token {
+            req = req.header("Authorization", &format!("Bearer {}", token));
+        }
+        match req.call() {
+            Ok(response) => return Ok(response),
+            Err(e) => {
+                retries -= 1;
+                if retries == 0 {
+                    return Err(e);
+                }
+                println!(
+                    "cargo:warning=Request failed: {}, retrying... ({} attempts left)",
+                    e, retries
+                );
+                std::thread::sleep(Duration::from_secs(2));
+            }
+        }
+    }
+}
+
+fn download_and_extract(fixture: &Fixture, out_dir: &Path, github_token: Option<&String>) {
     let extract_dir = out_dir.join(format!("{}-{}", fixture.repo, fixture.sha));
 
     if extract_dir.exists() {
@@ -42,14 +70,13 @@ fn download_and_extract(fixture: &Fixture, out_dir: &Path) {
 
     println!("cargo:warning=Downloading fixture: {}", primary);
 
-    let response = ureq::get(&primary)
-        .call()
-        .or_else(|_| {
+    let response = fetch_with_retries(&primary, github_token)
+        .or_else(|e| {
             println!(
-                "cargo:warning=Primary download failed, trying fallback: {}",
-                fallback
+                "cargo:warning=Primary download failed after retries: {}, trying fallback: {}",
+                e, fallback
             );
-            ureq::get(&fallback).call()
+            fetch_with_retries(&fallback, github_token)
         })
         .expect("Failed to download fixture");
 
@@ -63,31 +90,29 @@ fn download_and_extract(fixture: &Fixture, out_dir: &Path) {
     let tar = flate2::read::GzDecoder::new(response.into_body().into_reader());
     let mut archive = tar::Archive::new(tar);
 
-    // tar --strip-components=1 equivalent using tar crate directly
-    for file in archive.entries().expect("Failed to read archive entries") {
-        let mut file = file.expect("Failed to get archive entry");
-        let path = file.path().expect("Failed to get entry path").into_owned();
+    for entry_result in archive.entries().expect("Failed to read archive entries") {
+        let mut entry = entry_result.expect("Failed to get archive entry");
+        let path = entry.path().expect("Failed to get entry path").into_owned();
 
         let mut components = path.components();
-        // Skip first component (the top-level directory)
         if components.next().is_none() {
             continue;
         }
 
-        let stripped_path: std::path::PathBuf = components.collect();
+        let stripped_path: PathBuf = components.collect();
         if stripped_path.as_os_str().is_empty() {
             continue;
         }
 
         let dest_path = extract_dir.join(stripped_path);
 
-        if file.header().entry_type().is_dir() {
+        if entry.header().entry_type().is_dir() {
             fs::create_dir_all(&dest_path).expect("Failed to create directory");
         } else {
             if let Some(parent) = dest_path.parent() {
                 fs::create_dir_all(parent).expect("Failed to create parent directories");
             }
-            file.unpack(&dest_path).expect("Failed to unpack file");
+            entry.unpack(&dest_path).expect("Failed to unpack file");
         }
     }
 
@@ -100,8 +125,18 @@ fn download_and_extract(fixture: &Fixture, out_dir: &Path) {
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
-    let out_dir = env::var("OUT_DIR").expect("OUT_DIR not set");
-    let out_path = Path::new(&out_dir);
+    println!("cargo:rerun-if-env-changed=GITHUB_TOKEN");
+    println!("cargo:rerun-if-env-changed=GITHUB_API_TOKEN");
+
+    let github_token = env::var("GITHUB_TOKEN")
+        .or_else(|_| env::var("GITHUB_API_TOKEN"))
+        .ok();
+
+    // To ensure a stable path for caching across CI runs, we place this in a target/fixtures dir
+    // rather than the ephemeral OUT_DIR.
+    let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
+    let target_dir = Path::new(&manifest_dir).join("target").join("fixtures");
+    fs::create_dir_all(&target_dir).expect("Failed to create target/fixtures directory");
 
     let fixtures = vec![
         Fixture {
@@ -125,6 +160,6 @@ fn main() {
     ];
 
     for fixture in fixtures {
-        download_and_extract(&fixture, out_path);
+        download_and_extract(&fixture, &target_dir, github_token.as_ref());
     }
 }
