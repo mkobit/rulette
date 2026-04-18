@@ -35,6 +35,11 @@ insta = "1.47.2"
 predicates = "3.1.4"
 tempfile = "3.27.0"
 
+[build-dependencies]
+flate2 = "1.1.9"
+tar = "0.4.45"
+ureq = "3.3.0"
+
 [[bin]]
 name = "gen_docs"
 path = "src/bin/gen_docs.rs"

@@ -1,17 +1,11 @@
 use std::env;
 use std::fs;
 use std::path::Path;
-use std::process::Command;
 
-/// Defines an external test fixture dependency.
 struct Fixture {
-    /// Environment variable name to export the path as (e.g., FIXTURE_CLAUDE_CODE_DIR)
     env_name: &'static str,
-    /// GitHub repository owner (e.g., "anthropics")
     owner: &'static str,
-    /// GitHub repository name (e.g., "claude-code")
     repo: &'static str,
-    /// Specific commit SHA to pin down
     sha: &'static str,
 }
 
@@ -24,7 +18,6 @@ impl Fixture {
     }
 
     fn fallback_url(&self) -> String {
-        // As a fallback, we can try the codeload URL format
         format!(
             "https://codeload.github.com/{}/{}/tar.gz/{}",
             self.owner, self.repo, self.sha
@@ -35,7 +28,6 @@ impl Fixture {
 fn download_and_extract(fixture: &Fixture, out_dir: &Path) {
     let extract_dir = out_dir.join(format!("{}-{}", fixture.repo, fixture.sha));
 
-    // Idempotency: skip if we've already extracted this specific SHA
     if extract_dir.exists() {
         println!(
             "cargo:rustc-env={}={}",
@@ -45,60 +37,60 @@ fn download_and_extract(fixture: &Fixture, out_dir: &Path) {
         return;
     }
 
-    let tarball_path = out_dir.join(format!("{}-{}.tar.gz", fixture.repo, fixture.sha));
+    let primary = fixture.primary_url();
+    let fallback = fixture.fallback_url();
 
-    // Only download if tarball isn't already there (e.g., partial previous run)
-    if !tarball_path.exists() {
-        let primary = fixture.primary_url();
-        let fallback = fixture.fallback_url();
+    println!("cargo:warning=Downloading fixture: {}", primary);
 
-        println!("cargo:warning=Downloading fixture: {}", primary);
-        let status = Command::new("curl")
-            .args(["-sL", "-o", tarball_path.to_str().unwrap(), &primary])
-            .status()
-            .expect("Failed to execute curl");
-
-        if !status.success() {
+    let response = ureq::get(&primary)
+        .call()
+        .or_else(|_| {
             println!(
                 "cargo:warning=Primary download failed, trying fallback: {}",
                 fallback
             );
-            let status = Command::new("curl")
-                .args(["-sL", "-o", tarball_path.to_str().unwrap(), &fallback])
-                .status()
-                .expect("Failed to execute curl on fallback url");
-            assert!(
-                status.success(),
-                "Failed to download fixture {}",
-                fixture.repo
-            );
-        }
-    }
+            ureq::get(&fallback).call()
+        })
+        .expect("Failed to download fixture");
 
-    // Extract the tarball
-    println!("cargo:warning=Extracting {}", tarball_path.display());
-
-    // tar --strip-components=1 will remove the top-level repo-sha directory from the tarball
-    // so we extract directly into our deterministic extract_dir.
-    fs::create_dir_all(&extract_dir).expect("Failed to create extract directory");
-    let status = Command::new("tar")
-        .args([
-            "xzf",
-            tarball_path.to_str().unwrap(),
-            "-C",
-            extract_dir.to_str().unwrap(),
-            "--strip-components=1",
-        ])
-        .status()
-        .expect("Failed to execute tar");
-
-    assert!(
-        status.success(),
-        "Failed to extract fixture {}",
+    println!(
+        "cargo:warning=Extracting {} directly to memory",
         fixture.repo
     );
 
-    // Export the path for tests
+    fs::create_dir_all(&extract_dir).expect("Failed to create extract directory");
+
+    let tar = flate2::read::GzDecoder::new(response.into_body().into_reader());
+    let mut archive = tar::Archive::new(tar);
+
+    // tar --strip-components=1 equivalent using tar crate directly
+    for file in archive.entries().expect("Failed to read archive entries") {
+        let mut file = file.expect("Failed to get archive entry");
+        let path = file.path().expect("Failed to get entry path").into_owned();
+
+        let mut components = path.components();
+        // Skip first component (the top-level directory)
+        if components.next().is_none() {
+            continue;
+        }
+
+        let stripped_path: std::path::PathBuf = components.collect();
+        if stripped_path.as_os_str().is_empty() {
+            continue;
+        }
+
+        let dest_path = extract_dir.join(stripped_path);
+
+        if file.header().entry_type().is_dir() {
+            fs::create_dir_all(&dest_path).expect("Failed to create directory");
+        } else {
+            if let Some(parent) = dest_path.parent() {
+                fs::create_dir_all(parent).expect("Failed to create parent directories");
+            }
+            file.unpack(&dest_path).expect("Failed to unpack file");
+        }
+    }
+
     println!(
         "cargo:rustc-env={}={}",
         fixture.env_name,
@@ -116,7 +108,7 @@ fn main() {
             env_name: "FIXTURE_CLAUDE_CODE_DIR",
             owner: "anthropics",
             repo: "claude-code",
-            sha: "2b53fac3b2dd381bfb29f456f43c0b3eb9b3ebff", // The sha we just saw in submodule status
+            sha: "2b53fac3b2dd381bfb29f456f43c0b3eb9b3ebff",
         },
         Fixture {
             env_name: "FIXTURE_CONDUCTOR_DIR",
