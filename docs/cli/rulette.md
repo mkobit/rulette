@@ -11,12 +11,7 @@ This document contains the help content for the `rulette` command-line program.
 * [`rulette inspect`↴](#rulette-inspect)
 * [`rulette schema`↴](#rulette-schema)
 * [`rulette transform`↴](#rulette-transform)
-* [`rulette validate`↴](#rulette-validate)
-* [`rulette fetch`↴](#rulette-fetch)
-* [`rulette lock`↴](#rulette-lock)
-* [`rulette verify`↴](#rulette-verify)
-* [`rulette archive`↴](#rulette-archive)
-* [`rulette unarchive`↴](#rulette-unarchive)
+
 
 ## `rulette`
 
@@ -32,12 +27,6 @@ Stateless CLI tool for transforming AI rules and skills across systems
 * `inspect` — Pretty-print the IR for debugging
 * `schema` — Output JSON Schema for the IR or a specific target format
 * `transform` — Apply transformations to IR (v0.1.1)
-* `validate` — Validate rules against the IR schema and optional policy constraints (v0.1.1)
-* `fetch` — Fetch rules from a remote source (v0.2)
-* `lock` — Generate or update a lockfile from a manifest (v0.2)
-* `verify` — Verify that fetched content matches the lockfile (v0.2)
-* `archive` — Bundle rules into a content-addressed tar archive (v0.2)
-* `unarchive` — Extract and verify a content-addressed archive (v0.2)
 
 ###### **Options:**
 
@@ -66,7 +55,7 @@ Parse one or more input files (or stdin) into the Rulette IR
 
   Default value: `auto`
 
-  Possible values: `auto`, `skill-md`, `agent-skills`, `claude`, `cursor-mdc`, `cursor-legacy`, `codex`, `windsurf`, `copilot`, `gemini`, `ir-json`, `ir-toml`
+  Possible values: `auto`, `skill-md`, `agent-skills`, `claude`, `cursor-mdc`, `cursor-legacy`, `cursor-mcp`, `codex`, `windsurf`, `copilot`, `gemini`, `ir-json`, `ir-toml`
 
 * `-o`, `--out <OUT>` — Write output to file instead of stdout
 * `--strict` — Fail on parse warnings
@@ -120,7 +109,7 @@ Parse input and emit to a target format in one step
 
   Default value: `auto`
 
-  Possible values: `auto`, `skill-md`, `agent-skills`, `claude`, `cursor-mdc`, `cursor-legacy`, `codex`, `windsurf`, `copilot`, `gemini`, `ir-json`, `ir-toml`
+  Possible values: `auto`, `skill-md`, `agent-skills`, `claude`, `cursor-mdc`, `cursor-legacy`, `cursor-mcp`, `codex`, `windsurf`, `copilot`, `gemini`, `ir-json`, `ir-toml`
 
 * `--to <TO>` — Target output format
 
@@ -193,119 +182,6 @@ Apply transformations to IR (v0.1.1)
 * `--dedup` — Remove duplicate entities
 * `-o`, `--out <OUT>` — Target output format (currently only IrJson is fully supported here)
 
-
-
-## `rulette validate`
-
-Validate rules against the IR schema and optional policy constraints (v0.1.1)
-
-**Usage:** `rulette validate [OPTIONS] [INPUT]...`
-
-###### **Arguments:**
-
-* `<INPUT>` — Input files or directories (or "-" for stdin)
-
-  Default value: `-`
-
-###### **Options:**
-
-* `--policy <POLICY>` — Policy file (TOML) defining additional constraints
-* `--strict` — Treat warnings as errors
-
-
-
-## `rulette fetch`
-
-Fetch rules from a remote source (v0.2)
-
-**Usage:** `rulette fetch [OPTIONS] <SOURCE>`
-
-###### **Arguments:**
-
-* `<SOURCE>` — Source to fetch rules from
-
-###### **Options:**
-
-* `--lockfile <LOCKFILE>` — Lockfile to verify against (default: rules.lock)
-
-  Default value: `rules.lock`
-* `--allow-mutable` — Allow fetching without pinned version
-* `--no-verify` — Skip integrity verification (requires --allow-mutable)
-* `-o`, `--out <OUT>` — Output path
-
-
-
-## `rulette lock`
-
-Generate or update a lockfile from a manifest (v0.2)
-
-**Usage:** `rulette lock [OPTIONS] [MANIFEST]`
-
-###### **Arguments:**
-
-* `<MANIFEST>` — Manifest file (rulette.toml)
-
-###### **Options:**
-
-* `-o`, `--out <OUT>` — Lockfile output path (default: rules.lock)
-
-  Default value: `rules.lock`
-* `--update <UPDATE>` — Update only the named package
-
-
-
-## `rulette verify`
-
-Verify that fetched content matches the lockfile (v0.2)
-
-**Usage:** `rulette verify [OPTIONS] [LOCKFILE]`
-
-###### **Arguments:**
-
-* `<LOCKFILE>` — Lockfile to verify
-
-  Default value: `rules.lock`
-
-###### **Options:**
-
-* `--vendor <VENDOR>` — Vendor directory to verify
-
-  Default value: `vendor/rules/`
-
-
-
-## `rulette archive`
-
-Bundle rules into a content-addressed tar archive (v0.2)
-
-**Usage:** `rulette archive [OPTIONS] [INPUT]...`
-
-###### **Arguments:**
-
-* `<INPUT>` — Input files or directories to archive
-
-###### **Options:**
-
-* `-o`, `--out <OUT>` — Output archive path
-* `--compress <COMPRESS>` — Compression (none, gzip, zstd; default: gzip)
-
-  Default value: `gzip`
-
-
-
-## `rulette unarchive`
-
-Extract and verify a content-addressed archive (v0.2)
-
-**Usage:** `rulette unarchive [OPTIONS] <ARCHIVE>`
-
-###### **Arguments:**
-
-* `<ARCHIVE>` — Archive file to extract
-
-###### **Options:**
-
-* `-o`, `--out <OUT>` — Extraction directory
 
 
 

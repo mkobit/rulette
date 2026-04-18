@@ -1,6 +1,8 @@
 use crate::agent_skills::{Skill, SkillMetadata};
 use crate::cli::formats::InputFormat;
-use crate::{Entity, Rule, RuleMetadata, RuletteDocument};
+use crate::{
+    Entity, McpServer, McpServerConfig, McpServerMetadata, Rule, RuleMetadata, RuletteDocument,
+};
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 use std::path::Path;
@@ -11,6 +13,11 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
             if input.trim_start().starts_with('{') {
                 if let Ok(doc) = serde_json::from_str::<RuletteDocument>(input) {
                     return Ok(doc);
+                }
+                if input.contains("\"mcpServers\"") {
+                    return Ok(RuletteDocument {
+                        entities: parse_cursor_mcp(input)?,
+                    });
                 }
             }
             if input.starts_with("---\n") {
@@ -35,6 +42,7 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
             vec![Entity::Skill(parse_agent_skills(input, filename)?)]
         }
         InputFormat::CursorMdc => vec![Entity::Rule(parse_cursor_mdc(input, filename)?)],
+        InputFormat::CursorMcp => parse_cursor_mcp(input)?,
         InputFormat::Claude | InputFormat::Codex => {
             vec![Entity::Rule(parse_claude(input, filename)?)]
         }
@@ -153,6 +161,42 @@ fn parse_claude(input: &str, filename: Option<&str>) -> Result<Rule> {
     })
 }
 
+fn parse_cursor_mcp(input: &str) -> Result<Vec<Entity>> {
+    #[derive(serde::Deserialize)]
+    struct CursorMcpFile {
+        #[serde(rename = "mcpServers")]
+        mcp_servers: HashMap<String, CursorMcpConfig>,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct CursorMcpConfig {
+        command: String,
+        #[serde(default)]
+        args: Vec<String>,
+        #[serde(default)]
+        env: HashMap<String, String>,
+    }
+
+    let parsed: CursorMcpFile = serde_json::from_str(input)?;
+    let mut entities = Vec::new();
+
+    for (name, config) in parsed.mcp_servers {
+        entities.push(Entity::McpServer(McpServer {
+            metadata: McpServerMetadata {
+                name,
+                extra: HashMap::new(),
+            },
+            config: McpServerConfig {
+                command: config.command,
+                args: config.args,
+                env: config.env,
+            },
+        }));
+    }
+
+    Ok(entities)
+}
+
 fn extract_frontmatter(input: &str) -> (Option<&str>, &str) {
     if input.starts_with("---\n") || input.starts_with("---\r\n") {
         if let Some(end_idx) = input[4..].find("\n---") {
@@ -194,4 +238,43 @@ fn extract_description_from_body(body: &str) -> Option<String> {
         }
     }
     None
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_cursor_mcp() {
+        let json = r#"{
+            "mcpServers": {
+                "filesystem": {
+                    "command": "npx",
+                    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/user/project"],
+                    "env": {
+                        "FOO": "bar"
+                    }
+                }
+            }
+        }"#;
+
+        let doc = parse(json, InputFormat::Auto, None).unwrap();
+        assert_eq!(doc.entities.len(), 1);
+
+        match &doc.entities[0] {
+            Entity::McpServer(mcp) => {
+                assert_eq!(mcp.metadata.name, "filesystem");
+                assert_eq!(mcp.config.command, "npx");
+                assert_eq!(
+                    mcp.config.args,
+                    vec![
+                        "-y",
+                        "@modelcontextprotocol/server-filesystem",
+                        "/home/user/project"
+                    ]
+                );
+                assert_eq!(mcp.config.env.get("FOO").unwrap(), "bar");
+            }
+            _ => panic!("Expected McpServer entity"),
+        }
+    }
 }
