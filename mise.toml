@@ -12,6 +12,14 @@ run = "markdownlint-cli2 '**/*.md'"
 description = "Lint Rust code"
 run = "cargo clippy -- -D warnings"
 
+[tasks.fmt]
+description = "Check formatting"
+run = "cargo fmt --check"
+
 [tasks.test]
 description = "Run tests"
 run = "cargo test"
+
+[tasks.check]
+description = "Check everything"
+depends = ["lint:md", "lint:rust", "fmt", "test"]

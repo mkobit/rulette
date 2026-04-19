@@ -78,22 +78,34 @@ impl EmitArgs {
             if input_path == "-" {
                 let mut buffer = String::new();
                 io::stdin().read_to_string(&mut buffer)?;
-                let doc = crate::frontend::parse(&buffer, crate::cli::formats::InputFormat::Auto, None)?;
+                let doc =
+                    crate::frontend::parse(&buffer, crate::cli::formats::InputFormat::Auto, None)?;
                 combined_entities.extend(doc.entities);
             } else {
                 let path = std::path::Path::new(input_path);
                 if path.is_dir() {
-                    for entry in walkdir::WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
+                    for entry in walkdir::WalkDir::new(path)
+                        .into_iter()
+                        .filter_map(|e| e.ok())
+                    {
                         if entry.file_type().is_file() {
                             let content = fs::read_to_string(entry.path())?;
-                            if let Ok(doc) = crate::frontend::parse(&content, crate::cli::formats::InputFormat::Auto, Some(entry.path().to_str().unwrap())) {
+                            if let Ok(doc) = crate::frontend::parse(
+                                &content,
+                                crate::cli::formats::InputFormat::Auto,
+                                Some(entry.path().to_str().unwrap()),
+                            ) {
                                 combined_entities.extend(doc.entities);
                             }
                         }
                     }
                 } else {
                     let content = fs::read_to_string(input_path)?;
-                    let doc = crate::frontend::parse(&content, crate::cli::formats::InputFormat::Auto, Some(input_path))?;
+                    let doc = crate::frontend::parse(
+                        &content,
+                        crate::cli::formats::InputFormat::Auto,
+                        Some(input_path),
+                    )?;
                     combined_entities.extend(doc.entities);
                 }
             }
@@ -114,7 +126,10 @@ impl EmitArgs {
             OutputFormat::Codex => CodexEmitter.emit(&doc, strict)?,
             OutputFormat::IrJson => {
                 let mut map = HashMap::new();
-                map.insert(PathBuf::from("ir.json"), serde_json::to_string_pretty(&doc)?);
+                map.insert(
+                    PathBuf::from("ir.json"),
+                    serde_json::to_string_pretty(&doc)?,
+                );
                 map
             }
             OutputFormat::IrToml => {

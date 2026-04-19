@@ -52,7 +52,10 @@ impl Emitter for ClaudeEmitter {
 
         let mut map = HashMap::new();
         if !rules_output.is_empty() {
-            map.insert(PathBuf::from("CLAUDE.md"), rules_output.trim_end().to_string());
+            map.insert(
+                PathBuf::from("CLAUDE.md"),
+                rules_output.trim_end().to_string(),
+            );
         }
         Ok(map)
     }
@@ -174,7 +177,10 @@ impl Emitter for AgentSkillsEmitter {
                     content.push_str(&serde_yaml::to_string(&skill.metadata).unwrap());
                     content.push_str("---\n");
                     content.push_str(&skill.body);
-                    map.insert(PathBuf::from(format!("{}.skill.md", skill.metadata.name)), content);
+                    map.insert(
+                        PathBuf::from(format!("{}.skill.md", skill.metadata.name)),
+                        content,
+                    );
                 }
                 Entity::Rule(rule) => {
                     if strict {
@@ -269,7 +275,10 @@ impl Emitter for CopilotEmitter {
         }
         let mut map = HashMap::new();
         if !output.is_empty() {
-            map.insert(PathBuf::from("copilot-instructions.md"), output.trim_end().to_string());
+            map.insert(
+                PathBuf::from("copilot-instructions.md"),
+                output.trim_end().to_string(),
+            );
         }
         Ok(map)
     }
@@ -314,7 +323,10 @@ impl Emitter for WindsurfEmitter {
         }
         let mut map = HashMap::new();
         if !output.is_empty() {
-            map.insert(PathBuf::from(".windsurfrules"), output.trim_end().to_string());
+            map.insert(
+                PathBuf::from(".windsurfrules"),
+                output.trim_end().to_string(),
+            );
         }
         Ok(map)
     }

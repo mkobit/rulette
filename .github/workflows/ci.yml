@@ -48,13 +48,10 @@ jobs:
           restore-keys: |
             fixtures-${{ runner.os }}-
 
-      - name: Check formatting
-        run: cargo fmt --check
-
-      - name: Lint
+      - name: Run checks (fmt, lint, test)
         env:
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mise run lint:rust
+        run: mise run check
 
   test:
     name: Test (${{ matrix.os }})

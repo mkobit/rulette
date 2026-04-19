@@ -34,7 +34,10 @@ impl InspectArgs {
             } else {
                 let path = std::path::Path::new(input_path);
                 if path.is_dir() {
-                    for entry in walkdir::WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
+                    for entry in walkdir::WalkDir::new(path)
+                        .into_iter()
+                        .filter_map(|e| e.ok())
+                    {
                         if entry.file_type().is_file() {
                             let content = fs::read_to_string(entry.path())?;
                             if let Ok(doc) = parse(
