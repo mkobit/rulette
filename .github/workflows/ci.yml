@@ -49,12 +49,12 @@ jobs:
             fixtures-${{ runner.os }}-
 
       - name: Check formatting
-        run: cargo fmt --check
+        run: mise x -- cargo fmt --check
 
       - name: Lint
         env:
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo clippy -- -D warnings
+        run: mise x -- cargo clippy -- -D warnings
 
   test:
     name: Test (${{ matrix.os }})
@@ -86,7 +86,7 @@ jobs:
       - name: Test
         env:
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo test
+        run: mise x -- cargo test
 
   audit:
     name: Security audit
