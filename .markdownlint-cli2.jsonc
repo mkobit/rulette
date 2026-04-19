@@ -10,6 +10,7 @@
     "!target",
     "!conductor",
     "!tests/fixtures",
+    // Generated file from clap-markdown has many MD001, MD012, MD024 violations
     "!docs/cli/rulette.md"
   ]
 }
