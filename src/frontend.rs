@@ -1,7 +1,9 @@
 use crate::agent_skills::{Skill, SkillMetadata};
 use crate::cli::formats::InputFormat;
-use crate::{Entity, Rule, RuleMetadata, RuletteDocument};
-use anyhow::{anyhow, Result};
+use crate::{
+    Entity, McpServer, McpServerConfig, McpServerMetadata, Rule, RuleMetadata, RuletteDocument,
+};
+use anyhow::Result;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -11,6 +13,11 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
             if input.trim_start().starts_with('{') {
                 if let Ok(doc) = serde_json::from_str::<RuletteDocument>(input) {
                     return Ok(doc);
+                }
+                if input.contains("\"mcpServers\"") {
+                    return Ok(RuletteDocument {
+                        entities: parse_cursor_mcp(input)?,
+                    });
                 }
             }
             if input.starts_with("---\n") {
@@ -35,13 +42,66 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
             vec![Entity::Skill(parse_agent_skills(input, filename)?)]
         }
         InputFormat::CursorMdc => vec![Entity::Rule(parse_cursor_mdc(input, filename)?)],
-        InputFormat::Claude | InputFormat::Codex => {
+        InputFormat::CursorMcp => parse_cursor_mcp(input)?,
+        InputFormat::Claude
+        | InputFormat::Codex
+        | InputFormat::Copilot
+        | InputFormat::Windsurf
+        | InputFormat::CursorLegacy => {
             vec![Entity::Rule(parse_claude(input, filename)?)]
         }
-        _ => return Err(anyhow!("Unsupported input format for parsing")),
+        InputFormat::Gemini => parse_gemini(input, filename)?,
     };
 
     Ok(RuletteDocument { entities })
+}
+
+fn parse_gemini(input: &str, filename: Option<&str>) -> Result<Vec<Entity>> {
+    if let Ok(subagent) = crate::gemini::GeminiSubAgent::parse(input) {
+        let mut extra = subagent.metadata.extra.clone();
+        if let Some(kind) = subagent.metadata.kind {
+            extra.insert("kind".to_string(), serde_json::Value::String(kind));
+        }
+        if let Some(mcp) = subagent.metadata.mcp_servers {
+            if let Ok(mcp_val) = serde_json::to_value(mcp) {
+                extra.insert("mcpServers".to_string(), mcp_val);
+            }
+        }
+        if let Some(temperature) = subagent.metadata.temperature {
+            extra.insert(
+                "temperature".to_string(),
+                serde_json::Value::Number(serde_json::Number::from_f64(temperature).unwrap()),
+            );
+        }
+        if let Some(max_turns) = subagent.metadata.max_turns {
+            extra.insert(
+                "max_turns".to_string(),
+                serde_json::Value::Number(max_turns.into()),
+            );
+        }
+        if let Some(timeout_mins) = subagent.metadata.timeout_mins {
+            extra.insert(
+                "timeout_mins".to_string(),
+                serde_json::Value::Number(timeout_mins.into()),
+            );
+        }
+
+        let agent_metadata = crate::AgentMetadata {
+            name: subagent.metadata.name,
+            description: Some(subagent.metadata.description),
+            tool_access: None,
+            agent_tools: subagent.metadata.tools,
+            models: subagent.metadata.model.map(|m| vec![m]),
+            extra,
+        };
+
+        Ok(vec![Entity::Agent(crate::Agent {
+            metadata: agent_metadata,
+            body: subagent.system_prompt,
+        })])
+    } else {
+        Ok(vec![Entity::Rule(parse_claude(input, filename)?)])
+    }
 }
 
 fn parse_agent_skills(input: &str, filename: Option<&str>) -> Result<Skill> {
@@ -153,6 +213,42 @@ fn parse_claude(input: &str, filename: Option<&str>) -> Result<Rule> {
     })
 }
 
+fn parse_cursor_mcp(input: &str) -> Result<Vec<Entity>> {
+    #[derive(serde::Deserialize)]
+    struct CursorMcpFile {
+        #[serde(rename = "mcpServers")]
+        mcp_servers: HashMap<String, CursorMcpConfig>,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct CursorMcpConfig {
+        command: String,
+        #[serde(default)]
+        args: Vec<String>,
+        #[serde(default)]
+        env: HashMap<String, String>,
+    }
+
+    let parsed: CursorMcpFile = serde_json::from_str(input)?;
+    let mut entities = Vec::new();
+
+    for (name, config) in parsed.mcp_servers {
+        entities.push(Entity::McpServer(McpServer {
+            metadata: McpServerMetadata {
+                name,
+                extra: HashMap::new(),
+            },
+            config: McpServerConfig {
+                command: config.command,
+                args: config.args,
+                env: config.env,
+            },
+        }));
+    }
+
+    Ok(entities)
+}
+
 fn extract_frontmatter(input: &str) -> (Option<&str>, &str) {
     if input.starts_with("---\n") || input.starts_with("---\r\n") {
         if let Some(end_idx) = input[4..].find("\n---") {
@@ -194,4 +290,83 @@ fn extract_description_from_body(body: &str) -> Option<String> {
         }
     }
     None
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_cursor_mcp() {
+        let json = r#"{
+            "mcpServers": {
+                "filesystem": {
+                    "command": "npx",
+                    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/user/project"],
+                    "env": {
+                        "FOO": "bar"
+                    }
+                }
+            }
+        }"#;
+
+        let doc = parse(json, InputFormat::Auto, None).unwrap();
+        assert_eq!(doc.entities.len(), 1);
+
+        match &doc.entities[0] {
+            Entity::McpServer(mcp) => {
+                assert_eq!(mcp.metadata.name, "filesystem");
+                assert_eq!(mcp.config.command, "npx");
+                assert_eq!(
+                    mcp.config.args,
+                    vec![
+                        "-y",
+                        "@modelcontextprotocol/server-filesystem",
+                        "/home/user/project"
+                    ]
+                );
+                assert_eq!(mcp.config.env.get("FOO").unwrap(), "bar");
+            }
+            _ => panic!("Expected McpServer entity"),
+        }
+    }
+
+    #[test]
+    fn test_parse_gemini_format() {
+        let content = "---\nname: security-auditor\ndescription: test desc\nkind: local\ntools:\n  - grep\nmodel: gemini-pro\n---\n\nYou are a security auditor.";
+        let doc = parse(content, InputFormat::Gemini, None).unwrap();
+        assert_eq!(doc.entities.len(), 1);
+
+        match &doc.entities[0] {
+            Entity::Agent(agent) => {
+                assert_eq!(agent.metadata.name, "security-auditor");
+                assert_eq!(agent.metadata.description.as_deref(), Some("test desc"));
+                assert_eq!(agent.metadata.agent_tools.as_ref().unwrap().len(), 1);
+                assert_eq!(agent.metadata.models.as_ref().unwrap()[0], "gemini-pro");
+                assert_eq!(
+                    agent.metadata.extra.get("kind").unwrap().as_str().unwrap(),
+                    "local"
+                );
+                assert_eq!(agent.body, "You are a security auditor.");
+            }
+            _ => panic!("Expected Agent entity"),
+        }
+    }
+
+    #[test]
+    fn test_parse_gemini_fallback() {
+        let content = "Just a regular rule with no valid subagent frontmatter.";
+        let doc = parse(content, InputFormat::Gemini, Some("test_file")).unwrap();
+        assert_eq!(doc.entities.len(), 1);
+
+        match &doc.entities[0] {
+            Entity::Rule(rule) => {
+                assert_eq!(
+                    rule.metadata.extra.get("name").unwrap().as_str().unwrap(),
+                    "test_file"
+                );
+                assert_eq!(rule.body, content);
+            }
+            _ => panic!("Expected Rule entity fallback"),
+        }
+    }
 }

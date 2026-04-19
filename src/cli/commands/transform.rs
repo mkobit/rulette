@@ -90,6 +90,7 @@ fn match_expr(entity: &Entity, expr: &str) -> bool {
 
 fn rename_field(entity: &mut Entity, from: &str, to: &str) {
     match entity {
+        crate::Entity::Hook(_) | crate::Entity::Agent(_) | crate::Entity::Permissions(_) => {}
         Entity::Rule(rule) => {
             if let Some(val) = rule.metadata.extra.remove(from) {
                 rule.metadata.extra.insert(to.to_string(), val);
@@ -111,6 +112,7 @@ fn rename_field(entity: &mut Entity, from: &str, to: &str) {
 fn set_field(entity: &mut Entity, key: &str, value: &str) {
     let json_val = serde_json::Value::String(value.to_string());
     match entity {
+        crate::Entity::Hook(_) | crate::Entity::Agent(_) | crate::Entity::Permissions(_) => {}
         Entity::Rule(rule) => {
             rule.metadata.extra.insert(key.to_string(), json_val);
         }
@@ -204,8 +206,11 @@ impl TransformArgs {
         if run_dedup {
             let mut seen = HashSet::new();
             combined_entities.retain(|entity| {
-                let json = serde_json::to_string(entity).unwrap();
-                seen.insert(json)
+                if let Ok(json) = serde_json::to_string(entity) {
+                    seen.insert(json)
+                } else {
+                    false
+                }
             });
         }
 

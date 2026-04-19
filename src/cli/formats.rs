@@ -8,6 +8,7 @@ pub enum InputFormat {
     Claude,
     CursorMdc,
     CursorLegacy,
+    CursorMcp,
     Codex,
     Windsurf,
     Copilot,
