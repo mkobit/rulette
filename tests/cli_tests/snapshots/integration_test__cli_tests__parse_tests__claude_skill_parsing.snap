@@ -1,0 +1,16 @@
+---
+source: tests/cli_tests/parse_tests.rs
+expression: output
+---
+{
+  "entities": [
+    {
+      "kind": "rule",
+      "metadata": {
+        "description": "name: example-skill",
+        "name": "example"
+      },
+      "body": "---\nname: example-skill\ndescription: An example Claude skill\nversion: 1.0.0\nlicense: MIT\ncompatibility: claude-3-5-sonnet\nmodels: [\"claude-3-5-sonnet\", \"claude-3-opus\"]\nseeded: true\nallowed-tools: Bash(git:*)\nrulette:activation:\n  - manual\n  - model\nrulette:tool-access:\n  - rule: Bash(git:*)\n    allowed: true\n---\n# Example Skill\n\nThis is the content of the example skill.\n"
+    }
+  ]
+}

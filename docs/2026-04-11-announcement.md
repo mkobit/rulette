@@ -135,9 +135,6 @@ rulette inspect             Pretty-print IR for debugging
 rulette schema              Output JSON Schema for any format
 rulette transform           Apply filters, renames, merges, shell pipes (v0.1.1)
 
-rulette fetch               Fetch rules with integrity verification (v0.2)
-rulette lock                Generate lockfile from manifest (v0.2)
-rulette verify              Verify content against lockfile (v0.2)
 rulette archive             Bundle into content-addressed archive (v0.2)
 ```
 

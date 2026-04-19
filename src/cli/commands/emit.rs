@@ -1,5 +1,14 @@
+use crate::backend::{
+    AgentSkillsEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter, CursorEmitter, Emitter,
+    GeminiEmitter, WindsurfEmitter,
+};
 use crate::cli::formats::OutputFormat;
+use crate::RuletteDocument;
+use anyhow::Result;
 use clap::Args;
+use std::fs;
+use std::io::{self, Read};
+use std::path::PathBuf;
 
 #[derive(Args, Debug)]
 pub struct EmitArgs {
@@ -28,15 +37,101 @@ pub struct EmitArgs {
     pub split: bool,
 }
 
+pub fn resolve_output_path(
+    to: &OutputFormat,
+    scope: &str,
+    out: Option<&String>,
+) -> Option<PathBuf> {
+    if let Some(path) = out {
+        return Some(PathBuf::from(path));
+    }
+
+    if scope == "user" {
+        // Simple mock of user home directory since we don't have dirs crate
+        let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        let home_path = PathBuf::from(home_dir);
+
+        let path = match to {
+            OutputFormat::Claude => home_path.join(".claude").join("skills"),
+            OutputFormat::CursorMdc => home_path.join(".cursor").join("rules"),
+            OutputFormat::Copilot => home_path
+                .join(".config")
+                .join("github-copilot")
+                .join("instructions.md"),
+            OutputFormat::Codex => home_path.join(".codex").join("AGENTS.md"),
+            OutputFormat::Gemini => home_path.join(".gemini").join("GEMINI.md"),
+            OutputFormat::Windsurf => home_path.join(".windsurf").join("windsurfrules"),
+            _ => return None,
+        };
+        return Some(path);
+    }
+    None
+}
+
 impl EmitArgs {
-    pub fn execute(&self) -> anyhow::Result<()> {
-        println!("Executing 'emit' command:");
-        println!("  Input: {:?}", self.input);
-        println!("  To: {:?}", self.to);
-        println!("  Out: {:?}", self.out);
-        println!("  Scope: {}", self.scope);
-        println!("  Merge: {}", self.merge);
-        println!("  Split: {}", self.split);
+    pub fn execute(&self, strict: bool) -> Result<()> {
+        let mut combined_entities = vec![];
+
+        // Parse IR JSON from inputs
+        for input_path in &self.input {
+            let content = if input_path == "-" {
+                let mut buffer = String::new();
+                io::stdin().read_to_string(&mut buffer)?;
+                buffer
+            } else {
+                fs::read_to_string(input_path)?
+            };
+
+            let filename = if input_path == "-" {
+                None
+            } else {
+                Some(input_path.as_str())
+            };
+            let doc =
+                crate::frontend::parse(&content, crate::cli::formats::InputFormat::Auto, filename)?;
+            combined_entities.extend(doc.entities);
+        }
+
+        let doc = RuletteDocument {
+            entities: combined_entities,
+        };
+
+        // Emit based on target format
+        let output = match self.to {
+            OutputFormat::Claude => ClaudeEmitter.emit(&doc, strict)?,
+            OutputFormat::CursorMdc => CursorEmitter.emit(&doc, strict)?,
+            OutputFormat::AgentSkills => AgentSkillsEmitter.emit(&doc, strict)?,
+            OutputFormat::Copilot => CopilotEmitter.emit(&doc, strict)?,
+            OutputFormat::Windsurf => WindsurfEmitter.emit(&doc, strict)?,
+            OutputFormat::Gemini => GeminiEmitter.emit(&doc, strict)?,
+            OutputFormat::Codex => CodexEmitter.emit(&doc, strict)?,
+            OutputFormat::IrJson => serde_json::to_string_pretty(&doc)?,
+            OutputFormat::IrToml => toml::to_string(&doc)?,
+        };
+
+        if let Some(mut path) = resolve_output_path(&self.to, &self.scope, self.out.as_ref()) {
+            // For formats that point to a directory in user scope, we append a default filename if we are writing merged output
+            // Or if it's considered a directory, append a generated filename
+            if path.extension().is_none() && path.to_string_lossy().ends_with("skills")
+                || path.to_string_lossy().ends_with("rules")
+            {
+                let default_ext = match self.to {
+                    OutputFormat::Claude => "md",
+                    OutputFormat::CursorMdc => "mdc",
+                    _ => "txt",
+                };
+                path.push(format!("rulette_generated.{}", default_ext));
+            }
+
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(&path, output)?;
+            println!("Emitted to {}", path.display());
+        } else {
+            println!("{}", output);
+        }
+
         Ok(())
     }
 }

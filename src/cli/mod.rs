@@ -39,22 +39,4 @@ pub enum Commands {
 
     /// Apply transformations to IR (v0.1.1)
     Transform(commands::transform::TransformArgs),
-
-    /// Validate rules against the IR schema and optional policy constraints (v0.1.1)
-    Validate(commands::validate::ValidateArgs),
-
-    /// Fetch rules from a remote source (v0.2)
-    Fetch(commands::fetch::FetchArgs),
-
-    /// Generate or update a lockfile from a manifest (v0.2)
-    Lock(commands::lock::LockArgs),
-
-    /// Verify that fetched content matches the lockfile (v0.2)
-    Verify(commands::verify::VerifyArgs),
-
-    /// Bundle rules into a content-addressed tar archive (v0.2)
-    Archive(commands::archive::ArchiveArgs),
-
-    /// Extract and verify a content-addressed archive (v0.2)
-    Unarchive(commands::unarchive::UnarchiveArgs),
 }
