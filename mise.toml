@@ -1,6 +1,6 @@
 [tools]
 node = "22"
-markdownlint-cli2 = "0.17.1"
+"npm:markdownlint-cli2" = "0.17.1"
 rust = "1.94.1"
 "npm:@google/gemini-cli" = "0.37.0"
 
@@ -15,7 +15,3 @@ run = "cargo clippy -- -D warnings"
 [tasks.test]
 description = "Run tests"
 run = "cargo test"
-
-[tasks.check]
-description = "Check everything"
-depends = ["lint:md", "lint:rust", "test"]
