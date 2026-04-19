@@ -1,7 +1,7 @@
 [tools]
 node = "22"
 "npm:markdownlint-cli2" = "0.17.1"
-rust = "1.94.1"
+rust = { version = "1.94.1", components = ["rustfmt", "clippy"] }
 "npm:@google/gemini-cli" = "0.37.0"
 
 [tasks."lint:md"]
