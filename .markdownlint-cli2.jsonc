@@ -6,12 +6,10 @@
     "MD041": false
   },
   "globs": [
-    "**/*.md"
-  ],
-  "ignores": [
-    "target",
-    "conductor",
-    "tests/fixtures",
-    "docs/cli/rulette.md"
+    "**/*.md",
+    "!target",
+    "!conductor",
+    "!tests/fixtures",
+    "!docs/cli/rulette.md"
   ]
 }
