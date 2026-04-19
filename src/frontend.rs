@@ -3,7 +3,7 @@ use crate::cli::formats::InputFormat;
 use crate::{
     Entity, McpServer, McpServerConfig, McpServerMetadata, Rule, RuleMetadata, RuletteDocument,
 };
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -43,13 +43,65 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
         }
         InputFormat::CursorMdc => vec![Entity::Rule(parse_cursor_mdc(input, filename)?)],
         InputFormat::CursorMcp => parse_cursor_mcp(input)?,
-        InputFormat::Claude | InputFormat::Codex => {
+        InputFormat::Claude
+        | InputFormat::Codex
+        | InputFormat::Copilot
+        | InputFormat::Windsurf
+        | InputFormat::CursorLegacy => {
             vec![Entity::Rule(parse_claude(input, filename)?)]
         }
-        _ => return Err(anyhow!("Unsupported input format for parsing")),
+        InputFormat::Gemini => parse_gemini(input, filename)?,
     };
 
     Ok(RuletteDocument { entities })
+}
+
+fn parse_gemini(input: &str, filename: Option<&str>) -> Result<Vec<Entity>> {
+    if let Ok(subagent) = crate::gemini::GeminiSubAgent::parse(input) {
+        let mut extra = subagent.metadata.extra.clone();
+        if let Some(kind) = subagent.metadata.kind {
+            extra.insert("kind".to_string(), serde_json::Value::String(kind));
+        }
+        if let Some(mcp) = subagent.metadata.mcp_servers {
+            if let Ok(mcp_val) = serde_json::to_value(mcp) {
+                extra.insert("mcpServers".to_string(), mcp_val);
+            }
+        }
+        if let Some(temperature) = subagent.metadata.temperature {
+            extra.insert(
+                "temperature".to_string(),
+                serde_json::Value::Number(serde_json::Number::from_f64(temperature).unwrap()),
+            );
+        }
+        if let Some(max_turns) = subagent.metadata.max_turns {
+            extra.insert(
+                "max_turns".to_string(),
+                serde_json::Value::Number(max_turns.into()),
+            );
+        }
+        if let Some(timeout_mins) = subagent.metadata.timeout_mins {
+            extra.insert(
+                "timeout_mins".to_string(),
+                serde_json::Value::Number(timeout_mins.into()),
+            );
+        }
+
+        let agent_metadata = crate::AgentMetadata {
+            name: subagent.metadata.name,
+            description: Some(subagent.metadata.description),
+            tool_access: None,
+            agent_tools: subagent.metadata.tools,
+            models: subagent.metadata.model.map(|m| vec![m]),
+            extra,
+        };
+
+        Ok(vec![Entity::Agent(crate::Agent {
+            metadata: agent_metadata,
+            body: subagent.system_prompt,
+        })])
+    } else {
+        Ok(vec![Entity::Rule(parse_claude(input, filename)?)])
+    }
 }
 
 fn parse_agent_skills(input: &str, filename: Option<&str>) -> Result<Skill> {
@@ -275,6 +327,46 @@ mod tests {
                 assert_eq!(mcp.config.env.get("FOO").unwrap(), "bar");
             }
             _ => panic!("Expected McpServer entity"),
+        }
+    }
+
+    #[test]
+    fn test_parse_gemini_format() {
+        let content = "---\nname: security-auditor\ndescription: test desc\nkind: local\ntools:\n  - grep\nmodel: gemini-pro\n---\n\nYou are a security auditor.";
+        let doc = parse(content, InputFormat::Gemini, None).unwrap();
+        assert_eq!(doc.entities.len(), 1);
+
+        match &doc.entities[0] {
+            Entity::Agent(agent) => {
+                assert_eq!(agent.metadata.name, "security-auditor");
+                assert_eq!(agent.metadata.description.as_deref(), Some("test desc"));
+                assert_eq!(agent.metadata.agent_tools.as_ref().unwrap().len(), 1);
+                assert_eq!(agent.metadata.models.as_ref().unwrap()[0], "gemini-pro");
+                assert_eq!(
+                    agent.metadata.extra.get("kind").unwrap().as_str().unwrap(),
+                    "local"
+                );
+                assert_eq!(agent.body, "You are a security auditor.");
+            }
+            _ => panic!("Expected Agent entity"),
+        }
+    }
+
+    #[test]
+    fn test_parse_gemini_fallback() {
+        let content = "Just a regular rule with no valid subagent frontmatter.";
+        let doc = parse(content, InputFormat::Gemini, Some("test_file")).unwrap();
+        assert_eq!(doc.entities.len(), 1);
+
+        match &doc.entities[0] {
+            Entity::Rule(rule) => {
+                assert_eq!(
+                    rule.metadata.extra.get("name").unwrap().as_str().unwrap(),
+                    "test_file"
+                );
+                assert_eq!(rule.body, content);
+            }
+            _ => panic!("Expected Rule entity fallback"),
         }
     }
 }
