@@ -1,3 +1,14 @@
 {
-  "ignores": ["target", "docs/cli/rulette.md", "tests/fixtures/**"]
+  "config": {
+    "default": true,
+    "MD013": false,
+    "MD033": false,
+    "MD041": false
+  },
+  "ignores": [
+    "target",
+    "conductor",
+    "tests/fixtures",
+    "docs/cli/rulette.md"
+  ]
 }

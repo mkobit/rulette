@@ -61,7 +61,7 @@ impl Emitter for ClaudeEmitter {
 impl Emitter for CursorEmitter {
     fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
         let mut map = HashMap::new();
-        for (_i, entity) in doc.entities.iter().enumerate() {
+        for (i, entity) in doc.entities.iter().enumerate() {
             match entity {
                 crate::Entity::Hook(_)
                 | crate::Entity::Agent(_)
@@ -96,7 +96,7 @@ impl Emitter for CursorEmitter {
                     {
                         n.clone()
                     } else {
-                        format!("rule_{}", _i)
+                        format!("rule_{}", i)
                     };
                     let path = PathBuf::from(format!("{}.mdc", name));
                     map.insert(path, content);
@@ -154,7 +154,7 @@ impl Emitter for CursorEmitter {
 impl Emitter for AgentSkillsEmitter {
     fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
         let mut map = HashMap::new();
-        for (_i, entity) in doc.entities.iter().enumerate() {
+        for entity in &doc.entities {
             match entity {
                 crate::Entity::Hook(_)
                 | crate::Entity::Agent(_)

@@ -129,11 +129,7 @@ impl EmitArgs {
         for (rel_path, content) in &output_map {
             let final_path = if let Some(ref base) = base_path {
                 let mut p = base.clone();
-                if p.is_dir() || p.extension().is_none() {
-                    p.push(rel_path);
-                } else if output_map.len() > 1 {
-                    // If multiple files but base is a single file, we might have a conflict or need to decide behavior
-                    // For now, if multiple files, assume base is a directory
+                if p.is_dir() || p.extension().is_none() || output_map.len() > 1 {
                     p.push(rel_path);
                 } else {
                     // Single file output, keep as is (unless rel_path is different?)

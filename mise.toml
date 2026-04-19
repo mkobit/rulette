@@ -1,0 +1,21 @@
+[tools]
+node = "22"
+markdownlint-cli2 = "0.17.1"
+rust = "1.94.1"
+"npm:@google/gemini-cli" = "0.37.0"
+
+[tasks."lint:md"]
+description = "Lint markdown files"
+run = "markdownlint-cli2 '**/*.md'"
+
+[tasks."lint:rust"]
+description = "Lint Rust code"
+run = "cargo clippy -- -D warnings"
+
+[tasks.test]
+description = "Run tests"
+run = "cargo test"
+
+[tasks.check]
+description = "Check everything"
+depends = ["lint:md", "lint:rust", "test"]

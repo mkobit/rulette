@@ -141,9 +141,7 @@ impl ConvertArgs {
         for (rel_path, content) in &output_map {
             let final_path = if let Some(ref base) = base_path {
                 let mut p = base.clone();
-                if p.is_dir() || p.extension().is_none() {
-                    p.push(rel_path);
-                } else if output_map.len() > 1 {
+                if p.is_dir() || p.extension().is_none() || output_map.len() > 1 {
                     p.push(rel_path);
                 } else {
                     // Single file output
