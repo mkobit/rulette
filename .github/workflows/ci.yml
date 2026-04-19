@@ -24,7 +24,7 @@ jobs:
         with:
           install: true
       - name: Run markdown lint
-        run: markdownlint-cli2 '**/*.md'
+        run: mise x -- markdownlint-cli2
 
   check:
     name: Check

@@ -5,6 +5,9 @@
     "MD033": false,
     "MD041": false
   },
+  "globs": [
+    "**/*.md"
+  ],
   "ignores": [
     "target",
     "conductor",
