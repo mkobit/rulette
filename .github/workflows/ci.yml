@@ -15,24 +15,15 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  lint-markdown:
-    name: Lint markdown
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: DavidAnson/markdownlint-cli2-action@v23
-        with:
-          globs: '**/*.md'
-
   check:
-    name: Check
+    name: Check & Test
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        run: rustup show
+      - uses: jdx/mise-action@v2
+        with:
+          install: true
 
       - name: Set up rust cache
         uses: Swatinem/rust-cache@v2
@@ -45,28 +36,25 @@ jobs:
           restore-keys: |
             fixtures-${{ runner.os }}-
 
-      - name: Check formatting
-        run: cargo fmt --check
-
-      - name: Lint
+      - name: Run mise check
         env:
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo clippy -- -D warnings
+        run: mise run check
 
-  test:
+  test-matrix:
     name: Test (${{ matrix.os }})
     needs: check
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [macos-latest, windows-latest]
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        run: rustup show
+      - uses: jdx/mise-action@v2
+        with:
+          install: true
 
       - name: Set up rust cache
         uses: Swatinem/rust-cache@v2
@@ -82,14 +70,14 @@ jobs:
       - name: Test
         env:
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo test
+        run: mise run test
 
   audit:
     name: Security audit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Run security audit
         uses: rustsec/audit-check@v2
