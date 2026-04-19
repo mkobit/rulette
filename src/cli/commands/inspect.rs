@@ -1,4 +1,7 @@
-use crate::backend::{AgentSkillsEmitter, ClaudeEmitter, CursorEmitter, Emitter};
+use crate::backend::{
+    AgentSkillsEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter, CursorEmitter, Emitter,
+    GeminiEmitter, WindsurfEmitter,
+};
 use crate::cli::formats::{InputFormat, OutputFormat};
 use crate::frontend::parse;
 use clap::Args;
@@ -17,7 +20,7 @@ pub struct InspectArgs {
 }
 
 impl InspectArgs {
-    pub fn execute(&self) -> anyhow::Result<()> {
+    pub fn execute(&self, strict: bool) -> anyhow::Result<()> {
         let mut combined_entities = vec![];
 
         for input_path in &self.input {
@@ -29,7 +32,12 @@ impl InspectArgs {
                 fs::read_to_string(input_path)?
             };
 
-            let doc = parse(&content, InputFormat::Auto)?;
+            let filename = if input_path == "-" {
+                None
+            } else {
+                Some(input_path.as_str())
+            };
+            let doc = parse(&content, InputFormat::Auto, filename)?;
             combined_entities.extend(doc.entities);
         }
 
@@ -43,14 +51,17 @@ impl InspectArgs {
 
         if let Some(target) = &self.target {
             println!("\n=== Dry-run Emission to {:?} ===", target);
-            let strict = false;
+
             let output = match target {
                 OutputFormat::Claude => ClaudeEmitter.emit(&doc, strict)?,
                 OutputFormat::CursorMdc => CursorEmitter.emit(&doc, strict)?,
                 OutputFormat::AgentSkills => AgentSkillsEmitter.emit(&doc, strict)?,
+                OutputFormat::Copilot => CopilotEmitter.emit(&doc, strict)?,
+                OutputFormat::Windsurf => WindsurfEmitter.emit(&doc, strict)?,
+                OutputFormat::Gemini => GeminiEmitter.emit(&doc, strict)?,
+                OutputFormat::Codex => CodexEmitter.emit(&doc, strict)?,
                 OutputFormat::IrJson => serde_json::to_string_pretty(&doc)?,
                 OutputFormat::IrToml => toml::to_string(&doc)?,
-                _ => anyhow::bail!("Target format not yet supported for emitting"),
             };
 
             println!("\n--- Survived Output ---");

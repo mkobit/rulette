@@ -14,9 +14,21 @@ impl Emitter for ClaudeEmitter {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
                 Entity::Rule(rule) => {
                     output.push_str(&rule.body);
                     output.push_str("\n\n");
+                }
+                Entity::McpServer(mcp) => {
+                    if strict {
+                        return Err(anyhow::anyhow!(
+                            "Lossy conversion: McpServer to target format drops metadata"
+                        ));
+                    } else {
+                        eprintln!("Warning: Lossy conversion: McpServer '{}' to target format drops metadata", mcp.metadata.name);
+                    }
                 }
                 Entity::Skill(skill) => {
                     // Lossy conversion warning: Skills lose some metadata when converted to basic rules
@@ -44,19 +56,38 @@ impl Emitter for CursorEmitter {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
                 Entity::Rule(rule) => {
                     output.push_str("---\n");
-                    if let Some(desc) = &rule.metadata.description {
-                        output.push_str(&format!("description: {}\n", desc));
+                    #[derive(serde::Serialize)]
+                    struct CursorRuleMeta<'a> {
+                        #[serde(skip_serializing_if = "Option::is_none")]
+                        description: Option<&'a String>,
+                        #[serde(flatten)]
+                        #[serde(skip_serializing_if = "std::collections::HashMap::is_empty")]
+                        extra: std::collections::HashMap<String, serde_json::Value>,
                     }
-                    for (k, v) in &rule.metadata.extra {
-                        if let serde_json::Value::String(s) = v {
-                            output.push_str(&format!("{}: {}\n", k, s));
-                        }
-                    }
+                    let mut extra = rule.metadata.extra.clone();
+                    extra.remove("name");
+                    let meta = CursorRuleMeta {
+                        description: rule.metadata.description.as_ref(),
+                        extra,
+                    };
+                    output.push_str(&serde_yaml::to_string(&meta).unwrap());
                     output.push_str("---\n");
                     output.push_str(&rule.body);
                     output.push_str("\n\n");
+                }
+                Entity::McpServer(mcp) => {
+                    if strict {
+                        return Err(anyhow::anyhow!(
+                            "Lossy conversion: McpServer to target format drops metadata"
+                        ));
+                    } else {
+                        eprintln!("Warning: Lossy conversion: McpServer '{}' to target format drops metadata", mcp.metadata.name);
+                    }
                 }
                 Entity::Skill(skill) => {
                     // Lossy conversion warning
@@ -71,12 +102,19 @@ impl Emitter for CursorEmitter {
                         );
                     }
                     output.push_str("---\n");
-                    output.push_str(&format!("description: {}\n", skill.metadata.description));
-                    for (k, v) in &skill.metadata.extra {
-                        if let serde_json::Value::String(s) = v {
-                            output.push_str(&format!("{}: {}\n", k, s));
-                        }
+                    #[derive(serde::Serialize)]
+                    struct CursorSkillMeta<'a> {
+                        description: &'a String,
+                        #[serde(flatten)]
+                        #[serde(skip_serializing_if = "std::collections::HashMap::is_empty")]
+                        extra: std::collections::HashMap<String, serde_json::Value>,
                     }
+                    let meta = CursorSkillMeta {
+                        description: &skill.metadata.description,
+                        extra: skill.metadata.extra.clone(),
+                    };
+                    let yaml = serde_yaml::to_string(&meta).unwrap();
+                    output.push_str(&yaml);
                     output.push_str("---\n");
                     output.push_str(&skill.body);
                     output.push_str("\n\n");
@@ -92,27 +130,21 @@ impl Emitter for AgentSkillsEmitter {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
+                Entity::McpServer(mcp) => {
+                    if strict {
+                        return Err(anyhow::anyhow!(
+                            "Lossy conversion: McpServer to target format drops metadata"
+                        ));
+                    } else {
+                        eprintln!("Warning: Lossy conversion: McpServer '{}' to target format drops metadata", mcp.metadata.name);
+                    }
+                }
                 Entity::Skill(skill) => {
                     output.push_str("---\n");
-                    output.push_str(&format!("name: {}\n", skill.metadata.name));
-                    output.push_str(&format!("description: {}\n", skill.metadata.description));
-                    if let Some(v) = &skill.metadata.version {
-                        output.push_str(&format!("version: {}\n", v));
-                    }
-                    if let Some(l) = &skill.metadata.license {
-                        output.push_str(&format!("license: {}\n", l));
-                    }
-                    if let Some(c) = &skill.metadata.compatibility {
-                        output.push_str(&format!("compatibility: {}\n", c));
-                    }
-                    if let Some(a) = &skill.metadata.allowed_tools {
-                        output.push_str(&format!("allowed-tools: {}\n", a));
-                    }
-                    for (k, v) in &skill.metadata.extra {
-                        if let serde_json::Value::String(s) = v {
-                            output.push_str(&format!("{}: {}\n", k, s));
-                        }
-                    }
+                    output.push_str(&serde_yaml::to_string(&skill.metadata).unwrap());
                     output.push_str("---\n");
                     output.push_str(&skill.body);
                     output.push_str("\n\n");
@@ -126,19 +158,199 @@ impl Emitter for AgentSkillsEmitter {
                         eprintln!("Warning: Lossy conversion: Rule to Skill requires default metadata generation");
                     }
                     output.push_str("---\n");
-                    output.push_str("name: generated-skill\n");
-                    if let Some(desc) = &rule.metadata.description {
-                        output.push_str(&format!("description: {}\n", desc));
+                    #[derive(serde::Serialize)]
+                    struct AgentSkillRuleMeta {
+                        name: String,
+                        description: String,
+                        #[serde(flatten)]
+                        #[serde(skip_serializing_if = "std::collections::HashMap::is_empty")]
+                        extra: std::collections::HashMap<String, serde_json::Value>,
+                    }
+                    let name = if let Some(serde_json::Value::String(n)) =
+                        rule.metadata.extra.get("name")
+                    {
+                        n.clone()
                     } else {
-                        output.push_str("description: Generated from rule\n");
-                    }
-                    for (k, v) in &rule.metadata.extra {
-                        if let serde_json::Value::String(s) = v {
-                            output.push_str(&format!("{}: {}\n", k, s));
-                        }
-                    }
+                        "generated-skill".to_string()
+                    };
+                    let description = if let Some(desc) = &rule.metadata.description {
+                        desc.clone()
+                    } else {
+                        "Generated from rule".to_string()
+                    };
+                    let mut extra = rule.metadata.extra.clone();
+                    extra.remove("name");
+                    let meta = AgentSkillRuleMeta {
+                        name,
+                        description,
+                        extra,
+                    };
+                    output.push_str(&serde_yaml::to_string(&meta).unwrap());
                     output.push_str("---\n");
                     output.push_str(&rule.body);
+                    output.push_str("\n\n");
+                }
+            }
+        }
+        Ok(output.trim_end().to_string())
+    }
+}
+
+pub struct CopilotEmitter;
+pub struct WindsurfEmitter;
+pub struct GeminiEmitter;
+
+impl Emitter for CopilotEmitter {
+    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<String> {
+        let mut output = String::new();
+        for entity in &doc.entities {
+            match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
+                Entity::Rule(rule) => {
+                    output.push_str(&rule.body);
+                    output.push_str("\n\n");
+                }
+                Entity::McpServer(mcp) => {
+                    if strict {
+                        return Err(anyhow::anyhow!(
+                            "Lossy conversion: McpServer to target format drops metadata"
+                        ));
+                    } else {
+                        eprintln!("Warning: Lossy conversion: McpServer '{}' to target format drops metadata", mcp.metadata.name);
+                    }
+                }
+                Entity::Skill(skill) => {
+                    if strict {
+                        return Err(anyhow!("Lossy conversion: Skill to Copilot drops metadata"));
+                    } else {
+                        eprintln!(
+                            "Warning: Lossy conversion: Skill '{}' to Copilot drops metadata",
+                            skill.metadata.name
+                        );
+                    }
+                    output.push_str(&skill.body);
+                    output.push_str("\n\n");
+                }
+            }
+        }
+        Ok(output.trim_end().to_string())
+    }
+}
+
+impl Emitter for WindsurfEmitter {
+    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<String> {
+        let mut output = String::new();
+        for entity in &doc.entities {
+            match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
+                Entity::Rule(rule) => {
+                    output.push_str(&rule.body);
+                    output.push_str("\n\n");
+                }
+                Entity::McpServer(mcp) => {
+                    if strict {
+                        return Err(anyhow::anyhow!(
+                            "Lossy conversion: McpServer to target format drops metadata"
+                        ));
+                    } else {
+                        eprintln!("Warning: Lossy conversion: McpServer '{}' to target format drops metadata", mcp.metadata.name);
+                    }
+                }
+                Entity::Skill(skill) => {
+                    if strict {
+                        return Err(anyhow!(
+                            "Lossy conversion: Skill to Windsurf drops metadata"
+                        ));
+                    } else {
+                        eprintln!(
+                            "Warning: Lossy conversion: Skill '{}' to Windsurf drops metadata",
+                            skill.metadata.name
+                        );
+                    }
+                    output.push_str(&skill.body);
+                    output.push_str("\n\n");
+                }
+            }
+        }
+        Ok(output.trim_end().to_string())
+    }
+}
+
+impl Emitter for GeminiEmitter {
+    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<String> {
+        let mut output = String::new();
+        for entity in &doc.entities {
+            match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
+                Entity::Rule(rule) => {
+                    output.push_str(&rule.body);
+                    output.push_str("\n\n");
+                }
+                Entity::McpServer(mcp) => {
+                    if strict {
+                        return Err(anyhow::anyhow!(
+                            "Lossy conversion: McpServer to target format drops metadata"
+                        ));
+                    } else {
+                        eprintln!("Warning: Lossy conversion: McpServer '{}' to target format drops metadata", mcp.metadata.name);
+                    }
+                }
+                Entity::Skill(skill) => {
+                    if strict {
+                        return Err(anyhow!("Lossy conversion: Skill to Gemini drops metadata"));
+                    } else {
+                        eprintln!(
+                            "Warning: Lossy conversion: Skill '{}' to Gemini drops metadata",
+                            skill.metadata.name
+                        );
+                    }
+                    output.push_str(&skill.body);
+                    output.push_str("\n\n");
+                }
+            }
+        }
+        Ok(output.trim_end().to_string())
+    }
+}
+
+pub struct CodexEmitter;
+impl Emitter for CodexEmitter {
+    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<String> {
+        let mut output = String::new();
+        for entity in &doc.entities {
+            match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
+                Entity::Rule(rule) => {
+                    output.push_str(&rule.body);
+                    output.push_str("\n\n");
+                }
+                Entity::McpServer(mcp) => {
+                    if strict {
+                        return Err(anyhow::anyhow!(
+                            "Lossy conversion: McpServer to target format drops metadata"
+                        ));
+                    } else {
+                        eprintln!("Warning: Lossy conversion: McpServer '{}' to target format drops metadata", mcp.metadata.name);
+                    }
+                }
+                Entity::Skill(skill) => {
+                    if strict {
+                        return Err(anyhow!("Lossy conversion: Skill to Codex drops metadata"));
+                    } else {
+                        eprintln!(
+                            "Warning: Lossy conversion: Skill '{}' to Codex drops metadata",
+                            skill.metadata.name
+                        );
+                    }
+                    output.push_str(&skill.body);
                     output.push_str("\n\n");
                 }
             }

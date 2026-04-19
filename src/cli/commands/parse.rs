@@ -21,6 +21,14 @@ pub struct ParseArgs {
     /// Fail on parse warnings
     #[arg(long)]
     pub strict: bool,
+
+    /// Override name metadata for parsed entities
+    #[arg(long)]
+    pub name: Option<String>,
+
+    /// Override description metadata for parsed entities
+    #[arg(long)]
+    pub description: Option<String>,
 }
 
 impl ParseArgs {
@@ -36,8 +44,44 @@ impl ParseArgs {
                 fs::read_to_string(input_path)?
             };
 
-            let doc = parse(&content, self.from)?;
+            let filename = if input_path == "-" {
+                None
+            } else {
+                Some(input_path.as_str())
+            };
+            let doc = parse(&content, self.from, filename)?;
             combined_entities.extend(doc.entities);
+        }
+
+        for entity in &mut combined_entities {
+            match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
+                crate::Entity::Rule(rule) => {
+                    if let Some(name) = &self.name {
+                        rule.metadata
+                            .extra
+                            .insert("name".to_string(), serde_json::Value::String(name.clone()));
+                    }
+                    if let Some(desc) = &self.description {
+                        rule.metadata.description = Some(desc.clone());
+                    }
+                }
+                crate::Entity::Skill(skill) => {
+                    if let Some(name) = &self.name {
+                        skill.metadata.name = name.clone();
+                    }
+                    if let Some(desc) = &self.description {
+                        skill.metadata.description = desc.clone();
+                    }
+                }
+                crate::Entity::McpServer(mcp) => {
+                    if let Some(name) = &self.name {
+                        mcp.metadata.name = name.clone();
+                    }
+                }
+            }
         }
 
         let doc = crate::RuletteDocument {

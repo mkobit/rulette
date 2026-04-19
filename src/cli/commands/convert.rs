@@ -1,8 +1,11 @@
-use crate::backend::{AgentSkillsEmitter, ClaudeEmitter, CursorEmitter, Emitter};
+use crate::backend::{
+    AgentSkillsEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter, CursorEmitter, Emitter,
+    GeminiEmitter, WindsurfEmitter,
+};
 use crate::cli::commands::emit::resolve_output_path;
 use crate::cli::formats::{InputFormat, OutputFormat};
 use crate::frontend::parse;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::Args;
 use std::fs;
 use std::io::{self, Read};
@@ -32,10 +35,18 @@ pub struct ConvertArgs {
     /// Merge multiple rules into a single output file
     #[arg(long)]
     pub merge: bool,
+
+    /// Override name metadata for parsed entities
+    #[arg(long)]
+    pub name: Option<String>,
+
+    /// Override description metadata for parsed entities
+    #[arg(long)]
+    pub description: Option<String>,
 }
 
 impl ConvertArgs {
-    pub fn execute(&self) -> Result<()> {
+    pub fn execute(&self, strict: bool) -> Result<()> {
         let mut combined_entities = vec![];
 
         for input_path in &self.input {
@@ -47,22 +58,60 @@ impl ConvertArgs {
                 fs::read_to_string(input_path)?
             };
 
-            let doc = parse(&content, self.from)?;
+            let filename = if input_path == "-" {
+                None
+            } else {
+                Some(input_path.as_str())
+            };
+            let doc = parse(&content, self.from, filename)?;
             combined_entities.extend(doc.entities);
+        }
+
+        for entity in &mut combined_entities {
+            match entity {
+                crate::Entity::Hook(_)
+                | crate::Entity::Agent(_)
+                | crate::Entity::Permissions(_) => {}
+                crate::Entity::Rule(rule) => {
+                    if let Some(name) = &self.name {
+                        rule.metadata
+                            .extra
+                            .insert("name".to_string(), serde_json::Value::String(name.clone()));
+                    }
+                    if let Some(desc) = &self.description {
+                        rule.metadata.description = Some(desc.clone());
+                    }
+                }
+                crate::Entity::Skill(skill) => {
+                    if let Some(name) = &self.name {
+                        skill.metadata.name = name.clone();
+                    }
+                    if let Some(desc) = &self.description {
+                        skill.metadata.description = desc.clone();
+                    }
+                }
+                crate::Entity::McpServer(mcp) => {
+                    if let Some(name) = &self.name {
+                        mcp.metadata.name = name.clone();
+                    }
+                }
+            }
         }
 
         let doc = crate::RuletteDocument {
             entities: combined_entities,
         };
 
-        let strict = false;
         let output = match self.to {
             OutputFormat::Claude => ClaudeEmitter.emit(&doc, strict)?,
             OutputFormat::CursorMdc => CursorEmitter.emit(&doc, strict)?,
             OutputFormat::AgentSkills => AgentSkillsEmitter.emit(&doc, strict)?,
+            OutputFormat::Copilot => CopilotEmitter.emit(&doc, strict)?,
+            OutputFormat::Windsurf => WindsurfEmitter.emit(&doc, strict)?,
+            OutputFormat::Gemini => GeminiEmitter.emit(&doc, strict)?,
+            OutputFormat::Codex => CodexEmitter.emit(&doc, strict)?,
             OutputFormat::IrJson => serde_json::to_string_pretty(&doc)?,
             OutputFormat::IrToml => toml::to_string(&doc)?,
-            _ => return Err(anyhow!("Target format not yet supported for emitting")),
         };
 
         if let Some(mut path) = resolve_output_path(&self.to, &self.scope, self.out.as_ref()) {

@@ -1,0 +1,16 @@
+---
+source: tests/cli_tests/parse_tests.rs
+expression: output
+---
+{
+  "entities": [
+    {
+      "kind": "rule",
+      "metadata": {
+        "description": "- When changes are made to files that have a copyright notice add them to that subdirectory's CHANGE",
+        "name": "CLAUDE"
+      },
+      "body": "# Claude Quickstarts Development Guide\n\n## Legal\n\n- When changes are made to files that have a copyright notice add them to that subdirectory's CHANGELOG.md file.\n\n## Computer-Use Demo\n\n### Setup & Development\n\n- **Setup environment**: `./setup.sh`\n- **Build Docker**: `docker build . -t computer-use-demo:local`\n- **Run container**: `docker run -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY -v $(pwd)/computer_use_demo:/home/computeruse/computer_use_demo/ -v $HOME/.anthropic:/home/computeruse/.anthropic -p 5900:5900 -p 8501:8501 -p 6080:6080 -p 8080:8080 -it computer-use-demo:local`\n\n### Testing & Code Quality\n\n- **Lint**: `ruff check .`\n- **Format**: `ruff format .`\n- **Typecheck**: `pyright`\n- **Run tests**: `pytest`\n- **Run single test**: `pytest tests/path_to_test.py::test_name -v`\n\n### Code Style\n\n- **Python**: snake_case for functions/variables, PascalCase for classes\n- **Imports**: Use isort with combine-as-imports\n- **Error handling**: Use custom ToolError for tool errors\n- **Types**: Add type annotations for all parameters and returns\n- **Classes**: Use dataclasses and abstract base classes\n\n## Customer Support Agent\n\n### Setup & Development\n\n- **Install dependencies**: `npm install`\n- **Run dev server**: `npm run dev` (full UI)\n- **UI variants**: `npm run dev:left` (left sidebar), `npm run dev:right` (right sidebar), `npm run dev:chat` (chat only)\n- **Lint**: `npm run lint`\n- **Build**: `npm run build` (full UI), see package.json for variants\n\n### Code Style\n\n- **TypeScript**: Strict mode with proper interfaces\n- **Components**: Function components with React hooks\n- **Formatting**: Follow ESLint Next.js configuration\n- **UI components**: Use shadcn/ui components library\n\n## Financial Data Analyst\n\n### Setup & Development\n\n- **Install dependencies**: `npm install`\n- **Run dev server**: `npm run dev`\n- **Lint**: `npm run lint`\n- **Build**: `npm run build`\n\n### Code Style\n\n- **TypeScript**: Strict mode with proper type definitions\n- **Components**: Function components with type annotations\n- **Visualization**: Use Recharts library for data visualization\n- **State management**: React hooks for state"
+    }
+  ]
+}
