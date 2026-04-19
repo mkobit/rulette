@@ -6,6 +6,7 @@ use crate::cli::formats::OutputFormat;
 use crate::RuletteDocument;
 use anyhow::Result;
 use clap::Args;
+use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Read};
 use std::path::PathBuf;
@@ -72,24 +73,30 @@ impl EmitArgs {
     pub fn execute(&self, strict: bool) -> Result<()> {
         let mut combined_entities = vec![];
 
-        // Parse IR JSON from inputs
+        // Parse IR JSON from inputs (handling directories recursively)
         for input_path in &self.input {
-            let content = if input_path == "-" {
+            if input_path == "-" {
                 let mut buffer = String::new();
                 io::stdin().read_to_string(&mut buffer)?;
-                buffer
+                let doc = crate::frontend::parse(&buffer, crate::cli::formats::InputFormat::Auto, None)?;
+                combined_entities.extend(doc.entities);
             } else {
-                fs::read_to_string(input_path)?
-            };
-
-            let filename = if input_path == "-" {
-                None
-            } else {
-                Some(input_path.as_str())
-            };
-            let doc =
-                crate::frontend::parse(&content, crate::cli::formats::InputFormat::Auto, filename)?;
-            combined_entities.extend(doc.entities);
+                let path = std::path::Path::new(input_path);
+                if path.is_dir() {
+                    for entry in walkdir::WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
+                        if entry.file_type().is_file() {
+                            let content = fs::read_to_string(entry.path())?;
+                            if let Ok(doc) = crate::frontend::parse(&content, crate::cli::formats::InputFormat::Auto, Some(entry.path().to_str().unwrap())) {
+                                combined_entities.extend(doc.entities);
+                            }
+                        }
+                    }
+                } else {
+                    let content = fs::read_to_string(input_path)?;
+                    let doc = crate::frontend::parse(&content, crate::cli::formats::InputFormat::Auto, Some(input_path))?;
+                    combined_entities.extend(doc.entities);
+                }
+            }
         }
 
         let doc = RuletteDocument {
@@ -97,7 +104,7 @@ impl EmitArgs {
         };
 
         // Emit based on target format
-        let output = match self.to {
+        let output_map = match self.to {
             OutputFormat::Claude => ClaudeEmitter.emit(&doc, strict)?,
             OutputFormat::CursorMdc => CursorEmitter.emit(&doc, strict)?,
             OutputFormat::AgentSkills => AgentSkillsEmitter.emit(&doc, strict)?,
@@ -105,31 +112,52 @@ impl EmitArgs {
             OutputFormat::Windsurf => WindsurfEmitter.emit(&doc, strict)?,
             OutputFormat::Gemini => GeminiEmitter.emit(&doc, strict)?,
             OutputFormat::Codex => CodexEmitter.emit(&doc, strict)?,
-            OutputFormat::IrJson => serde_json::to_string_pretty(&doc)?,
-            OutputFormat::IrToml => toml::to_string(&doc)?,
+            OutputFormat::IrJson => {
+                let mut map = HashMap::new();
+                map.insert(PathBuf::from("ir.json"), serde_json::to_string_pretty(&doc)?);
+                map
+            }
+            OutputFormat::IrToml => {
+                let mut map = HashMap::new();
+                map.insert(PathBuf::from("ir.toml"), toml::to_string(&doc)?);
+                map
+            }
         };
 
-        if let Some(mut path) = resolve_output_path(&self.to, &self.scope, self.out.as_ref()) {
-            // For formats that point to a directory in user scope, we append a default filename if we are writing merged output
-            // Or if it's considered a directory, append a generated filename
-            if path.extension().is_none() && path.to_string_lossy().ends_with("skills")
-                || path.to_string_lossy().ends_with("rules")
-            {
-                let default_ext = match self.to {
-                    OutputFormat::Claude => "md",
-                    OutputFormat::CursorMdc => "mdc",
-                    _ => "txt",
-                };
-                path.push(format!("rulette_generated.{}", default_ext));
-            }
+        let base_path = resolve_output_path(&self.to, &self.scope, self.out.as_ref());
 
-            if let Some(parent) = path.parent() {
+        for (rel_path, content) in &output_map {
+            let final_path = if let Some(ref base) = base_path {
+                let mut p = base.clone();
+                if p.is_dir() || p.extension().is_none() {
+                    p.push(rel_path);
+                } else if output_map.len() > 1 {
+                    // If multiple files but base is a single file, we might have a conflict or need to decide behavior
+                    // For now, if multiple files, assume base is a directory
+                    p.push(rel_path);
+                } else {
+                    // Single file output, keep as is (unless rel_path is different?)
+                    // If base_path was provided as a specific file, we honor it for single-file output
+                }
+                p
+            } else {
+                rel_path.clone()
+            };
+
+            if let Some(parent) = final_path.parent() {
                 fs::create_dir_all(parent)?;
             }
-            fs::write(&path, output)?;
-            println!("Emitted to {}", path.display());
-        } else {
-            println!("{}", output);
+
+            if base_path.is_none() {
+                // If no output path, print to stdout (with headers if multiple)
+                if output_map.len() > 1 {
+                    println!("--- {} ---", final_path.display());
+                }
+                println!("{}", content);
+            } else {
+                fs::write(&final_path, content)?;
+                println!("Emitted to {}", final_path.display());
+            }
         }
 
         Ok(())

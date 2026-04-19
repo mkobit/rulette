@@ -16,6 +16,7 @@ anyhow = "1.0"
 schemars = { version = "1.2", features = ["derive"] }
 serde_yaml = "0.9.34"
 clap-markdown = "0.1.5"
+walkdir = "2.5.0"
 
 [lib]
 path = "src/lib.rs"

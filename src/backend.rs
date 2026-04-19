@@ -1,8 +1,10 @@
 use crate::{Entity, RuletteDocument};
 use anyhow::{anyhow, Result};
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 pub trait Emitter {
-    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<String>;
+    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>>;
 }
 
 pub struct ClaudeEmitter;
@@ -10,16 +12,16 @@ pub struct CursorEmitter;
 pub struct AgentSkillsEmitter;
 
 impl Emitter for ClaudeEmitter {
-    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<String> {
-        let mut output = String::new();
+    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
+        let mut rules_output = String::new();
         for entity in &doc.entities {
             match entity {
                 crate::Entity::Hook(_)
                 | crate::Entity::Agent(_)
                 | crate::Entity::Permissions(_) => {}
                 Entity::Rule(rule) => {
-                    output.push_str(&rule.body);
-                    output.push_str("\n\n");
+                    rules_output.push_str(&rule.body);
+                    rules_output.push_str("\n\n");
                 }
                 Entity::McpServer(mcp) => {
                     if strict {
@@ -42,25 +44,31 @@ impl Emitter for ClaudeEmitter {
                             skill.metadata.name
                         );
                     }
-                    output.push_str(&skill.body);
-                    output.push_str("\n\n");
+                    rules_output.push_str(&skill.body);
+                    rules_output.push_str("\n\n");
                 }
             }
         }
-        Ok(output.trim_end().to_string())
+
+        let mut map = HashMap::new();
+        if !rules_output.is_empty() {
+            map.insert(PathBuf::from("CLAUDE.md"), rules_output.trim_end().to_string());
+        }
+        Ok(map)
     }
 }
 
 impl Emitter for CursorEmitter {
-    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<String> {
-        let mut output = String::new();
-        for entity in &doc.entities {
+    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
+        let mut map = HashMap::new();
+        for (_i, entity) in doc.entities.iter().enumerate() {
             match entity {
                 crate::Entity::Hook(_)
                 | crate::Entity::Agent(_)
                 | crate::Entity::Permissions(_) => {}
                 Entity::Rule(rule) => {
-                    output.push_str("---\n");
+                    let mut content = String::new();
+                    content.push_str("---\n");
                     #[derive(serde::Serialize)]
                     struct CursorRuleMeta<'a> {
                         #[serde(skip_serializing_if = "Option::is_none")]
@@ -79,10 +87,19 @@ impl Emitter for CursorEmitter {
                         description: rule.metadata.description.as_ref(),
                         extra,
                     };
-                    output.push_str(&serde_yaml::to_string(&meta).unwrap());
-                    output.push_str("---\n");
-                    output.push_str(&rule.body);
-                    output.push_str("\n\n");
+                    content.push_str(&serde_yaml::to_string(&meta).unwrap());
+                    content.push_str("---\n");
+                    content.push_str(&rule.body);
+
+                    let name = if let Some(serde_json::Value::String(n)) =
+                        rule.metadata.extra.get("name")
+                    {
+                        n.clone()
+                    } else {
+                        format!("rule_{}", _i)
+                    };
+                    let path = PathBuf::from(format!("{}.mdc", name));
+                    map.insert(path, content);
                 }
                 Entity::McpServer(mcp) => {
                     if strict {
@@ -105,7 +122,8 @@ impl Emitter for CursorEmitter {
                             skill.metadata.name
                         );
                     }
-                    output.push_str("---\n");
+                    let mut content = String::new();
+                    content.push_str("---\n");
                     #[derive(serde::Serialize)]
                     struct CursorSkillMeta<'a> {
                         description: &'a String,
@@ -120,21 +138,23 @@ impl Emitter for CursorEmitter {
                         extra,
                     };
                     let yaml = serde_yaml::to_string(&meta).unwrap();
-                    output.push_str(&yaml);
-                    output.push_str("---\n");
-                    output.push_str(&skill.body);
-                    output.push_str("\n\n");
+                    content.push_str(&yaml);
+                    content.push_str("---\n");
+                    content.push_str(&skill.body);
+
+                    let path = PathBuf::from(format!("{}.mdc", skill.metadata.name));
+                    map.insert(path, content);
                 }
             }
         }
-        Ok(output.trim_end().to_string())
+        Ok(map)
     }
 }
 
 impl Emitter for AgentSkillsEmitter {
-    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<String> {
-        let mut output = String::new();
-        for entity in &doc.entities {
+    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
+        let mut map = HashMap::new();
+        for (_i, entity) in doc.entities.iter().enumerate() {
             match entity {
                 crate::Entity::Hook(_)
                 | crate::Entity::Agent(_)
@@ -149,11 +169,12 @@ impl Emitter for AgentSkillsEmitter {
                     }
                 }
                 Entity::Skill(skill) => {
-                    output.push_str("---\n");
-                    output.push_str(&serde_yaml::to_string(&skill.metadata).unwrap());
-                    output.push_str("---\n");
-                    output.push_str(&skill.body);
-                    output.push_str("\n\n");
+                    let mut content = String::new();
+                    content.push_str("---\n");
+                    content.push_str(&serde_yaml::to_string(&skill.metadata).unwrap());
+                    content.push_str("---\n");
+                    content.push_str(&skill.body);
+                    map.insert(PathBuf::from(format!("{}.skill.md", skill.metadata.name)), content);
                 }
                 Entity::Rule(rule) => {
                     if strict {
@@ -163,7 +184,8 @@ impl Emitter for AgentSkillsEmitter {
                     } else {
                         eprintln!("Warning: Lossy conversion: Rule to Skill requires default metadata generation");
                     }
-                    output.push_str("---\n");
+                    let mut content = String::new();
+                    content.push_str("---\n");
                     #[derive(serde::Serialize)]
                     struct AgentSkillRuleMeta<'a> {
                         name: &'a str,
@@ -172,7 +194,7 @@ impl Emitter for AgentSkillsEmitter {
                         #[serde(skip_serializing_if = "std::collections::HashMap::is_empty")]
                         extra: std::collections::HashMap<&'a String, &'a serde_json::Value>,
                     }
-                    let name = if let Some(serde_json::Value::String(n)) =
+                    let name_val = if let Some(serde_json::Value::String(n)) =
                         rule.metadata.extra.get("name")
                     {
                         n.as_str()
@@ -191,18 +213,18 @@ impl Emitter for AgentSkillsEmitter {
                         .filter(|(k, _)| k.as_str() != "name")
                         .collect();
                     let meta = AgentSkillRuleMeta {
-                        name,
+                        name: name_val,
                         description,
                         extra,
                     };
-                    output.push_str(&serde_yaml::to_string(&meta).unwrap());
-                    output.push_str("---\n");
-                    output.push_str(&rule.body);
-                    output.push_str("\n\n");
+                    content.push_str(&serde_yaml::to_string(&meta).unwrap());
+                    content.push_str("---\n");
+                    content.push_str(&rule.body);
+                    map.insert(PathBuf::from(format!("{}.skill.md", name_val)), content);
                 }
             }
         }
-        Ok(output.trim_end().to_string())
+        Ok(map)
     }
 }
 
@@ -211,7 +233,7 @@ pub struct WindsurfEmitter;
 pub struct GeminiEmitter;
 
 impl Emitter for CopilotEmitter {
-    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<String> {
+    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
@@ -245,12 +267,16 @@ impl Emitter for CopilotEmitter {
                 }
             }
         }
-        Ok(output.trim_end().to_string())
+        let mut map = HashMap::new();
+        if !output.is_empty() {
+            map.insert(PathBuf::from("copilot-instructions.md"), output.trim_end().to_string());
+        }
+        Ok(map)
     }
 }
 
 impl Emitter for WindsurfEmitter {
-    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<String> {
+    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
@@ -286,12 +312,16 @@ impl Emitter for WindsurfEmitter {
                 }
             }
         }
-        Ok(output.trim_end().to_string())
+        let mut map = HashMap::new();
+        if !output.is_empty() {
+            map.insert(PathBuf::from(".windsurfrules"), output.trim_end().to_string());
+        }
+        Ok(map)
     }
 }
 
 impl Emitter for GeminiEmitter {
-    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<String> {
+    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
@@ -325,13 +355,17 @@ impl Emitter for GeminiEmitter {
                 }
             }
         }
-        Ok(output.trim_end().to_string())
+        let mut map = HashMap::new();
+        if !output.is_empty() {
+            map.insert(PathBuf::from("GEMINI.md"), output.trim_end().to_string());
+        }
+        Ok(map)
     }
 }
 
 pub struct CodexEmitter;
 impl Emitter for CodexEmitter {
-    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<String> {
+    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
@@ -365,6 +399,10 @@ impl Emitter for CodexEmitter {
                 }
             }
         }
-        Ok(output.trim_end().to_string())
+        let mut map = HashMap::new();
+        if !output.is_empty() {
+            map.insert(PathBuf::from("AGENTS.md"), output.trim_end().to_string());
+        }
+        Ok(map)
     }
 }
