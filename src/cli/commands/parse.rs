@@ -1,8 +1,8 @@
 use crate::cli::formats::InputFormat;
+use crate::cli::io::read_inputs;
 use crate::frontend::parse;
 use clap::Args;
 use std::fs;
-use std::io::{self, Read};
 
 #[derive(Args, Debug)]
 pub struct ParseArgs {
@@ -35,34 +35,14 @@ impl ParseArgs {
     pub fn execute(&self) -> anyhow::Result<()> {
         let mut combined_entities = vec![];
 
-        for input_path in &self.input {
-            if input_path == "-" {
-                let mut buffer = String::new();
-                io::stdin().read_to_string(&mut buffer)?;
-                let doc = parse(&buffer, self.from, None)?;
-                combined_entities.extend(doc.entities);
-            } else {
-                let path = std::path::Path::new(input_path);
-                if path.is_dir() {
-                    for entry in walkdir::WalkDir::new(path)
-                        .into_iter()
-                        .filter_map(|e| e.ok())
-                    {
-                        if entry.file_type().is_file() {
-                            let content = fs::read_to_string(entry.path())?;
-                            if let Ok(doc) =
-                                parse(&content, self.from, Some(entry.path().to_str().unwrap()))
-                            {
-                                combined_entities.extend(doc.entities);
-                            }
-                        }
-                    }
-                } else {
-                    let content = fs::read_to_string(input_path)?;
-                    let doc = parse(&content, self.from, Some(input_path))?;
-                    combined_entities.extend(doc.entities);
-                }
-            }
+        let inputs = read_inputs(&self.input)?;
+        for input_file in inputs {
+            let doc = parse(
+                &input_file.content,
+                self.from,
+                input_file.filename.as_deref(),
+            )?;
+            combined_entities.extend(doc.entities);
         }
 
         for entity in &mut combined_entities {

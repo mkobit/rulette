@@ -3,9 +3,9 @@ use serde::Deserialize;
 use std::collections::HashSet;
 
 use crate::cli::formats::InputFormat;
+use crate::cli::io::read_inputs;
 use crate::{Entity, RuletteDocument};
 use std::fs;
-use std::io::{self, Read};
 
 #[derive(Args, Debug)]
 pub struct TransformArgs {
@@ -129,21 +129,13 @@ impl TransformArgs {
     pub fn execute(&self) -> anyhow::Result<()> {
         let mut combined_entities = vec![];
 
-        for input_path in &self.input {
-            let content = if input_path == "-" {
-                let mut buffer = String::new();
-                io::stdin().read_to_string(&mut buffer)?;
-                buffer
-            } else {
-                fs::read_to_string(input_path)?
-            };
-
-            let filename = if input_path == "-" {
-                None
-            } else {
-                Some(input_path.as_str())
-            };
-            let doc = crate::frontend::parse(&content, InputFormat::Auto, filename)?;
+        let inputs = read_inputs(&self.input)?;
+        for input_file in inputs {
+            let doc = crate::frontend::parse(
+                &input_file.content,
+                InputFormat::Auto,
+                input_file.filename.as_deref(),
+            )?;
             combined_entities.extend(doc.entities);
         }
 

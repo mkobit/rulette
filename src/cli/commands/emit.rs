@@ -3,12 +3,12 @@ use crate::backend::{
     GeminiEmitter, WindsurfEmitter,
 };
 use crate::cli::formats::OutputFormat;
+use crate::cli::io::read_inputs;
 use crate::RuletteDocument;
 use anyhow::Result;
 use clap::Args;
 use std::collections::HashMap;
 use std::fs;
-use std::io::{self, Read};
 use std::path::PathBuf;
 
 #[derive(Args, Debug)]
@@ -73,42 +73,15 @@ impl EmitArgs {
     pub fn execute(&self, strict: bool) -> Result<()> {
         let mut combined_entities = vec![];
 
-        // Parse IR JSON from inputs (handling directories recursively)
-        for input_path in &self.input {
-            if input_path == "-" {
-                let mut buffer = String::new();
-                io::stdin().read_to_string(&mut buffer)?;
-                let doc =
-                    crate::frontend::parse(&buffer, crate::cli::formats::InputFormat::Auto, None)?;
-                combined_entities.extend(doc.entities);
-            } else {
-                let path = std::path::Path::new(input_path);
-                if path.is_dir() {
-                    for entry in walkdir::WalkDir::new(path)
-                        .into_iter()
-                        .filter_map(|e| e.ok())
-                    {
-                        if entry.file_type().is_file() {
-                            let content = fs::read_to_string(entry.path())?;
-                            if let Ok(doc) = crate::frontend::parse(
-                                &content,
-                                crate::cli::formats::InputFormat::Auto,
-                                Some(entry.path().to_str().unwrap()),
-                            ) {
-                                combined_entities.extend(doc.entities);
-                            }
-                        }
-                    }
-                } else {
-                    let content = fs::read_to_string(input_path)?;
-                    let doc = crate::frontend::parse(
-                        &content,
-                        crate::cli::formats::InputFormat::Auto,
-                        Some(input_path),
-                    )?;
-                    combined_entities.extend(doc.entities);
-                }
-            }
+        // Parse IR JSON from inputs
+        let inputs = read_inputs(&self.input)?;
+        for input_file in inputs {
+            let doc = crate::frontend::parse(
+                &input_file.content,
+                crate::cli::formats::InputFormat::Auto,
+                input_file.filename.as_deref(),
+            )?;
+            combined_entities.extend(doc.entities);
         }
 
         let doc = RuletteDocument {
