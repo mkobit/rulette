@@ -38,7 +38,9 @@ jobs:
           install: true
 
       - name: Install Rust toolchain
-        run: rustup show
+        run: |
+          rustup show
+          rustup component add rustfmt clippy
 
       - name: Set up rust cache
         uses: Swatinem/rust-cache@v2
@@ -76,7 +78,9 @@ jobs:
           install: true
 
       - name: Install Rust toolchain
-        run: rustup show
+        run: |
+          rustup show
+          rustup component add rustfmt clippy
 
       - name: Set up rust cache
         uses: Swatinem/rust-cache@v2
