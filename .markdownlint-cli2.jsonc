@@ -1,3 +1,16 @@
 {
-  "ignores": ["target", "docs/cli/rulette.md", "tests/fixtures/**"]
+  "config": {
+    "default": true,
+    "MD013": false,
+    "MD033": false,
+    "MD041": false
+  },
+  "globs": [
+    "**/*.md",
+    "!target",
+    "!conductor",
+    "!tests/fixtures",
+    // Generated file from clap-markdown has many MD001, MD012, MD024 violations
+    "!docs/cli/rulette.md"
+  ]
 }

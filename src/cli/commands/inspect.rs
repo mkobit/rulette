@@ -6,6 +6,8 @@ use crate::cli::formats::{InputFormat, OutputFormat};
 use crate::cli::io::read_inputs;
 use crate::frontend::parse;
 use clap::Args;
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 #[derive(Args, Debug)]
 pub struct InspectArgs {
@@ -43,7 +45,7 @@ impl InspectArgs {
         if let Some(target) = &self.target {
             println!("\n=== Dry-run Emission to {:?} ===", target);
 
-            let output = match target {
+            let output_map = match target {
                 OutputFormat::Claude => ClaudeEmitter.emit(&doc, strict)?,
                 OutputFormat::CursorMdc => CursorEmitter.emit(&doc, strict)?,
                 OutputFormat::AgentSkills => AgentSkillsEmitter.emit(&doc, strict)?,
@@ -51,12 +53,28 @@ impl InspectArgs {
                 OutputFormat::Windsurf => WindsurfEmitter.emit(&doc, strict)?,
                 OutputFormat::Gemini => GeminiEmitter.emit(&doc, strict)?,
                 OutputFormat::Codex => CodexEmitter.emit(&doc, strict)?,
-                OutputFormat::IrJson => serde_json::to_string_pretty(&doc)?,
-                OutputFormat::IrToml => toml::to_string(&doc)?,
+                OutputFormat::IrJson => {
+                    let mut map = HashMap::new();
+                    map.insert(
+                        PathBuf::from("ir.json"),
+                        serde_json::to_string_pretty(&doc)?,
+                    );
+                    map
+                }
+                OutputFormat::IrToml => {
+                    let mut map = HashMap::new();
+                    map.insert(PathBuf::from("ir.toml"), toml::to_string(&doc)?);
+                    map
+                }
             };
 
             println!("\n--- Survived Output ---");
-            println!("{}", output);
+            for (rel_path, content) in &output_map {
+                if output_map.len() > 1 {
+                    println!("--- {} ---", rel_path.display());
+                }
+                println!("{}", content);
+            }
         }
 
         Ok(())

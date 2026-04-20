@@ -7,6 +7,7 @@ use crate::cli::io::read_inputs;
 use crate::RuletteDocument;
 use anyhow::Result;
 use clap::Args;
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
@@ -88,7 +89,7 @@ impl EmitArgs {
         };
 
         // Emit based on target format
-        let output = match self.to {
+        let output_map = match self.to {
             OutputFormat::Claude => ClaudeEmitter.emit(&doc, strict)?,
             OutputFormat::CursorMdc => CursorEmitter.emit(&doc, strict)?,
             OutputFormat::AgentSkills => AgentSkillsEmitter.emit(&doc, strict)?,
@@ -96,31 +97,51 @@ impl EmitArgs {
             OutputFormat::Windsurf => WindsurfEmitter.emit(&doc, strict)?,
             OutputFormat::Gemini => GeminiEmitter.emit(&doc, strict)?,
             OutputFormat::Codex => CodexEmitter.emit(&doc, strict)?,
-            OutputFormat::IrJson => serde_json::to_string_pretty(&doc)?,
-            OutputFormat::IrToml => toml::to_string(&doc)?,
+            OutputFormat::IrJson => {
+                let mut map = HashMap::new();
+                map.insert(
+                    PathBuf::from("ir.json"),
+                    serde_json::to_string_pretty(&doc)?,
+                );
+                map
+            }
+            OutputFormat::IrToml => {
+                let mut map = HashMap::new();
+                map.insert(PathBuf::from("ir.toml"), toml::to_string(&doc)?);
+                map
+            }
         };
 
-        if let Some(mut path) = resolve_output_path(&self.to, &self.scope, self.out.as_ref()) {
-            // For formats that point to a directory in user scope, we append a default filename if we are writing merged output
-            // Or if it's considered a directory, append a generated filename
-            if path.extension().is_none() && path.to_string_lossy().ends_with("skills")
-                || path.to_string_lossy().ends_with("rules")
-            {
-                let default_ext = match self.to {
-                    OutputFormat::Claude => "md",
-                    OutputFormat::CursorMdc => "mdc",
-                    _ => "txt",
-                };
-                path.push(format!("rulette_generated.{}", default_ext));
-            }
+        let base_path = resolve_output_path(&self.to, &self.scope, self.out.as_ref());
 
-            if let Some(parent) = path.parent() {
+        for (rel_path, content) in &output_map {
+            let final_path = if let Some(ref base) = base_path {
+                let mut p = base.clone();
+                if p.is_dir() || p.extension().is_none() || output_map.len() > 1 {
+                    p.push(rel_path);
+                } else {
+                    // Single file output, keep as is (unless rel_path is different?)
+                    // If base_path was provided as a specific file, we honor it for single-file output
+                }
+                p
+            } else {
+                rel_path.clone()
+            };
+
+            if let Some(parent) = final_path.parent() {
                 fs::create_dir_all(parent)?;
             }
-            fs::write(&path, output)?;
-            println!("Emitted to {}", path.display());
-        } else {
-            println!("{}", output);
+
+            if base_path.is_none() {
+                // If no output path, print to stdout (with headers if multiple)
+                if output_map.len() > 1 {
+                    println!("--- {} ---", final_path.display());
+                }
+                println!("{}", content);
+            } else {
+                fs::write(&final_path, content)?;
+                println!("Emitted to {}", final_path.display());
+            }
         }
 
         Ok(())

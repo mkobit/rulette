@@ -20,9 +20,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: DavidAnson/markdownlint-cli2-action@v23
+      - uses: jdx/mise-action@v2
         with:
-          globs: '**/*.md'
+          install: true
+      - name: Run markdown lint
+        run: markdownlint-cli2
 
   check:
     name: Check
@@ -31,8 +33,14 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v6
 
+      - uses: jdx/mise-action@v2
+        with:
+          install: true
+
       - name: Install Rust toolchain
-        run: rustup show
+        run: |
+          rustup show
+          rustup component add rustfmt clippy
 
       - name: Set up rust cache
         uses: Swatinem/rust-cache@v2
@@ -65,8 +73,14 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v6
 
+      - uses: jdx/mise-action@v2
+        with:
+          install: true
+
       - name: Install Rust toolchain
-        run: rustup show
+        run: |
+          rustup show
+          rustup component add rustfmt clippy
 
       - name: Set up rust cache
         uses: Swatinem/rust-cache@v2
