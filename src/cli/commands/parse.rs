@@ -36,21 +36,33 @@ impl ParseArgs {
         let mut combined_entities = vec![];
 
         for input_path in &self.input {
-            let content = if input_path == "-" {
+            if input_path == "-" {
                 let mut buffer = String::new();
                 io::stdin().read_to_string(&mut buffer)?;
-                buffer
+                let doc = parse(&buffer, self.from, None)?;
+                combined_entities.extend(doc.entities);
             } else {
-                fs::read_to_string(input_path)?
-            };
-
-            let filename = if input_path == "-" {
-                None
-            } else {
-                Some(input_path.as_str())
-            };
-            let doc = parse(&content, self.from, filename)?;
-            combined_entities.extend(doc.entities);
+                let path = std::path::Path::new(input_path);
+                if path.is_dir() {
+                    for entry in walkdir::WalkDir::new(path)
+                        .into_iter()
+                        .filter_map(|e| e.ok())
+                    {
+                        if entry.file_type().is_file() {
+                            let content = fs::read_to_string(entry.path())?;
+                            if let Ok(doc) =
+                                parse(&content, self.from, Some(entry.path().to_str().unwrap()))
+                            {
+                                combined_entities.extend(doc.entities);
+                            }
+                        }
+                    }
+                } else {
+                    let content = fs::read_to_string(input_path)?;
+                    let doc = parse(&content, self.from, Some(input_path))?;
+                    combined_entities.extend(doc.entities);
+                }
+            }
         }
 
         for entity in &mut combined_entities {

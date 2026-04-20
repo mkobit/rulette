@@ -7,8 +7,10 @@ use crate::cli::formats::{InputFormat, OutputFormat};
 use crate::frontend::parse;
 use anyhow::Result;
 use clap::Args;
+use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Read};
+use std::path::PathBuf;
 
 #[derive(Args, Debug)]
 pub struct ConvertArgs {
@@ -50,21 +52,33 @@ impl ConvertArgs {
         let mut combined_entities = vec![];
 
         for input_path in &self.input {
-            let content = if input_path == "-" {
+            if input_path == "-" {
                 let mut buffer = String::new();
                 io::stdin().read_to_string(&mut buffer)?;
-                buffer
+                let doc = parse(&buffer, self.from, None)?;
+                combined_entities.extend(doc.entities);
             } else {
-                fs::read_to_string(input_path)?
-            };
-
-            let filename = if input_path == "-" {
-                None
-            } else {
-                Some(input_path.as_str())
-            };
-            let doc = parse(&content, self.from, filename)?;
-            combined_entities.extend(doc.entities);
+                let path = std::path::Path::new(input_path);
+                if path.is_dir() {
+                    for entry in walkdir::WalkDir::new(path)
+                        .into_iter()
+                        .filter_map(|e| e.ok())
+                    {
+                        if entry.file_type().is_file() {
+                            let content = fs::read_to_string(entry.path())?;
+                            if let Ok(doc) =
+                                parse(&content, self.from, Some(entry.path().to_str().unwrap()))
+                            {
+                                combined_entities.extend(doc.entities);
+                            }
+                        }
+                    }
+                } else {
+                    let content = fs::read_to_string(input_path)?;
+                    let doc = parse(&content, self.from, Some(input_path))?;
+                    combined_entities.extend(doc.entities);
+                }
+            }
         }
 
         for entity in &mut combined_entities {
@@ -102,7 +116,7 @@ impl ConvertArgs {
             entities: combined_entities,
         };
 
-        let output = match self.to {
+        let output_map = match self.to {
             OutputFormat::Claude => ClaudeEmitter.emit(&doc, strict)?,
             OutputFormat::CursorMdc => CursorEmitter.emit(&doc, strict)?,
             OutputFormat::AgentSkills => AgentSkillsEmitter.emit(&doc, strict)?,
@@ -110,29 +124,49 @@ impl ConvertArgs {
             OutputFormat::Windsurf => WindsurfEmitter.emit(&doc, strict)?,
             OutputFormat::Gemini => GeminiEmitter.emit(&doc, strict)?,
             OutputFormat::Codex => CodexEmitter.emit(&doc, strict)?,
-            OutputFormat::IrJson => serde_json::to_string_pretty(&doc)?,
-            OutputFormat::IrToml => toml::to_string(&doc)?,
+            OutputFormat::IrJson => {
+                let mut map = HashMap::new();
+                map.insert(
+                    PathBuf::from("ir.json"),
+                    serde_json::to_string_pretty(&doc)?,
+                );
+                map
+            }
+            OutputFormat::IrToml => {
+                let mut map = HashMap::new();
+                map.insert(PathBuf::from("ir.toml"), toml::to_string(&doc)?);
+                map
+            }
         };
 
-        if let Some(mut path) = resolve_output_path(&self.to, &self.scope, self.out.as_ref()) {
-            if path.extension().is_none() && path.to_string_lossy().ends_with("skills")
-                || path.to_string_lossy().ends_with("rules")
-            {
-                let default_ext = match self.to {
-                    OutputFormat::Claude => "md",
-                    OutputFormat::CursorMdc => "mdc",
-                    _ => "txt",
-                };
-                path.push(format!("rulette_generated.{}", default_ext));
-            }
+        let base_path = resolve_output_path(&self.to, &self.scope, self.out.as_ref());
 
-            if let Some(parent) = path.parent() {
+        for (rel_path, content) in &output_map {
+            let final_path = if let Some(ref base) = base_path {
+                let mut p = base.clone();
+                if p.is_dir() || p.extension().is_none() || output_map.len() > 1 {
+                    p.push(rel_path);
+                } else {
+                    // Single file output
+                }
+                p
+            } else {
+                rel_path.clone()
+            };
+
+            if let Some(parent) = final_path.parent() {
                 fs::create_dir_all(parent)?;
             }
-            fs::write(&path, output)?;
-            println!("Converted and emitted to {}", path.display());
-        } else {
-            println!("{}", output);
+
+            if base_path.is_none() {
+                if output_map.len() > 1 {
+                    println!("--- {} ---", final_path.display());
+                }
+                println!("{}", content);
+            } else {
+                fs::write(&final_path, content)?;
+                println!("Converted and emitted to {}", final_path.display());
+            }
         }
 
         Ok(())
