@@ -3,10 +3,9 @@ use crate::backend::{
     GeminiEmitter, WindsurfEmitter,
 };
 use crate::cli::formats::{InputFormat, OutputFormat};
+use crate::cli::io::read_inputs;
 use crate::frontend::parse;
 use clap::Args;
-use std::fs;
-use std::io::{self, Read};
 
 #[derive(Args, Debug)]
 pub struct InspectArgs {
@@ -23,21 +22,13 @@ impl InspectArgs {
     pub fn execute(&self, strict: bool) -> anyhow::Result<()> {
         let mut combined_entities = vec![];
 
-        for input_path in &self.input {
-            let content = if input_path == "-" {
-                let mut buffer = String::new();
-                io::stdin().read_to_string(&mut buffer)?;
-                buffer
-            } else {
-                fs::read_to_string(input_path)?
-            };
-
-            let filename = if input_path == "-" {
-                None
-            } else {
-                Some(input_path.as_str())
-            };
-            let doc = parse(&content, InputFormat::Auto, filename)?;
+        let inputs = read_inputs(&self.input)?;
+        for input_file in inputs {
+            let doc = parse(
+                &input_file.content,
+                InputFormat::Auto,
+                input_file.filename.as_deref(),
+            )?;
             combined_entities.extend(doc.entities);
         }
 

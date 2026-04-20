@@ -3,11 +3,11 @@ use crate::backend::{
     GeminiEmitter, WindsurfEmitter,
 };
 use crate::cli::formats::OutputFormat;
+use crate::cli::io::read_inputs;
 use crate::RuletteDocument;
 use anyhow::Result;
 use clap::Args;
 use std::fs;
-use std::io::{self, Read};
 use std::path::PathBuf;
 
 #[derive(Args, Debug)]
@@ -73,22 +73,13 @@ impl EmitArgs {
         let mut combined_entities = vec![];
 
         // Parse IR JSON from inputs
-        for input_path in &self.input {
-            let content = if input_path == "-" {
-                let mut buffer = String::new();
-                io::stdin().read_to_string(&mut buffer)?;
-                buffer
-            } else {
-                fs::read_to_string(input_path)?
-            };
-
-            let filename = if input_path == "-" {
-                None
-            } else {
-                Some(input_path.as_str())
-            };
-            let doc =
-                crate::frontend::parse(&content, crate::cli::formats::InputFormat::Auto, filename)?;
+        let inputs = read_inputs(&self.input)?;
+        for input_file in inputs {
+            let doc = crate::frontend::parse(
+                &input_file.content,
+                crate::cli::formats::InputFormat::Auto,
+                input_file.filename.as_deref(),
+            )?;
             combined_entities.extend(doc.entities);
         }
 
