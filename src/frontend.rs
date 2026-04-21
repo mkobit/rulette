@@ -14,7 +14,17 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
                 if let Ok(doc) = serde_json::from_str::<RuletteDocument>(input) {
                     return Ok(doc);
                 }
+                if input.contains("\"permissions\"")
+                    || input.contains("\"allowManagedPermissionRulesOnly\"")
+                {
+                    return Ok(RuletteDocument {
+                        entities: parse_claude_settings(input)?,
+                    });
+                }
                 if input.contains("\"mcpServers\"") {
+                    if let Ok(entities) = parse_claude_settings(input) {
+                        return Ok(RuletteDocument { entities });
+                    }
                     return Ok(RuletteDocument {
                         entities: parse_cursor_mcp(input)?,
                     });
@@ -43,6 +53,7 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
         }
         InputFormat::CursorMdc => vec![Entity::Rule(parse_cursor_mdc(input, filename)?)],
         InputFormat::CursorMcp => parse_cursor_mcp(input)?,
+        InputFormat::ClaudeSettings => parse_claude_settings(input)?,
         InputFormat::Claude
         | InputFormat::Codex
         | InputFormat::Copilot
@@ -196,6 +207,74 @@ fn parse_cursor_mdc(input: &str, filename: Option<&str>) -> Result<Rule> {
     })
 }
 
+fn parse_claude_settings(input: &str) -> Result<Vec<Entity>> {
+    #[derive(serde::Deserialize)]
+    struct ClaudeMcpConfig {
+        command: String,
+        #[serde(default)]
+        args: Vec<String>,
+        #[serde(default)]
+        env: HashMap<String, String>,
+    }
+
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct ClaudeSettingsFile {
+        #[serde(default)]
+        mcp_servers: Option<HashMap<String, ClaudeMcpConfig>>,
+        #[serde(default)]
+        hooks: Option<HashMap<String, serde_json::Value>>,
+        #[serde(flatten)]
+        extra: HashMap<String, serde_json::Value>,
+    }
+
+    let parsed: ClaudeSettingsFile = serde_json::from_str(input)?;
+    let mut entities = Vec::new();
+
+    if let Some(mcp_servers) = parsed.mcp_servers {
+        for (name, config) in mcp_servers {
+            entities.push(Entity::McpServer(McpServer {
+                metadata: McpServerMetadata {
+                    name,
+                    extra: HashMap::new(),
+                },
+                config: McpServerConfig {
+                    command: config.command,
+                    args: config.args,
+                    env: config.env,
+                },
+            }));
+        }
+    }
+
+    if let Some(hooks) = parsed.hooks {
+        for (name, hook_data) in hooks {
+            let mut extra = HashMap::new();
+            extra.insert(name.clone(), hook_data);
+            entities.push(Entity::Hook(crate::Hook {
+                metadata: crate::HookMetadata {
+                    name,
+                    hook_event: None,
+                    extra,
+                },
+            }));
+        }
+    }
+
+    if !parsed.extra.is_empty() {
+        entities.push(Entity::Permissions(crate::Permissions {
+            metadata: crate::PermissionsMetadata {
+                name: None,
+                tool_access: None,
+                settings_overrides: None,
+                extra: parsed.extra,
+            },
+        }));
+    }
+
+    Ok(entities)
+}
+
 fn parse_claude(input: &str, filename: Option<&str>) -> Result<Rule> {
     // CLAUDE.md generally doesn't use frontmatter natively in the same structured way
     let mut metadata = RuleMetadata::default();
@@ -294,6 +373,114 @@ fn extract_description_from_body(body: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_parse_claude_settings() {
+        let json = r#"{
+  "permissions": {
+    "disableBypassPermissionsMode": "disable"
+  },
+  "mcpServers": {
+    "test-server": {
+      "command": "echo",
+      "args": ["hello"],
+      "env": {}
+    }
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 script.py"
+          }
+        ]
+      }
+    ]
+  },
+  "strictKnownMarketplaces": []
+}"#;
+
+        let doc = parse(json, InputFormat::Auto, None).unwrap();
+        assert_eq!(doc.entities.len(), 3);
+
+        let mut has_mcp = false;
+        let mut has_permissions = false;
+        let mut has_hooks = false;
+
+        for entity in doc.entities {
+            match entity {
+                Entity::McpServer(mcp) => {
+                    assert_eq!(mcp.metadata.name, "test-server");
+                    assert_eq!(mcp.config.command, "echo");
+                    assert_eq!(mcp.config.args, vec!["hello"]);
+                    has_mcp = true;
+                }
+                Entity::Permissions(perms) => {
+                    assert!(perms.metadata.extra.contains_key("permissions"));
+                    assert!(perms.metadata.extra.contains_key("strictKnownMarketplaces"));
+                    has_permissions = true;
+                }
+                Entity::Hook(hook) => {
+                    assert_eq!(hook.metadata.name, "PreToolUse");
+                    has_hooks = true;
+                }
+                _ => panic!("Expected McpServer, Hook, or Permissions entity"),
+            }
+        }
+
+        assert!(has_mcp);
+        assert!(has_permissions);
+        assert!(has_hooks);
+    }
+
+    #[test]
+    fn test_parse_claude_settings_strict_fixture() {
+        let json = r#"{
+  "permissions": {
+    "disableBypassPermissionsMode": "disable",
+    "ask": [
+      "Bash"
+    ],
+    "deny": [
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "allowManagedPermissionRulesOnly": true,
+  "allowManagedHooksOnly": true,
+  "strictKnownMarketplaces": [],
+  "sandbox": {
+    "autoAllowBashIfSandboxed": false,
+    "excludedCommands": [],
+    "network": {
+      "allowUnixSockets": [],
+      "allowAllUnixSockets": false,
+      "allowLocalBinding": false,
+      "allowedDomains": [],
+      "httpProxyPort": null,
+      "socksProxyPort": null
+    },
+    "enableWeakerNestedSandbox": false
+  }
+}"#;
+
+        let doc = parse(json, InputFormat::Auto, None).unwrap();
+        assert_eq!(doc.entities.len(), 1);
+
+        match &doc.entities[0] {
+            Entity::Permissions(perms) => {
+                assert!(perms.metadata.extra.contains_key("permissions"));
+                assert!(perms
+                    .metadata
+                    .extra
+                    .contains_key("allowManagedPermissionRulesOnly"));
+                assert!(perms.metadata.extra.contains_key("sandbox"));
+            }
+            _ => panic!("Expected Permissions entity"),
+        }
+    }
 
     #[test]
     fn test_parse_cursor_mcp() {

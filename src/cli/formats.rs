@@ -6,6 +6,7 @@ pub enum InputFormat {
     SkillMd,
     AgentSkills,
     Claude,
+    ClaudeSettings,
     CursorMdc,
     CursorLegacy,
     CursorMcp,
@@ -20,6 +21,7 @@ pub enum InputFormat {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
 pub enum OutputFormat {
     Claude,
+    ClaudeSettings,
     CursorMdc,
     Codex,
     Windsurf,
