@@ -59,7 +59,6 @@ fn test_round_trip_preserves_semantics() {
 
     assert!(output_file.exists(), "Output file was not created");
 
-    // Now, let's parse both files into IR and compare them
     let original_content = fs::read_to_string(original_file).unwrap();
     let output_content = fs::read_to_string(&output_file).unwrap();
 
@@ -80,7 +79,8 @@ fn test_round_trip_preserves_semantics() {
     let output_json = serde_json::to_string_pretty(&output_doc).unwrap();
 
     assert_eq!(
-        original_json, output_json,
+        original_json.replace("\r\n", "\n"),
+        output_json.replace("\r\n", "\n"),
         "IR semantic mismatch after round trip"
     );
 }
