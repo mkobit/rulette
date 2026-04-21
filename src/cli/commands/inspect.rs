@@ -66,6 +66,9 @@ impl InspectArgs {
                     map.insert(PathBuf::from("ir.toml"), toml::to_string(&doc)?);
                     map
                 }
+                OutputFormat::ClaudeSettings => {
+                    anyhow::bail!("Emitting to ClaudeSettings is not supported yet");
+                }
             };
 
             println!("\n--- Survived Output ---");

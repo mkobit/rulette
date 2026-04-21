@@ -117,6 +117,9 @@ impl ConvertArgs {
                 map.insert(PathBuf::from("ir.toml"), toml::to_string(&doc)?);
                 map
             }
+            OutputFormat::ClaudeSettings => {
+                anyhow::bail!("Emitting to ClaudeSettings is not supported yet");
+            }
         };
 
         let base_path = resolve_output_path(&self.to, &self.scope, self.out.as_ref());
