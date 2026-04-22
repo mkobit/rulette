@@ -349,10 +349,24 @@ fn parse_cursor_mcp(input: &str) -> Result<Vec<Entity>> {
 }
 
 fn extract_frontmatter(input: &str) -> (Option<&str>, &str) {
-    if input.starts_with("---\n") || input.starts_with("---\r\n") {
-        if let Some(end_idx) = input[4..].find("\n---") {
-            let frontmatter = &input[4..4 + end_idx];
+    if let Some(stripped) = input.strip_prefix("---\n") {
+        if let Some(end_idx) = stripped.find("\n---") {
+            let frontmatter = &stripped[..end_idx];
             let rest_idx = 4 + end_idx + 4;
+            // Skip the newline after ---
+            let body = if input.len() > rest_idx && input[rest_idx..].starts_with('\n') {
+                &input[rest_idx + 1..]
+            } else if input.len() > rest_idx + 1 && input[rest_idx..].starts_with("\r\n") {
+                &input[rest_idx + 2..]
+            } else {
+                &input[rest_idx..]
+            };
+            return (Some(frontmatter), body);
+        }
+    } else if let Some(stripped) = input.strip_prefix("---\r\n") {
+        if let Some(end_idx) = stripped.find("\r\n---") {
+            let frontmatter = &stripped[..end_idx];
+            let rest_idx = 5 + end_idx + 5;
             // Skip the newline after ---
             let body = if input.len() > rest_idx && input[rest_idx..].starts_with('\n') {
                 &input[rest_idx + 1..]

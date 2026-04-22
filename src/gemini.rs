@@ -122,38 +122,68 @@ impl GeminiSubAgent {
     pub fn parse(content: &str) -> Result<Self, anyhow::Error> {
         // Implement parsing markdown with yaml frontmatter.
         // It starts with '---', ends with '---'.
-        if !content.starts_with("---\n") && !content.starts_with("---\r\n") {
-            return Err(anyhow::anyhow!("Missing YAML frontmatter start (---)"));
-        }
+        if let Some(stripped) = content.strip_prefix("---\n") {
+            // Find the end of frontmatter
+            let end_idx_opt = stripped.find("\n---");
+            if let Some(end_idx_rel) = end_idx_opt {
+                let end_idx = end_idx_rel + 4;
+                let yaml_content = &stripped[..end_idx_rel];
 
-        // Find the end of frontmatter
-        let end_idx_opt = content[4..].find("\n---");
-        if let Some(end_idx_rel) = end_idx_opt {
-            let end_idx = end_idx_rel + 4;
-            let yaml_content = &content[4..end_idx];
-
-            // The body starts after the \n---\n or \n---\r\n
-            let body_start = if content.len() > end_idx + 4 {
-                if content[end_idx + 4..].starts_with("\r\n") {
-                    end_idx + 6
-                } else if content[end_idx + 4..].starts_with("\n") {
-                    end_idx + 5
+                // The body starts after the \n---\n or \n---\r\n
+                let body_start = if content.len() > end_idx + 4 {
+                    if content[end_idx + 4..].starts_with("\r\n") {
+                        end_idx + 6
+                    } else if content[end_idx + 4..].starts_with("\n") {
+                        end_idx + 5
+                    } else {
+                        end_idx + 4
+                    }
                 } else {
-                    end_idx + 4
-                }
+                    content.len()
+                };
+
+                let metadata: GeminiSubAgentMetadata = serde_yaml::from_str(yaml_content)?;
+                let system_prompt = content[body_start..].trim_start().to_string();
+
+                Ok(Self {
+                    metadata,
+                    system_prompt,
+                })
             } else {
-                content.len()
-            };
+                Err(anyhow::anyhow!("Missing YAML frontmatter end (---)"))
+            }
+        } else if let Some(stripped) = content.strip_prefix("---\r\n") {
+            // Find the end of frontmatter
+            let end_idx_opt = stripped.find("\r\n---");
+            if let Some(end_idx_rel) = end_idx_opt {
+                let end_idx = end_idx_rel + 5;
+                let yaml_content = &stripped[..end_idx_rel];
 
-            let metadata: GeminiSubAgentMetadata = serde_yaml::from_str(yaml_content)?;
-            let system_prompt = content[body_start..].trim_start().to_string();
+                // The body starts after the \n---\n or \n---\r\n
+                let body_start = if content.len() > end_idx + 5 {
+                    if content[end_idx + 5..].starts_with("\r\n") {
+                        end_idx + 7
+                    } else if content[end_idx + 5..].starts_with("\n") {
+                        end_idx + 6
+                    } else {
+                        end_idx + 5
+                    }
+                } else {
+                    content.len()
+                };
 
-            Ok(Self {
-                metadata,
-                system_prompt,
-            })
+                let metadata: GeminiSubAgentMetadata = serde_yaml::from_str(yaml_content)?;
+                let system_prompt = content[body_start..].trim_start().to_string();
+
+                Ok(Self {
+                    metadata,
+                    system_prompt,
+                })
+            } else {
+                Err(anyhow::anyhow!("Missing YAML frontmatter end (---)"))
+            }
         } else {
-            Err(anyhow::anyhow!("Missing YAML frontmatter end (---)"))
+            Err(anyhow::anyhow!("Missing YAML frontmatter start (---)"))
         }
     }
 }
