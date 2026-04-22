@@ -1,6 +1,6 @@
 use crate::backend::{
-    AgentSkillsEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter, CursorEmitter, Emitter,
-    GeminiEmitter, WindsurfEmitter,
+    AgentSkillsEmitter, ClaudeEmitter, ClaudeSettingsEmitter, CodexEmitter, CopilotEmitter,
+    CursorEmitter, Emitter, GeminiEmitter, WindsurfEmitter,
 };
 use crate::cli::commands::emit::resolve_output_path;
 use crate::cli::formats::{InputFormat, OutputFormat};
@@ -117,9 +117,7 @@ impl ConvertArgs {
                 map.insert(PathBuf::from("ir.toml"), toml::to_string(&doc)?);
                 map
             }
-            OutputFormat::ClaudeSettings => {
-                anyhow::bail!("Emitting to ClaudeSettings is not supported yet");
-            }
+            OutputFormat::ClaudeSettings => ClaudeSettingsEmitter.emit(&doc, strict)?,
         };
 
         let base_path = resolve_output_path(&self.to, &self.scope, self.out.as_ref());
