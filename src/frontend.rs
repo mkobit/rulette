@@ -186,6 +186,8 @@ fn parse_agent_skills(input: &str, filename: Option<&str>) -> Result<Skill> {
         }
     }
 
+    metadata.validate()?;
+
     Ok(Skill {
         metadata,
         body: body.to_string(),
