@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result<RuletteDocument> {
+    tracing::info!("Parsing input as format: {:?}", format);
     let entities = match format {
         InputFormat::Auto => {
             if input.trim_start().starts_with('{') {
@@ -16,23 +17,25 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
                 }
                 if input.contains("\"permissions\"")
                     || input.contains("\"allowManagedPermissionRulesOnly\"")
+                    || input.contains("\"hooks\"")
+                    || input.contains("\"enabledMcpjsonServers\"")
                 {
                     return Ok(RuletteDocument {
                         entities: parse_claude_settings(input)?,
                     });
                 }
                 if input.contains("\"mcpServers\"") {
-                    if let Ok(entities) = parse_claude_settings(input) {
-                        return Ok(RuletteDocument { entities });
-                    }
                     return Ok(RuletteDocument {
                         entities: parse_cursor_mcp(input)?,
                     });
                 }
             }
-            if input.starts_with("---\n") {
+            if input.starts_with("---\n") || input.starts_with("---\r\n") {
                 if input.contains("name:") && input.contains("description:") {
-                    vec![Entity::Skill(parse_agent_skills(input, filename)?)]
+                    match parse_agent_skills(input, filename) {
+                        Ok(skill) => vec![Entity::Skill(skill)],
+                        Err(_) => vec![Entity::Rule(parse_cursor_mdc(input, filename)?)]
+                    }
                 } else {
                     vec![Entity::Rule(parse_cursor_mdc(input, filename)?)]
                 }
@@ -185,6 +188,8 @@ fn parse_agent_skills(input: &str, filename: Option<&str>) -> Result<Skill> {
             metadata.description = desc;
         }
     }
+
+    metadata.validate()?;
 
     Ok(Skill {
         metadata,
@@ -350,18 +355,20 @@ fn parse_cursor_mcp(input: &str) -> Result<Vec<Entity>> {
 
 fn extract_frontmatter(input: &str) -> (Option<&str>, &str) {
     if input.starts_with("---\n") || input.starts_with("---\r\n") {
-        if let Some(end_idx) = input[4..].find("\n---") {
-            let frontmatter = &input[4..4 + end_idx];
-            let rest_idx = 4 + end_idx + 4;
-            // Skip the newline after ---
-            let body = if input.len() > rest_idx && input[rest_idx..].starts_with('\n') {
-                &input[rest_idx + 1..]
-            } else if input.len() > rest_idx + 1 && input[rest_idx..].starts_with("\r\n") {
-                &input[rest_idx + 2..]
-            } else {
-                &input[rest_idx..]
-            };
-            return (Some(frontmatter), body);
+        let start_offset = if input.starts_with("---\r\n") { 5 } else { 4 };
+        if let Some(end_idx_rel) = input[start_offset..].find("---") {
+            let end_idx = start_offset + end_idx_rel;
+            let frontmatter = input[start_offset..end_idx].trim();
+            
+            // Closing --- is at end_idx..end_idx+3
+            let mut body_start = end_idx + 3;
+            if input[body_start..].starts_with('\n') {
+                body_start += 1;
+            } else if input[body_start..].starts_with("\r\n") {
+                body_start += 2;
+            }
+            
+            return (Some(frontmatter), &input[body_start..]);
         }
     }
     (None, input)
@@ -535,6 +542,54 @@ mod tests {
             }
             _ => panic!("Expected McpServer entity"),
         }
+    }
+
+    #[test]
+    fn test_parse_claude_settings_mcp_and_hooks() {
+        let json = r#"{
+            "mcpServers": {
+                "filesystem": {
+                    "command": "npx",
+                    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/user/project"],
+                    "env": {}
+                }
+            },
+            "hooks": {
+                "PreToolUse": [
+                    {
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": "python3 script.py"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }"#;
+
+        let doc = parse(json, InputFormat::Auto, None).unwrap();
+        assert_eq!(doc.entities.len(), 2);
+
+        let mut has_mcp = false;
+        let mut has_hooks = false;
+
+        for entity in doc.entities {
+            match entity {
+                Entity::McpServer(mcp) => {
+                    assert_eq!(mcp.metadata.name, "filesystem");
+                    has_mcp = true;
+                }
+                Entity::Hook(hook) => {
+                    assert_eq!(hook.metadata.name, "PreToolUse");
+                    has_hooks = true;
+                }
+                _ => panic!("Expected McpServer or Hook entity"),
+            }
+        }
+
+        assert!(has_mcp);
+        assert!(has_hooks);
     }
 
     #[test]
