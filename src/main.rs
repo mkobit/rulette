@@ -10,15 +10,13 @@ fn init_tracing(log_level: &Option<String>) {
         None => "warn",
     };
 
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(level));
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level));
 
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_writer(std::io::stderr)
         .init();
 }
-
 
 fn main() -> Result<()> {
     let args = Cli::parse();
