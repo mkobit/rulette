@@ -125,7 +125,9 @@ mod tests {
                 map.insert("author".to_string(), "example-org".to_string());
                 map
             },
-            allowed_tools: Some(serde_json::Value::String("Bash(git:*) Bash(jq:*) Read".to_string())),
+            allowed_tools: Some(serde_json::Value::String(
+                "Bash(git:*) Bash(jq:*) Read".to_string(),
+            )),
             extra: HashMap::new(),
         };
 

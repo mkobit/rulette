@@ -158,14 +158,18 @@ fn parse_agent_skills(input: &str, filename: Option<&str>) -> Result<Skill> {
                         serde_yaml::Value::Sequence(seq) => {
                             let json_seq: Vec<serde_json::Value> = seq
                                 .into_iter()
-                                .filter_map(|v| v.as_str().map(|s| serde_json::Value::String(s.to_string())))
+                                .filter_map(|v| {
+                                    v.as_str().map(|s| serde_json::Value::String(s.to_string()))
+                                })
                                 .collect();
                             serde_json::Value::Array(json_seq)
                         }
-                        _ => serde_json::Value::String(serde_yaml::to_string(&at)
-                            .unwrap_or_default()
-                            .trim()
-                            .to_string()),
+                        _ => serde_json::Value::String(
+                            serde_yaml::to_string(&at)
+                                .unwrap_or_default()
+                                .trim()
+                                .to_string(),
+                        ),
                     });
                 }
                 metadata.extra = parsed_fm.extra;
