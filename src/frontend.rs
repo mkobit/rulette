@@ -35,7 +35,7 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
                 if input.contains("name:") && input.contains("description:") {
                     match parse_agent_skills(input, filename) {
                         Ok(skill) => vec![Entity::Skill(skill)],
-                        Err(_) => vec![Entity::Rule(parse_cursor_mdc(input, filename)?)]
+                        Err(_) => vec![Entity::Rule(parse_cursor_mdc(input, filename)?)],
                     }
                 } else {
                     vec![Entity::Rule(parse_cursor_mdc(input, filename)?)]
@@ -364,7 +364,7 @@ fn extract_frontmatter(input: &str) -> (Option<&str>, &str) {
         if let Some(end_idx_rel) = input[start_offset..].find("---") {
             let end_idx = start_offset + end_idx_rel;
             let frontmatter = input[start_offset..end_idx].trim();
-            
+
             // Closing --- is at end_idx..end_idx+3
             let mut body_start = end_idx + 3;
             if input[body_start..].starts_with('\n') {
@@ -372,7 +372,7 @@ fn extract_frontmatter(input: &str) -> (Option<&str>, &str) {
             } else if input[body_start..].starts_with("\r\n") {
                 body_start += 2;
             }
-            
+
             return (Some(frontmatter), &input[body_start..]);
         }
     }
