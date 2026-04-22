@@ -15,6 +15,7 @@ pub fn read_inputs(paths: &[String]) -> anyhow::Result<Vec<InputFile>> {
         if path_str == "-" {
             let mut buffer = String::new();
             io::stdin().read_to_string(&mut buffer)?;
+            tracing::debug!("Read input from stdin");
             results.push(InputFile {
                 content: buffer,
                 filename: None,
@@ -31,6 +32,7 @@ pub fn read_inputs(paths: &[String]) -> anyhow::Result<Vec<InputFile>> {
                         p.extension().and_then(|s| s.to_str())
                     {
                         let content = fs::read_to_string(p)?;
+                        tracing::debug!("Read file: {}", p.to_string_lossy());
                         results.push(InputFile {
                             content,
                             filename: Some(p.to_string_lossy().into_owned()),
@@ -40,6 +42,7 @@ pub fn read_inputs(paths: &[String]) -> anyhow::Result<Vec<InputFile>> {
             }
         } else {
             let content = fs::read_to_string(path)?;
+            tracing::debug!("Read file: {}", path.to_string_lossy());
             results.push(InputFile {
                 content,
                 filename: Some(path.to_string_lossy().into_owned()),

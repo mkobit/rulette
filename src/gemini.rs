@@ -120,30 +120,21 @@ mod subagent_tests {
 
 impl GeminiSubAgent {
     pub fn parse(content: &str) -> Result<Self, anyhow::Error> {
-        // Implement parsing markdown with yaml frontmatter.
-        // It starts with '---', ends with '---'.
-        if !content.starts_with("---\n") && !content.starts_with("---\r\n") {
+        if !(content.starts_with("---\n") || content.starts_with("---\r\n")) {
             return Err(anyhow::anyhow!("Missing YAML frontmatter start (---)"));
         }
 
-        // Find the end of frontmatter
-        let end_idx_opt = content[4..].find("\n---");
-        if let Some(end_idx_rel) = end_idx_opt {
-            let end_idx = end_idx_rel + 4;
-            let yaml_content = &content[4..end_idx];
+        let start_offset = if content.starts_with("---\r\n") { 5 } else { 4 };
+        if let Some(end_idx_rel) = content[start_offset..].find("---") {
+            let end_idx = start_offset + end_idx_rel;
+            let yaml_content = &content[start_offset..end_idx];
 
-            // The body starts after the \n---\n or \n---\r\n
-            let body_start = if content.len() > end_idx + 4 {
-                if content[end_idx + 4..].starts_with("\r\n") {
-                    end_idx + 6
-                } else if content[end_idx + 4..].starts_with("\n") {
-                    end_idx + 5
-                } else {
-                    end_idx + 4
-                }
-            } else {
-                content.len()
-            };
+            let mut body_start = end_idx + 3;
+            if content[body_start..].starts_with('\n') {
+                body_start += 1;
+            } else if content[body_start..].starts_with("\r\n") {
+                body_start += 2;
+            }
 
             let metadata: GeminiSubAgentMetadata = serde_yaml::from_str(yaml_content)?;
             let system_prompt = content[body_start..].trim_start().to_string();
