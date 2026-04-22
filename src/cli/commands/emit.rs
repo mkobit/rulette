@@ -1,6 +1,6 @@
 use crate::backend::{
-    AgentSkillsEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter, CursorEmitter, Emitter,
-    GeminiEmitter, WindsurfEmitter,
+    AgentSkillsEmitter, ClaudeEmitter, ClaudeSettingsEmitter, CodexEmitter, CopilotEmitter,
+    CursorEmitter, Emitter, GeminiEmitter, WindsurfEmitter,
 };
 use crate::cli::formats::OutputFormat;
 use crate::cli::io::read_inputs;
@@ -54,6 +54,7 @@ pub fn resolve_output_path(
 
         let path = match to {
             OutputFormat::Claude => home_path.join(".claude").join("skills"),
+            OutputFormat::ClaudeSettings => home_path.join(".claude"),
             OutputFormat::CursorMdc => home_path.join(".cursor").join("rules"),
             OutputFormat::Copilot => home_path
                 .join(".config")
@@ -110,9 +111,7 @@ impl EmitArgs {
                 map.insert(PathBuf::from("ir.toml"), toml::to_string(&doc)?);
                 map
             }
-            OutputFormat::ClaudeSettings => {
-                anyhow::bail!("Emitting to ClaudeSettings is not supported yet");
-            }
+            OutputFormat::ClaudeSettings => ClaudeSettingsEmitter.emit(&doc, strict)?,
         };
 
         let base_path = resolve_output_path(&self.to, &self.scope, self.out.as_ref());

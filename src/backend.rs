@@ -61,6 +61,73 @@ impl Emitter for ClaudeEmitter {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        Entity, McpServer, McpServerConfig, McpServerMetadata, Permissions, PermissionsMetadata,
+    };
+    use serde_json::json;
+
+    #[test]
+    fn test_claude_settings_emitter() {
+        let mcp = Entity::McpServer(McpServer {
+            metadata: McpServerMetadata {
+                name: "test-server".to_string(),
+                extra: HashMap::new(),
+            },
+            config: McpServerConfig {
+                command: "echo".to_string(),
+                args: vec!["hello".to_string()],
+                env: HashMap::new(),
+            },
+        });
+
+        let mut extra_perms = HashMap::new();
+        extra_perms.insert(
+            "permissions".to_string(),
+            json!({
+                "ask": ["Bash"]
+            }),
+        );
+        let perms = Entity::Permissions(Permissions {
+            metadata: PermissionsMetadata {
+                name: None,
+                tool_access: None,
+                settings_overrides: None,
+                extra: extra_perms,
+            },
+        });
+
+        let doc = crate::RuletteDocument {
+            entities: vec![mcp, perms],
+        };
+
+        let map = ClaudeSettingsEmitter.emit(&doc, false).unwrap();
+        assert_eq!(map.len(), 1);
+
+        let content = map.get(&PathBuf::from("settings.json")).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(content).unwrap();
+
+        let mcp_servers = parsed.get("mcpServers").unwrap().as_object().unwrap();
+        assert!(mcp_servers.contains_key("test-server"));
+        let test_server = mcp_servers.get("test-server").unwrap().as_object().unwrap();
+        assert_eq!(
+            test_server.get("command").unwrap().as_str().unwrap(),
+            "echo"
+        );
+        assert_eq!(
+            test_server.get("args").unwrap().as_array().unwrap()[0]
+                .as_str()
+                .unwrap(),
+            "hello"
+        );
+
+        let perms_val = parsed.get("permissions").unwrap().as_object().unwrap();
+        assert!(perms_val.contains_key("ask"));
+    }
+}
+
 impl Emitter for CursorEmitter {
     fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
         let mut map = HashMap::new();
@@ -230,6 +297,87 @@ impl Emitter for AgentSkillsEmitter {
                 }
             }
         }
+        Ok(map)
+    }
+}
+
+pub struct ClaudeSettingsEmitter;
+
+impl Emitter for ClaudeSettingsEmitter {
+    fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
+        let mut mcp_servers = HashMap::new();
+        let mut hooks = HashMap::new();
+        let mut extra = HashMap::new();
+
+        for entity in &doc.entities {
+            match entity {
+                crate::Entity::Rule(_) | crate::Entity::Skill(_) | crate::Entity::Agent(_) => {
+                    if strict {
+                        return Err(anyhow::anyhow!(
+                            "Lossy conversion: Rule/Skill/Agent to ClaudeSettings drops metadata"
+                        ));
+                    } else {
+                        eprintln!("Warning: Lossy conversion: Rule/Skill/Agent to ClaudeSettings drops metadata");
+                    }
+                }
+                Entity::McpServer(mcp) => {
+                    mcp_servers.insert(
+                        mcp.metadata.name.clone(),
+                        ClaudeMcpConfig {
+                            command: &mcp.config.command,
+                            args: &mcp.config.args,
+                            env: &mcp.config.env,
+                        },
+                    );
+                }
+                Entity::Hook(hook) => {
+                    for (k, v) in &hook.metadata.extra {
+                        hooks.insert(k.clone(), v.clone());
+                    }
+                }
+                Entity::Permissions(perms) => {
+                    for (k, v) in &perms.metadata.extra {
+                        extra.insert(k.clone(), v.clone());
+                    }
+                }
+            }
+        }
+
+        let mut map = HashMap::new();
+
+        if mcp_servers.is_empty() && hooks.is_empty() && extra.is_empty() {
+            return Ok(map);
+        }
+
+        #[derive(serde::Serialize)]
+        struct ClaudeMcpConfig<'a> {
+            command: &'a String,
+            #[serde(skip_serializing_if = "Vec::is_empty")]
+            args: &'a Vec<String>,
+            #[serde(skip_serializing_if = "HashMap::is_empty")]
+            env: &'a HashMap<String, String>,
+        }
+
+        #[derive(serde::Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct ClaudeSettingsFile<'a> {
+            #[serde(skip_serializing_if = "HashMap::is_empty")]
+            mcp_servers: HashMap<String, ClaudeMcpConfig<'a>>,
+            #[serde(skip_serializing_if = "HashMap::is_empty")]
+            hooks: HashMap<String, serde_json::Value>,
+            #[serde(flatten)]
+            extra: HashMap<String, serde_json::Value>,
+        }
+
+        let settings = ClaudeSettingsFile {
+            mcp_servers,
+            hooks,
+            extra,
+        };
+
+        let content = serde_json::to_string_pretty(&settings)?;
+        map.insert(PathBuf::from("settings.json"), content);
+
         Ok(map)
     }
 }
