@@ -239,6 +239,7 @@ impl Emitter for AgentSkillsEmitter {
                     }
                 }
                 Entity::Skill(skill) => {
+                    skill.metadata.validate()?;
                     let mut content = String::new();
                     content.push_str("---\n");
                     content.push_str(&serde_yaml::to_string(&skill.metadata).unwrap());
