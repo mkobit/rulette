@@ -137,22 +137,42 @@ fn parse_agent_skills(input: &str, filename: Option<&str>) -> Result<Skill> {
             license: Option<String>,
             compatibility: Option<String>,
             #[serde(rename = "allowed-tools")]
-            allowed_tools: Option<String>,
+            allowed_tools: Option<serde_yaml::Value>,
             #[serde(flatten)]
             extra: HashMap<String, serde_json::Value>,
         }
-        if let Ok(parsed_fm) = serde_yaml::from_str::<FmParse>(fm) {
-            if let Some(name) = parsed_fm.name {
-                metadata.name = name;
+        match serde_yaml::from_str::<FmParse>(fm) {
+            Ok(parsed_fm) => {
+                if let Some(name) = parsed_fm.name {
+                    metadata.name = name;
+                }
+                if let Some(desc) = parsed_fm.description {
+                    metadata.description = desc;
+                }
+                metadata.version = parsed_fm.version;
+                metadata.license = parsed_fm.license;
+                metadata.compatibility = parsed_fm.compatibility;
+                if let Some(at) = parsed_fm.allowed_tools {
+                    metadata.allowed_tools = Some(match at {
+                        serde_yaml::Value::String(s) => s,
+                        serde_yaml::Value::Sequence(seq) => {
+                            let strings: Vec<String> = seq
+                                .into_iter()
+                                .filter_map(|v| v.as_str().map(|s| format!("\"{}\"", s)))
+                                .collect();
+                            format!("[{}]", strings.join(", "))
+                        }
+                        _ => serde_yaml::to_string(&at)
+                            .unwrap_or_default()
+                            .trim()
+                            .to_string(),
+                    });
+                }
+                metadata.extra = parsed_fm.extra;
             }
-            if let Some(desc) = parsed_fm.description {
-                metadata.description = desc;
+            Err(e) => {
+                eprintln!("Warning: Failed to parse agent-skills frontmatter: {}", e);
             }
-            metadata.version = parsed_fm.version;
-            metadata.license = parsed_fm.license;
-            metadata.compatibility = parsed_fm.compatibility;
-            metadata.allowed_tools = parsed_fm.allowed_tools;
-            metadata.extra = parsed_fm.extra;
         }
     }
     if metadata.name == "unnamed-skill" {

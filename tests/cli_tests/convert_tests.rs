@@ -79,8 +79,14 @@ fn test_round_trip_preserves_semantics() {
     let output_json = serde_json::to_string_pretty(&output_doc).unwrap();
 
     assert_eq!(
-        original_json.replace("\r\n", "\n").replace("\\r\\n", "\\n").replace("\\r", "\\n"),
-        output_json.replace("\r\n", "\n").replace("\\r\\n", "\\n").replace("\\r", "\\n"),
+        original_json
+            .replace("\r\n", "\n")
+            .replace("\\r\\n", "\\n")
+            .replace("\\r", "\\n"),
+        output_json
+            .replace("\r\n", "\n")
+            .replace("\\r\\n", "\\n")
+            .replace("\\r", "\\n"),
         "IR semantic mismatch after round trip"
     );
 }
