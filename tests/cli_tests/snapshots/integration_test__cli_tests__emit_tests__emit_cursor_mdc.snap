@@ -2,13 +2,6 @@
 source: tests/cli_tests/emit_tests.rs
 expression: "emit_to_format(\"cursor-mdc\")"
 ---
---- example_skill.mdc ---
----
-description: An example skill
----
-# Example Skill
-
-This is the content of the example skill.
 --- example_rule.mdc ---
 ---
 description: An example rule
@@ -16,3 +9,10 @@ description: An example rule
 # Example Rule
 
 This is the content of the example rule.
+--- example_skill.mdc ---
+---
+description: An example skill
+---
+# Example Skill
+
+This is the content of the example skill.

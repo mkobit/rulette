@@ -2,6 +2,14 @@
 source: tests/cli_tests/emit_tests.rs
 expression: "emit_to_format(\"agent-skills\")"
 ---
+--- example_rule.skill.md ---
+---
+name: example_rule
+description: An example rule
+---
+# Example Rule
+
+This is the content of the example rule.
 --- example_skill.skill.md ---
 ---
 name: example_skill
@@ -12,11 +20,3 @@ license: MIT
 # Example Skill
 
 This is the content of the example skill.
---- example_rule.skill.md ---
----
-name: example_rule
-description: An example rule
----
-# Example Rule
-
-This is the content of the example rule.

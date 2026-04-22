@@ -195,7 +195,11 @@ impl EmitArgs {
         for (target, output_map) in generated_outputs {
             let base_path = resolve_output_path(&target.format, &self.scope, target.path.as_ref());
 
-            for (rel_path, content) in &output_map {
+            let mut sorted_paths: Vec<_> = output_map.keys().collect();
+            sorted_paths.sort();
+
+            for rel_path in sorted_paths {
+                let content = &output_map[rel_path];
                 let final_path = if let Some(ref base) = base_path {
                     let mut p = base.clone();
                     if p.is_dir() || p.extension().is_none() || output_map.len() > 1 {
