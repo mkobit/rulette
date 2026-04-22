@@ -28,14 +28,6 @@ pub struct EmitArgs {
     /// Output scope: project (default) or user
     #[arg(long, default_value = "project")]
     pub scope: String,
-
-    /// Merge multiple rules into a single output file
-    #[arg(long)]
-    pub merge: bool,
-
-    /// Split into one file per rule (default for directory output)
-    #[arg(long)]
-    pub split: bool,
 }
 
 pub fn resolve_output_path(

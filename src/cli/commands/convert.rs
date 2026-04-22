@@ -34,10 +34,6 @@ pub struct ConvertArgs {
     #[arg(long, default_value = "project")]
     pub scope: String,
 
-    /// Merge multiple rules into a single output file
-    #[arg(long)]
-    pub merge: bool,
-
     /// Override name metadata for parsed entities
     #[arg(long)]
     pub name: Option<String>,
