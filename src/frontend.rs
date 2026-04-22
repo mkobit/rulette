@@ -17,15 +17,14 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
                 }
                 if input.contains("\"permissions\"")
                     || input.contains("\"allowManagedPermissionRulesOnly\"")
+                    || input.contains("\"hooks\"")
+                    || input.contains("\"enabledMcpjsonServers\"")
                 {
                     return Ok(RuletteDocument {
                         entities: parse_claude_settings(input)?,
                     });
                 }
                 if input.contains("\"mcpServers\"") {
-                    if let Ok(entities) = parse_claude_settings(input) {
-                        return Ok(RuletteDocument { entities });
-                    }
                     return Ok(RuletteDocument {
                         entities: parse_cursor_mcp(input)?,
                     });
@@ -543,6 +542,54 @@ mod tests {
             }
             _ => panic!("Expected McpServer entity"),
         }
+    }
+
+    #[test]
+    fn test_parse_claude_settings_mcp_and_hooks() {
+        let json = r#"{
+            "mcpServers": {
+                "filesystem": {
+                    "command": "npx",
+                    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/user/project"],
+                    "env": {}
+                }
+            },
+            "hooks": {
+                "PreToolUse": [
+                    {
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": "python3 script.py"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }"#;
+
+        let doc = parse(json, InputFormat::Auto, None).unwrap();
+        assert_eq!(doc.entities.len(), 2);
+
+        let mut has_mcp = false;
+        let mut has_hooks = false;
+
+        for entity in doc.entities {
+            match entity {
+                Entity::McpServer(mcp) => {
+                    assert_eq!(mcp.metadata.name, "filesystem");
+                    has_mcp = true;
+                }
+                Entity::Hook(hook) => {
+                    assert_eq!(hook.metadata.name, "PreToolUse");
+                    has_hooks = true;
+                }
+                _ => panic!("Expected McpServer or Hook entity"),
+            }
+        }
+
+        assert!(has_mcp);
+        assert!(has_hooks);
     }
 
     #[test]
