@@ -1,0 +1,26 @@
+---
+source: tests/cli_tests/emit_tests.rs
+expression: "emit_to_format(\"ir-json\")"
+---
+{
+  "entities": [
+    {
+      "kind": "skill",
+      "metadata": {
+        "name": "example_skill",
+        "description": "An example skill",
+        "version": "1.0.0",
+        "license": "MIT"
+      },
+      "body": "# Example Skill\n\nThis is the content of the example skill."
+    },
+    {
+      "kind": "rule",
+      "metadata": {
+        "description": "An example rule",
+        "name": "example_rule"
+      },
+      "body": "# Example Rule\n\nThis is the content of the example rule."
+    }
+  ]
+}

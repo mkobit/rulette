@@ -1,0 +1,11 @@
+---
+source: tests/cli_tests/emit_tests.rs
+expression: "emit_to_format(\"claude\")"
+---
+# Example Skill
+
+This is the content of the example skill.
+
+# Example Rule
+
+This is the content of the example rule.
