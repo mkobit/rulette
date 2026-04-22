@@ -85,8 +85,6 @@ Emit IR (from stdin or files) to a target format
 * `--scope <SCOPE>` — Output scope: project (default) or user
 
   Default value: `project`
-* `--merge` — Merge multiple rules into a single output file
-* `--split` — Split into one file per rule (default for directory output)
 
 
 
@@ -118,7 +116,6 @@ Parse input and emit to a target format in one step
 * `--scope <SCOPE>` — Output scope: project (default) or user
 
   Default value: `project`
-* `--merge` — Merge multiple rules into a single output file
 * `--name <NAME>` — Override name metadata for parsed entities
 * `--description <DESCRIPTION>` — Override description metadata for parsed entities
 
