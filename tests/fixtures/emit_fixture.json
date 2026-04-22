@@ -1,0 +1,22 @@
+{
+  "entities": [
+    {
+      "kind": "skill",
+      "metadata": {
+        "name": "example_skill",
+        "description": "An example skill",
+        "version": "1.0.0",
+        "license": "MIT"
+      },
+      "body": "# Example Skill\n\nThis is the content of the example skill."
+    },
+    {
+      "kind": "rule",
+      "metadata": {
+        "name": "example_rule",
+        "description": "An example rule"
+      },
+      "body": "# Example Rule\n\nThis is the content of the example rule."
+    }
+  ]
+}
