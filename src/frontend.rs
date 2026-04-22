@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result<RuletteDocument> {
+    tracing::info!("Parsing input as format: {:?}", format);
     let entities = match format {
         InputFormat::Auto => {
             if input.trim_start().starts_with('{') {

@@ -13,6 +13,11 @@ pub struct AgentSkillsEmitter;
 
 impl Emitter for ClaudeEmitter {
     fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
+        tracing::debug!(
+            "Emitting document with {} entities (strict={})",
+            doc.entities.len(),
+            strict
+        );
         let mut rules_output = String::new();
         for entity in &doc.entities {
             match entity {
@@ -130,6 +135,11 @@ mod tests {
 
 impl Emitter for CursorEmitter {
     fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
+        tracing::debug!(
+            "Emitting document with {} entities (strict={})",
+            doc.entities.len(),
+            strict
+        );
         let mut map = HashMap::new();
         for (i, entity) in doc.entities.iter().enumerate() {
             match entity {
@@ -223,6 +233,11 @@ impl Emitter for CursorEmitter {
 
 impl Emitter for AgentSkillsEmitter {
     fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
+        tracing::debug!(
+            "Emitting document with {} entities (strict={})",
+            doc.entities.len(),
+            strict
+        );
         let mut map = HashMap::new();
         for entity in &doc.entities {
             match entity {
@@ -306,6 +321,11 @@ pub struct ClaudeSettingsEmitter;
 
 impl Emitter for ClaudeSettingsEmitter {
     fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
+        tracing::debug!(
+            "Emitting document with {} entities (strict={})",
+            doc.entities.len(),
+            strict
+        );
         let mut mcp_servers = HashMap::new();
         let mut hooks = HashMap::new();
         let mut extra = HashMap::new();
@@ -389,6 +409,11 @@ pub struct GeminiEmitter;
 
 impl Emitter for CopilotEmitter {
     fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
+        tracing::debug!(
+            "Emitting document with {} entities (strict={})",
+            doc.entities.len(),
+            strict
+        );
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
@@ -435,6 +460,11 @@ impl Emitter for CopilotEmitter {
 
 impl Emitter for WindsurfEmitter {
     fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
+        tracing::debug!(
+            "Emitting document with {} entities (strict={})",
+            doc.entities.len(),
+            strict
+        );
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
@@ -483,6 +513,11 @@ impl Emitter for WindsurfEmitter {
 
 impl Emitter for GeminiEmitter {
     fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
+        tracing::debug!(
+            "Emitting document with {} entities (strict={})",
+            doc.entities.len(),
+            strict
+        );
         let mut output = String::new();
         let mut map = HashMap::new();
         for entity in &doc.entities {
@@ -581,6 +616,11 @@ impl Emitter for GeminiEmitter {
 pub struct CodexEmitter;
 impl Emitter for CodexEmitter {
     fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
+        tracing::debug!(
+            "Emitting document with {} entities (strict={})",
+            doc.entities.len(),
+            strict
+        );
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
