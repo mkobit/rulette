@@ -68,7 +68,10 @@ fn test_transform_rename() {
 
     let skill_1 = &entities[0];
     assert!(skill_1["metadata"].get("rename_me").is_none());
-    assert_eq!(skill_1["metadata"]["renamed_key"].as_str().unwrap(), "old_value");
+    assert_eq!(
+        skill_1["metadata"]["renamed_key"].as_str().unwrap(),
+        "old_value"
+    );
 }
 
 #[test]
