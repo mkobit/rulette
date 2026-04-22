@@ -1,0 +1,22 @@
+---
+source: tests/cli_tests/emit_tests.rs
+expression: "emit_to_format(\"agent-skills\")"
+---
+--- example-rule.skill.md ---
+---
+name: example-rule
+description: An example rule
+---
+# Example Rule
+
+This is the content of the example rule.
+--- example-skill.skill.md ---
+---
+name: example-skill
+description: An example skill
+version: 1.0.0
+license: MIT
+---
+# Example Skill
+
+This is the content of the example skill.

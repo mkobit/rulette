@@ -1,6 +1,6 @@
 use crate::backend::{
-    AgentSkillsEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter, CursorEmitter, Emitter,
-    GeminiEmitter, WindsurfEmitter,
+    AgentSkillsEmitter, ClaudeEmitter, ClaudeSettingsEmitter, CodexEmitter, CopilotEmitter,
+    CursorEmitter, Emitter, GeminiEmitter, WindsurfEmitter,
 };
 use crate::cli::formats::{InputFormat, OutputFormat};
 use crate::cli::io::read_inputs;
@@ -66,6 +66,7 @@ impl InspectArgs {
                     map.insert(PathBuf::from("ir.toml"), toml::to_string(&doc)?);
                     map
                 }
+                OutputFormat::ClaudeSettings => ClaudeSettingsEmitter.emit(&doc, strict)?,
             };
 
             println!("\n--- Survived Output ---");

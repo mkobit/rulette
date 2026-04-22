@@ -12,7 +12,6 @@ This document contains the help content for the `rulette` command-line program.
 * [`rulette schema`↴](#rulette-schema)
 * [`rulette transform`↴](#rulette-transform)
 
-
 ## `rulette`
 
 Stateless CLI tool for transforming AI rules and skills across systems
@@ -55,7 +54,7 @@ Parse one or more input files (or stdin) into the Rulette IR
 
   Default value: `auto`
 
-  Possible values: `auto`, `skill-md`, `agent-skills`, `claude`, `cursor-mdc`, `cursor-legacy`, `cursor-mcp`, `codex`, `windsurf`, `copilot`, `gemini`, `ir-json`, `ir-toml`
+  Possible values: `auto`, `skill-md`, `agent-skills`, `claude`, `claude-settings`, `cursor-mdc`, `cursor-legacy`, `cursor-mcp`, `codex`, `windsurf`, `copilot`, `gemini`, `ir-json`, `ir-toml`
 
 * `-o`, `--out <OUT>` — Write output to file instead of stdout
 * `--strict` — Fail on parse warnings
@@ -68,7 +67,7 @@ Parse one or more input files (or stdin) into the Rulette IR
 
 Emit IR (from stdin or files) to a target format
 
-**Usage:** `rulette emit [OPTIONS] --to <TO> [INPUT]...`
+**Usage:** `rulette emit [OPTIONS] [INPUT]...`
 
 ###### **Arguments:**
 
@@ -80,14 +79,12 @@ Emit IR (from stdin or files) to a target format
 
 * `-t`, `--to <TO>` — Target output format
 
-  Possible values: `claude`, `cursor-mdc`, `codex`, `windsurf`, `copilot`, `gemini`, `agent-skills`, `ir-json`, `ir-toml`
+  Possible values: `claude`, `claude-settings`, `cursor-mdc`, `codex`, `windsurf`, `copilot`, `gemini`, `agent-skills`, `ir-json`, `ir-toml`
 
-* `-o`, `--out <OUT>` — Output path (file or directory)
+* `-o`, `--out <OUT>` — Output path (file or directory) or multiple targets via format:path
 * `--scope <SCOPE>` — Output scope: project (default) or user
 
   Default value: `project`
-* `--merge` — Merge multiple rules into a single output file
-* `--split` — Split into one file per rule (default for directory output)
 
 
 
@@ -95,7 +92,7 @@ Emit IR (from stdin or files) to a target format
 
 Parse input and emit to a target format in one step
 
-**Usage:** `rulette convert [OPTIONS] --to <TO> [INPUT]...`
+**Usage:** `rulette convert [OPTIONS] [INPUT]...`
 
 ###### **Arguments:**
 
@@ -109,17 +106,16 @@ Parse input and emit to a target format in one step
 
   Default value: `auto`
 
-  Possible values: `auto`, `skill-md`, `agent-skills`, `claude`, `cursor-mdc`, `cursor-legacy`, `cursor-mcp`, `codex`, `windsurf`, `copilot`, `gemini`, `ir-json`, `ir-toml`
+  Possible values: `auto`, `skill-md`, `agent-skills`, `claude`, `claude-settings`, `cursor-mdc`, `cursor-legacy`, `cursor-mcp`, `codex`, `windsurf`, `copilot`, `gemini`, `ir-json`, `ir-toml`
 
 * `--to <TO>` — Target output format
 
-  Possible values: `claude`, `cursor-mdc`, `codex`, `windsurf`, `copilot`, `gemini`, `agent-skills`, `ir-json`, `ir-toml`
+  Possible values: `claude`, `claude-settings`, `cursor-mdc`, `codex`, `windsurf`, `copilot`, `gemini`, `agent-skills`, `ir-json`, `ir-toml`
 
-* `-o`, `--out <OUT>` — Output path (file or directory)
+* `-o`, `--out <OUT>` — Output path (file or directory) or multiple targets via format:path
 * `--scope <SCOPE>` — Output scope: project (default) or user
 
   Default value: `project`
-* `--merge` — Merge multiple rules into a single output file
 * `--name <NAME>` — Override name metadata for parsed entities
 * `--description <DESCRIPTION>` — Override description metadata for parsed entities
 
@@ -141,7 +137,7 @@ Pretty-print the IR for debugging
 
 * `-t`, `--target <TARGET>` — Target format to dry-run emission and show lossy conversion warnings
 
-  Possible values: `claude`, `cursor-mdc`, `codex`, `windsurf`, `copilot`, `gemini`, `agent-skills`, `ir-json`, `ir-toml`
+  Possible values: `claude`, `claude-settings`, `cursor-mdc`, `codex`, `windsurf`, `copilot`, `gemini`, `agent-skills`, `ir-json`, `ir-toml`
 
 
 
@@ -181,7 +177,6 @@ Apply transformations to IR (v0.1.1)
 * `--config <CONFIG>` — Load transform pipeline from TOML file
 * `--dedup` — Remove duplicate entities
 * `-o`, `--out <OUT>` — Target output format (currently only IrJson is fully supported here)
-
 
 
 

@@ -6,7 +6,8 @@
       "Bash(gh pr:*)",
       "Bash(git fetch:*)",
       "Bash(git checkout:*)",
-      "Bash(git rebase:*)"
+      "Bash(git rebase:*)",
+      "Bash(jules session *)"
     ]
   }
 }

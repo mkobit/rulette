@@ -19,6 +19,21 @@ fn test_claude_skill_parsing() {
 }
 
 #[test]
+fn test_agent_skills_invalid_name_length() {
+    let mut cmd = Command::cargo_bin("rulette").unwrap();
+    let assert = cmd
+        .arg("parse")
+        .arg("tests/fixtures/agent-skills/invalid-name-length.skill.md")
+        .arg("--from")
+        .arg("agent-skills")
+        .assert()
+        .failure();
+
+    let output = str::from_utf8(&assert.get_output().stderr).unwrap();
+    assert!(output.contains("name length must be between 1 and 64 characters"));
+}
+
+#[test]
 fn test_agent_skills_parsing() {
     let mut cmd = Command::cargo_bin("rulette").unwrap();
     let assert = cmd
