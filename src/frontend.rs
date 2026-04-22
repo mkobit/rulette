@@ -154,18 +154,18 @@ fn parse_agent_skills(input: &str, filename: Option<&str>) -> Result<Skill> {
                 metadata.compatibility = parsed_fm.compatibility;
                 if let Some(at) = parsed_fm.allowed_tools {
                     metadata.allowed_tools = Some(match at {
-                        serde_yaml::Value::String(s) => s,
+                        serde_yaml::Value::String(s) => {
+                            if serde_json::from_str::<serde_json::Value>(&s).is_ok() {
+                                s
+                            } else {
+                                serde_json::to_string(&s).unwrap_or(s)
+                            }
+                        },
                         serde_yaml::Value::Sequence(seq) => {
-                            let strings: Vec<String> = seq
-                                .into_iter()
-                                .filter_map(|v| v.as_str().map(|s| format!("\"{}\"", s)))
-                                .collect();
-                            format!("[{}]", strings.join(", "))
+                            let json_val = serde_json::to_value(seq).unwrap_or(serde_json::Value::Null);
+                            serde_json::to_string(&json_val).unwrap_or_default()
                         }
-                        _ => serde_yaml::to_string(&at)
-                            .unwrap_or_default()
-                            .trim()
-                            .to_string(),
+                        _ => serde_json::to_string(&at).unwrap_or_default(),
                     });
                 }
                 metadata.extra = parsed_fm.extra;
