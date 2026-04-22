@@ -5,10 +5,7 @@ use rulette::cli::{Cli, Commands};
 use tracing_subscriber::EnvFilter;
 
 fn init_tracing(log_level: &Option<String>) {
-    let level = match log_level.as_deref() {
-        Some(lvl) => lvl,
-        None => "warn",
-    };
+    let level = log_level.as_deref().unwrap_or("warn");
 
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level));
 
