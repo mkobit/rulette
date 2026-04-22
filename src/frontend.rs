@@ -32,7 +32,10 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
             }
             if input.starts_with("---\n") {
                 if input.contains("name:") && input.contains("description:") {
-                    vec![Entity::Skill(parse_agent_skills(input, filename)?)]
+                    match parse_agent_skills(input, filename) {
+                        Ok(skill) => vec![Entity::Skill(skill)],
+                        Err(_) => vec![Entity::Rule(parse_cursor_mdc(input, filename)?)]
+                    }
                 } else {
                     vec![Entity::Rule(parse_cursor_mdc(input, filename)?)]
                 }
@@ -185,6 +188,8 @@ fn parse_agent_skills(input: &str, filename: Option<&str>) -> Result<Skill> {
             metadata.description = desc;
         }
     }
+
+    metadata.validate()?;
 
     Ok(Skill {
         metadata,
