@@ -167,7 +167,7 @@ impl Emitter for CursorEmitter {
                         description: rule.metadata.description.as_ref(),
                         extra,
                     };
-                    content.push_str(&serde_yaml::to_string(&meta).unwrap());
+                    content.push_str(&serde_yaml::to_string(&meta)?);
                     content.push_str("---\n");
                     content.push_str(&rule.body);
 
@@ -217,7 +217,7 @@ impl Emitter for CursorEmitter {
                         description: &skill.metadata.description,
                         extra,
                     };
-                    let yaml = serde_yaml::to_string(&meta).unwrap();
+                    let yaml = serde_yaml::to_string(&meta)?;
                     content.push_str(&yaml);
                     content.push_str("---\n");
                     content.push_str(&skill.body);
@@ -257,7 +257,7 @@ impl Emitter for AgentSkillsEmitter {
                     skill.metadata.validate()?;
                     let mut content = String::new();
                     content.push_str("---\n");
-                    content.push_str(&serde_yaml::to_string(&skill.metadata).unwrap());
+                    content.push_str(&serde_yaml::to_string(&skill.metadata)?);
                     content.push_str("---\n");
                     content.push_str(&skill.body);
                     map.insert(
@@ -306,7 +306,7 @@ impl Emitter for AgentSkillsEmitter {
                         description,
                         extra,
                     };
-                    content.push_str(&serde_yaml::to_string(&meta).unwrap());
+                    content.push_str(&serde_yaml::to_string(&meta)?);
                     content.push_str("---\n");
                     content.push_str(&rule.body);
                     map.insert(PathBuf::from(format!("{}.skill.md", name_val)), content);

@@ -26,7 +26,7 @@ pub struct SkillMetadata {
     pub metadata: HashMap<String, String>,
 
     #[serde(rename = "allowed-tools", skip_serializing_if = "Option::is_none")]
-    pub allowed_tools: Option<String>,
+    pub allowed_tools: Option<serde_json::Value>,
 
     #[serde(flatten)]
     #[serde(skip_serializing_if = "HashMap::is_empty")]
@@ -125,7 +125,9 @@ mod tests {
                 map.insert("author".to_string(), "example-org".to_string());
                 map
             },
-            allowed_tools: Some("Bash(git:*) Bash(jq:*) Read".to_string()),
+            allowed_tools: Some(serde_json::Value::String(
+                "Bash(git:*) Bash(jq:*) Read".to_string(),
+            )),
             extra: HashMap::new(),
         };
 
