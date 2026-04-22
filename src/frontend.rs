@@ -17,14 +17,15 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
                 }
                 if input.contains("\"permissions\"")
                     || input.contains("\"allowManagedPermissionRulesOnly\"")
-                    || input.contains("\"hooks\"")
-                    || input.contains("\"enabledMcpjsonServers\"")
                 {
                     return Ok(RuletteDocument {
                         entities: parse_claude_settings(input)?,
                     });
                 }
                 if input.contains("\"mcpServers\"") {
+                    if let Ok(entities) = parse_claude_settings(input) {
+                        return Ok(RuletteDocument { entities });
+                    }
                     return Ok(RuletteDocument {
                         entities: parse_cursor_mcp(input)?,
                     });

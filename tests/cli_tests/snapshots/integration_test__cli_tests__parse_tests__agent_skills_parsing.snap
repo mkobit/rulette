@@ -1,6 +1,5 @@
 ---
 source: tests/cli_tests/parse_tests.rs
-assertion_line: 34
 expression: normalized_output
 ---
 {
