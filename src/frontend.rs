@@ -160,9 +160,10 @@ fn parse_agent_skills(input: &str, filename: Option<&str>) -> Result<Skill> {
                             } else {
                                 serde_json::to_string(&s).unwrap_or(s)
                             }
-                        },
+                        }
                         serde_yaml::Value::Sequence(seq) => {
-                            let json_val = serde_json::to_value(seq).unwrap_or(serde_json::Value::Null);
+                            let json_val =
+                                serde_json::to_value(seq).unwrap_or(serde_json::Value::Null);
                             serde_json::to_string(&json_val).unwrap_or_default()
                         }
                         _ => serde_json::to_string(&at).unwrap_or_default(),
