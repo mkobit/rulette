@@ -80,7 +80,9 @@ fn test_round_trip_preserves_semantics() {
 
     // Ignore formatting differences and test key aspects
     assert!(output_json.contains("\"name\": \"file-system-operations\""));
-    assert!(output_json.contains("\"description\": \"Perform basic file system operations safely\""));
+    assert!(
+        output_json.contains("\"description\": \"Perform basic file system operations safely\"")
+    );
     assert!(output_json.contains("\"version\": \"1.0.0\""));
     assert!(output_json.contains("\"compatibility\": \"agent-skills-1.0\""));
 }
