@@ -10,7 +10,7 @@ body = """
 This is the content of the example skill."""
 
 [entities.metadata]
-name = "example_skill"
+name = "example-skill"
 description = "An example skill"
 version = "1.0.0"
 license = "MIT"
@@ -24,4 +24,4 @@ This is the content of the example rule."""
 
 [entities.metadata]
 description = "An example rule"
-name = "example_rule"
+name = "example-rule"

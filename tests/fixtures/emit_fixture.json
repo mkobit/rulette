@@ -3,7 +3,7 @@
     {
       "kind": "skill",
       "metadata": {
-        "name": "example_skill",
+        "name": "example-skill",
         "description": "An example skill",
         "version": "1.0.0",
         "license": "MIT"
@@ -13,7 +13,7 @@
     {
       "kind": "rule",
       "metadata": {
-        "name": "example_rule",
+        "name": "example-rule",
         "description": "An example rule"
       },
       "body": "# Example Rule\n\nThis is the content of the example rule."
