@@ -663,7 +663,12 @@ mod tests_gemini {
         let content = emitted.get(&filename).unwrap();
 
         // Use parse_gemini for the round trip back to Entity::Agent
-        let parsed_doc = crate::frontend::parse(content, crate::cli::formats::InputFormat::Gemini, Some("test-agent")).unwrap();
+        let parsed_doc = crate::frontend::parse(
+            content,
+            crate::cli::formats::InputFormat::Gemini,
+            Some("test-agent"),
+        )
+        .unwrap();
         assert_eq!(parsed_doc.entities.len(), 1);
 
         let parsed_agent = match &parsed_doc.entities[0] {
@@ -673,15 +678,36 @@ mod tests_gemini {
 
         // Assert structural equality with the original agent
         assert_eq!(parsed_agent.metadata.name, agent_inner.metadata.name);
-        assert_eq!(parsed_agent.metadata.description, agent_inner.metadata.description);
-        assert_eq!(parsed_agent.metadata.agent_tools, agent_inner.metadata.agent_tools);
+        assert_eq!(
+            parsed_agent.metadata.description,
+            agent_inner.metadata.description
+        );
+        assert_eq!(
+            parsed_agent.metadata.agent_tools,
+            agent_inner.metadata.agent_tools
+        );
         assert_eq!(parsed_agent.metadata.models, agent_inner.metadata.models);
 
         // Assert the extra map correctly restored `kind` and `temperature` fields
-        assert_eq!(parsed_agent.metadata.extra.get("kind"), agent_inner.metadata.extra.get("kind"));
         assert_eq!(
-            parsed_agent.metadata.extra.get("temperature").unwrap().as_f64().unwrap(),
-            agent_inner.metadata.extra.get("temperature").unwrap().as_f64().unwrap()
+            parsed_agent.metadata.extra.get("kind"),
+            agent_inner.metadata.extra.get("kind")
+        );
+        assert_eq!(
+            parsed_agent
+                .metadata
+                .extra
+                .get("temperature")
+                .unwrap()
+                .as_f64()
+                .unwrap(),
+            agent_inner
+                .metadata
+                .extra
+                .get("temperature")
+                .unwrap()
+                .as_f64()
+                .unwrap()
         );
         assert_eq!(parsed_agent.body, agent_inner.body);
     }
