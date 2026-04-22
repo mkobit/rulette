@@ -1,0 +1,20 @@
+{
+  "entities": [
+    {
+      "kind": "skill",
+      "metadata": {
+        "name": "test-skill-1",
+        "description": "desc 1"
+      },
+      "body": "content 1"
+    },
+    {
+      "kind": "skill",
+      "metadata": {
+        "name": "test-skill-1",
+        "description": "desc 1"
+      },
+      "body": "content 1"
+    }
+  ]
+}
