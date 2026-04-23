@@ -1,5 +1,5 @@
 use crate::backend::{
-    AgentSkillsEmitter, ClaudeEmitter, ClaudeSettingsEmitter, CodexEmitter, CopilotEmitter,
+    AgentSkillsEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter,
     CursorEmitter, Emitter, GeminiEmitter, WindsurfEmitter,
 };
 use crate::cli::commands::emit::resolve_output_path;
@@ -71,7 +71,6 @@ pub fn parse_targets(
 
             let format_opt = match format_str {
                 "claude" => Some(OutputFormat::Claude),
-                "claude-settings" => Some(OutputFormat::ClaudeSettings),
                 "cursor-mdc" => Some(OutputFormat::CursorMdc),
                 "codex" => Some(OutputFormat::Codex),
                 "windsurf" => Some(OutputFormat::Windsurf),
@@ -191,7 +190,6 @@ impl ConvertArgs {
                     map.insert(PathBuf::from("ir.toml"), toml::to_string(&doc)?);
                     map
                 }
-                OutputFormat::ClaudeSettings => ClaudeSettingsEmitter.emit(&doc, strict)?,
             };
 
             generated_outputs.push((target, output_map));
