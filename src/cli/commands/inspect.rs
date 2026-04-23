@@ -1,6 +1,6 @@
 use crate::backend::{
-    AgentSkillsEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter,
-    CursorEmitter, Emitter, GeminiEmitter, WindsurfEmitter,
+    AgentSkillsEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter, CursorEmitter, Emitter,
+    GeminiEmitter, WindsurfEmitter,
 };
 use crate::cli::formats::{InputFormat, OutputFormat};
 use crate::cli::io::read_inputs;

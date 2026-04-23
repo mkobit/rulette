@@ -53,7 +53,9 @@ impl Emitter for ClaudeEmitter {
                             "Lossy conversion: Agent to Claude format drops metadata"
                         ));
                     } else {
-                        eprintln!("Warning: Lossy conversion: Agent to Claude format drops metadata");
+                        eprintln!(
+                            "Warning: Lossy conversion: Agent to Claude format drops metadata"
+                        );
                     }
                 }
                 Entity::McpServer(mcp) => {
@@ -371,7 +373,6 @@ impl Emitter for AgentSkillsEmitter {
         Ok(map)
     }
 }
-
 
 pub struct CopilotEmitter;
 pub struct WindsurfEmitter;
