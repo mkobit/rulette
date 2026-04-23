@@ -137,3 +137,118 @@ fn test_transform_chained_filter_set() {
     assert_eq!(entity["metadata"]["name"].as_str().unwrap(), "test-skill-2");
     assert_eq!(entity["metadata"]["injected"].as_str().unwrap(), "true");
 }
+
+#[test]
+fn test_transform_dedup_conflict_error() {
+    let mut cmd = Command::cargo_bin("rulette").unwrap();
+    cmd.arg("transform")
+        .arg("--dedup")
+        .arg("--on-conflict")
+        .arg("error")
+        .arg("-");
+
+    // Two skills with the same name but different descriptions
+    let input = r#"
+    {
+      "entities": [
+        {
+          "kind": "skill",
+          "metadata": {
+            "name": "pdf-processing",
+            "description": "Desc 1"
+          },
+          "body": "Body 1"
+        },
+        {
+          "kind": "skill",
+          "metadata": {
+            "name": "pdf-processing",
+            "description": "Desc 2"
+          },
+          "body": "Body 2"
+        }
+      ]
+    }
+    "#;
+
+    cmd.write_stdin(input)
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains("Conflict detected for entity 'pdf-processing'"));
+}
+
+#[test]
+fn test_transform_dedup_conflict_take_first() {
+    let mut cmd = Command::cargo_bin("rulette").unwrap();
+    cmd.arg("transform")
+        .arg("--dedup")
+        .arg("--on-conflict")
+        .arg("take-first")
+        .arg("-");
+
+    let input = r#"
+    {
+      "entities": [
+        {
+          "kind": "skill",
+          "metadata": {
+            "name": "pdf-processing",
+            "description": "Desc 1"
+          },
+          "body": "Body 1"
+        },
+        {
+          "kind": "skill",
+          "metadata": {
+            "name": "pdf-processing",
+            "description": "Desc 2"
+          },
+          "body": "Body 2"
+        }
+      ]
+    }
+    "#;
+
+    let output = cmd.write_stdin(input).assert().success().get_output().stdout.clone();
+    let out_str = String::from_utf8(output).unwrap();
+    assert!(out_str.contains("Desc 1"));
+    assert!(!out_str.contains("Desc 2"));
+}
+
+#[test]
+fn test_transform_dedup_conflict_take_last() {
+    let mut cmd = Command::cargo_bin("rulette").unwrap();
+    cmd.arg("transform")
+        .arg("--dedup")
+        .arg("--on-conflict")
+        .arg("take-last")
+        .arg("-");
+
+    let input = r#"
+    {
+      "entities": [
+        {
+          "kind": "skill",
+          "metadata": {
+            "name": "pdf-processing",
+            "description": "Desc 1"
+          },
+          "body": "Body 1"
+        },
+        {
+          "kind": "skill",
+          "metadata": {
+            "name": "pdf-processing",
+            "description": "Desc 2"
+          },
+          "body": "Body 2"
+        }
+      ]
+    }
+    "#;
+
+    let output = cmd.write_stdin(input).assert().success().get_output().stdout.clone();
+    let out_str = String::from_utf8(output).unwrap();
+    assert!(!out_str.contains("Desc 1"));
+    assert!(out_str.contains("Desc 2"));
+}
