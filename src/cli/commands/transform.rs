@@ -1,7 +1,6 @@
 use clap::Args;
 use serde::Deserialize;
 
-
 use crate::cli::formats::InputFormat;
 use crate::cli::io::read_inputs;
 use crate::{Entity, RuletteDocument};
@@ -219,7 +218,8 @@ impl TransformArgs {
         if run_dedup {
             let mut result_entities = vec![];
             // map from identity to index in result_entities
-            let mut seen: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+            let mut seen: std::collections::HashMap<String, usize> =
+                std::collections::HashMap::new();
 
             for entity in combined_entities.into_iter() {
                 let identity = match &entity {
@@ -250,7 +250,8 @@ impl TransformArgs {
                     let existing_entity = &result_entities[index];
 
                     let new_val = serde_json::to_value(&entity).unwrap_or(serde_json::Value::Null);
-                    let existing_val = serde_json::to_value(existing_entity).unwrap_or(serde_json::Value::Null);
+                    let existing_val =
+                        serde_json::to_value(existing_entity).unwrap_or(serde_json::Value::Null);
 
                     if new_val != existing_val {
                         // Conflict!

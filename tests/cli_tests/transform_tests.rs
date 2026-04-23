@@ -174,7 +174,9 @@ fn test_transform_dedup_conflict_error() {
     cmd.write_stdin(input)
         .assert()
         .failure()
-        .stderr(predicates::str::contains("Conflict detected for entity 'pdf-processing'"));
+        .stderr(predicates::str::contains(
+            "Conflict detected for entity 'pdf-processing'",
+        ));
 }
 
 #[test]
@@ -209,7 +211,13 @@ fn test_transform_dedup_conflict_take_first() {
     }
     "#;
 
-    let output = cmd.write_stdin(input).assert().success().get_output().stdout.clone();
+    let output = cmd
+        .write_stdin(input)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
     let out_str = String::from_utf8(output).unwrap();
     assert!(out_str.contains("Desc 1"));
     assert!(!out_str.contains("Desc 2"));
@@ -247,7 +255,13 @@ fn test_transform_dedup_conflict_take_last() {
     }
     "#;
 
-    let output = cmd.write_stdin(input).assert().success().get_output().stdout.clone();
+    let output = cmd
+        .write_stdin(input)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
     let out_str = String::from_utf8(output).unwrap();
     assert!(!out_str.contains("Desc 1"));
     assert!(out_str.contains("Desc 2"));
