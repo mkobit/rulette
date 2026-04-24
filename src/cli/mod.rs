@@ -40,4 +40,7 @@ pub enum Commands {
 
     /// Apply transformations to IR (v0.1.1)
     Transform(commands::transform::TransformArgs),
+
+    /// Fetch rules from a remote source
+    Fetch(commands::fetch::FetchArgs),
 }

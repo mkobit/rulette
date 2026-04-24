@@ -11,6 +11,7 @@ This document contains the help content for the `rulette` command-line program.
 * [`rulette inspect`↴](#rulette-inspect)
 * [`rulette schema`↴](#rulette-schema)
 * [`rulette transform`↴](#rulette-transform)
+* [`rulette fetch`↴](#rulette-fetch)
 
 ## `rulette`
 
@@ -26,6 +27,7 @@ Stateless CLI tool for transforming AI rules and skills across systems
 * `inspect` — Pretty-print the IR for debugging
 * `schema` — Output JSON Schema for the IR or a specific target format
 * `transform` — Apply transformations to IR (v0.1.1)
+* `fetch` — Fetch rules from a remote source
 
 ###### **Options:**
 
@@ -177,6 +179,29 @@ Apply transformations to IR (v0.1.1)
 * `--config <CONFIG>` — Load transform pipeline from TOML file
 * `--dedup` — Remove duplicate entities
 * `-o`, `--out <OUT>` — Target output format (currently only IrJson is fully supported here)
+
+
+
+## `rulette fetch`
+
+Fetch rules from a remote source
+
+**Usage:** `rulette fetch [OPTIONS] <SOURCE>`
+
+###### **Arguments:**
+
+* `<SOURCE>` — Remote source URL to fetch rules or skills from
+
+###### **Options:**
+
+* `--allow-mutable` — Allow mutable fetched content without verification
+* `--no-verify` — Disable integrity verification (must be used with --allow-mutable)
+* `--lockfile <LOCKFILE>` — Lockfile to verify against (default: rules.lock)
+
+  Default value: `rules.lock`
+* `-o`, `--out <OUT>` — Output path (file) to save the fetched content (or "-" for stdout)
+
+  Default value: `-`
 
 
 
