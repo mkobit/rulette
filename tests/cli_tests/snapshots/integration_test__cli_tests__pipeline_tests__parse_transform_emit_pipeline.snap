@@ -1,0 +1,37 @@
+---
+source: tests/cli_tests/pipeline_tests.rs
+assertion_line: 121
+expression: normalized_output
+---
+{
+  "entities": [
+    {
+      "kind": "permissions",
+      "metadata": {
+        "permissions": {
+          "allowManagedPermissionRulesOnly": true
+        }
+      }
+    },
+    {
+      "body": "# Awesome Skill\nThis is an awesome skill.\n",
+      "kind": "skill",
+      "metadata": {
+        "description": "An awesome skill",
+        "license": "MIT",
+        "name": "awesome-skill",
+        "pipeline_processed": "true",
+        "version": "1.0.0"
+      }
+    },
+    {
+      "body": "# Basic Rule\nThis is a basic rule.\n",
+      "kind": "skill",
+      "metadata": {
+        "description": "A basic rule",
+        "name": "basic-rule",
+        "pipeline_processed": "true"
+      }
+    }
+  ]
+}
