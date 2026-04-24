@@ -1,7 +1,7 @@
-use clap::Args;
 use anyhow::Result;
-use ureq;
+use clap::Args;
 use std::fs;
+use ureq;
 #[derive(Args, Debug)]
 pub struct FetchArgs {
     /// Remote source URL to fetch rules or skills from
