@@ -21,7 +21,6 @@ pub enum InputFormat {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
 pub enum OutputFormat {
     Claude,
-    ClaudeSettings,
     CursorMdc,
     Codex,
     Windsurf,
