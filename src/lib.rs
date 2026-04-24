@@ -11,7 +11,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ActivationMode {
     Always,
@@ -21,7 +21,7 @@ pub enum ActivationMode {
     Model,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
 pub struct Activation {
     pub mode: Vec<ActivationMode>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -32,7 +32,7 @@ pub struct Activation {
     pub description: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema, Eq)]
 pub enum HookEventKind {
     PreToolUse,
     PostToolUse,
@@ -41,7 +41,7 @@ pub enum HookEventKind {
     SubagentStop,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct HookEvent {
     pub event: HookEventKind,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -50,7 +50,7 @@ pub struct HookEvent {
     pub command: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ToolAccessRule {
     pub tool: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -59,12 +59,12 @@ pub struct ToolAccessRule {
     pub action: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RuletteDocument {
     pub entities: Vec<Entity>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind")]
 pub enum Entity {
     #[serde(rename = "rule")]
@@ -81,13 +81,13 @@ pub enum Entity {
     Permissions(Permissions),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct McpServer {
     pub metadata: McpServerMetadata,
     pub config: McpServerConfig,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct McpServerMetadata {
     pub name: String,
     #[serde(flatten)]
@@ -95,7 +95,7 @@ pub struct McpServerMetadata {
     pub extra: HashMap<String, serde_json::Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct McpServerConfig {
     pub command: String,
     #[serde(default)]
@@ -104,13 +104,13 @@ pub struct McpServerConfig {
     pub env: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Rule {
     pub metadata: RuleMetadata,
     pub body: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
 pub struct RuleMetadata {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
@@ -122,12 +122,12 @@ pub struct RuleMetadata {
     pub extra: HashMap<String, serde_json::Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Hook {
     pub metadata: HookMetadata,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct HookMetadata {
     pub name: String,
     #[serde(rename = "rulette:hook-event", skip_serializing_if = "Option::is_none")]
@@ -136,13 +136,13 @@ pub struct HookMetadata {
     pub extra: HashMap<String, serde_json::Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Agent {
     pub metadata: AgentMetadata,
     pub body: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AgentMetadata {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -163,12 +163,12 @@ pub struct AgentMetadata {
     pub extra: HashMap<String, serde_json::Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Permissions {
     pub metadata: PermissionsMetadata,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct PermissionsMetadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,

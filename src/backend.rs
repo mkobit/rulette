@@ -132,7 +132,7 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn test_claude_settings_emitter() {
+    fn test_claude_settings_and_rules_emitter() {
         let mcp = Entity::McpServer(McpServer {
             metadata: McpServerMetadata {
                 name: "test-server".to_string(),
@@ -161,12 +161,17 @@ mod tests {
             },
         });
 
+        let rule = Entity::Rule(crate::Rule {
+            metadata: crate::RuleMetadata::default(),
+            body: "Be helpful.".to_string(),
+        });
+
         let doc = crate::RuletteDocument {
-            entities: vec![mcp, perms],
+            entities: vec![mcp, perms, rule],
         };
 
         let map = ClaudeEmitter.emit(&doc, false).unwrap();
-        assert_eq!(map.len(), 1);
+        assert_eq!(map.len(), 2);
 
         let content = map.get(&PathBuf::from("settings.json")).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(content).unwrap();
@@ -187,6 +192,9 @@ mod tests {
 
         let perms_val = parsed.get("permissions").unwrap().as_object().unwrap();
         assert!(perms_val.contains_key("ask"));
+
+        let rule_content = map.get(&PathBuf::from("CLAUDE.md")).unwrap();
+        assert_eq!(rule_content, "Be helpful.");
     }
 }
 

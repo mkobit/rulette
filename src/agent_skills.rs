@@ -2,13 +2,13 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Skill {
     pub metadata: SkillMetadata,
     pub body: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct SkillMetadata {
     pub name: String,
     pub description: String,
@@ -33,7 +33,7 @@ pub struct SkillMetadata {
     pub extra: HashMap<String, serde_json::Value>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Debug, Clone, Eq)]
 pub enum ValidationError {
     InvalidNameLength,
     InvalidNameCharacters,
