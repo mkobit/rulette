@@ -4,3 +4,4 @@ pub mod inspect;
 pub mod parse;
 pub mod schema;
 pub mod transform;
+pub mod fetch;
