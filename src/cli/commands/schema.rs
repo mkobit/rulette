@@ -9,7 +9,6 @@ pub struct SchemaArgs {
 }
 
 impl SchemaArgs {
-
     pub fn execute(&self) -> anyhow::Result<()> {
         let schema = match self.format.as_str() {
             "ir" => schema_for!(crate::RuletteDocument),

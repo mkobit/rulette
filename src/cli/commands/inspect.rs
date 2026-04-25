@@ -21,7 +21,6 @@ pub struct InspectArgs {
 }
 
 impl InspectArgs {
-
     pub fn execute(&self, strict: bool) -> anyhow::Result<()> {
         let mut combined_entities = vec![];
 

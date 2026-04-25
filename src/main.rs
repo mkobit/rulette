@@ -4,7 +4,6 @@ use rulette::cli::{Cli, Commands};
 
 use tracing_subscriber::EnvFilter;
 
-
 fn init_tracing(log_level: &Option<String>) {
     let level = log_level.as_deref().unwrap_or("warn");
 
@@ -15,7 +14,6 @@ fn init_tracing(log_level: &Option<String>) {
         .with_writer(std::io::stderr)
         .init();
 }
-
 
 fn main() -> Result<()> {
     let args = Cli::parse();

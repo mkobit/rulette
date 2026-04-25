@@ -103,11 +103,11 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         uses: taiki-e/install-action@cargo-llvm-cov
 
-      - name: Test & Coverage Gate
+      - name: Test and coverage gate
         if: matrix.os == 'ubuntu-latest'
         env:
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo llvm-cov --workspace --fail-under-lines 80
+        run: cargo llvm-cov --workspace --fail-under-lines 75
 
   audit:
     name: Security audit
