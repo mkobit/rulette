@@ -2,6 +2,27 @@ use assert_cmd::Command;
 use insta::assert_snapshot;
 use std::str;
 
+fn normalize_json_newlines(val: &mut serde_json::Value) {
+    match val {
+        serde_json::Value::String(s) => {
+            *s = s.replace("
+", "
+");
+        }
+        serde_json::Value::Array(arr) => {
+            for v in arr {
+                normalize_json_newlines(v);
+            }
+        }
+        serde_json::Value::Object(obj) => {
+            for v in obj.values_mut() {
+                normalize_json_newlines(v);
+            }
+        }
+        _ => {}
+    }
+}
+
 #[test]
 fn test_e2e_parse_conductor_fixture() {
     let fixture_dir = std::env::var("FIXTURE_CONDUCTOR_DIR")
@@ -18,7 +39,8 @@ fn test_e2e_parse_conductor_fixture() {
     let output = str::from_utf8(&assert.get_output().stdout).unwrap();
 
     // Sort entities to ensure deterministic snapshot
-    let json: serde_json::Value = serde_json::from_str(output).unwrap();
+    let mut json: serde_json::Value = serde_json::from_str(output).unwrap();
+    normalize_json_newlines(&mut json);
     let mut entities = json.get("entities").unwrap().as_array().unwrap().clone();
     entities.sort_by(|a, b| {
         let name_a = a
@@ -93,7 +115,8 @@ fn test_e2e_parse_and_transform_agency_agents_fixture() {
     let _ = transform_child.wait();
 
     let output_str = str::from_utf8(&output.stdout).unwrap();
-    let json: serde_json::Value = serde_json::from_str(output_str).unwrap();
+    let mut json: serde_json::Value = serde_json::from_str(output_str).unwrap();
+    normalize_json_newlines(&mut json);
     let mut entities = json.get("entities").unwrap().as_array().unwrap().clone();
 
     entities.sort_by(|a, b| {
