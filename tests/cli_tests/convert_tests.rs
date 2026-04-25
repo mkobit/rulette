@@ -4,7 +4,8 @@ use tempfile::tempdir;
 
 #[test]
 fn test_multiple_target_outputs_with_claude_fixture() {
-    let fixture_dir = env!("FIXTURE_CLAUDE_CODE_DIR");
+    let fixture_dir = std::env::var("FIXTURE_CLAUDE_CODE_DIR")
+        .unwrap_or_else(|_| env!("FIXTURE_CLAUDE_CODE_DIR").to_string());
     let temp_dir = tempdir().unwrap();
 
     let json_output_path = temp_dir.path().join("rules.json");

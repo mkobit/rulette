@@ -28,25 +28,60 @@ pub fn read_inputs(paths: &[String]) -> anyhow::Result<Vec<InputFile>> {
             for entry in WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
                 let p = entry.path();
                 if p.is_file() {
-                    if let Some("md" | "mdc" | "json" | "toml" | "yaml" | "yml") =
-                        p.extension().and_then(|s| s.to_str())
-                    {
-                        let content = fs::read_to_string(p)?;
+                    let file_name = p.file_name().and_then(|s| s.to_str()).unwrap_or("");
+                    let is_supported = match p.extension().and_then(|s| s.to_str()) {
+                        Some("md" | "mdc" | "json" | "toml" | "yaml" | "yml") => true,
+                        _ => matches!(file_name, ".cursorrules" | ".windsurfrules"),
+                    };
+
+                    if is_supported {
+                        let file_content = fs::read_to_string(p)?;
                         tracing::debug!("Read file: {}", p.to_string_lossy());
                         results.push(InputFile {
-                            content,
+                            content: file_content,
                             filename: Some(p.to_string_lossy().into_owned()),
                         });
                     }
                 }
             }
         } else {
-            let content = fs::read_to_string(path)?;
-            tracing::debug!("Read file: {}", path.to_string_lossy());
-            results.push(InputFile {
-                content,
-                filename: Some(path.to_string_lossy().into_owned()),
-            });
+            let path_str_lower = path_str.to_lowercase();
+            if path_str_lower.ends_with(".tar.gz") || path_str_lower.ends_with(".tgz") || path_str_lower.ends_with(".tar") {
+                let file = fs::File::open(path)?;
+                let mut archive: tar::Archive<Box<dyn Read>> = if path_str_lower.ends_with(".tar") {
+                    tar::Archive::new(Box::new(file))
+                } else {
+                    tar::Archive::new(Box::new(flate2::read::GzDecoder::new(file)))
+                };
+
+                for entry_result in archive.entries()? {
+                    let mut entry = entry_result?;
+                    let entry_path = entry.path()?.into_owned();
+                    let file_name = entry_path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+                    let is_supported = match entry_path.extension().and_then(|s| s.to_str()) {
+                        Some("md" | "mdc" | "json" | "toml" | "yaml" | "yml") => true,
+                        _ => matches!(file_name, ".cursorrules" | ".windsurfrules"),
+                    };
+
+                    if entry.header().entry_type().is_file() && is_supported {
+                        let mut file_content = String::new();
+                        entry.read_to_string(&mut file_content)?;
+                        let extracted_filename = format!("{}/{}", path_str, entry_path.to_string_lossy());
+                        tracing::debug!("Read file from archive: {}", extracted_filename);
+                        results.push(InputFile {
+                            content: file_content,
+                            filename: Some(extracted_filename),
+                        });
+                    }
+                }
+            } else {
+                let content = fs::read_to_string(path)?;
+                tracing::debug!("Read file: {}", path.to_string_lossy());
+                results.push(InputFile {
+                    content,
+                    filename: Some(path.to_string_lossy().into_owned()),
+                });
+            }
         }
     }
 
@@ -85,5 +120,48 @@ mod tests {
         contents.sort();
 
         assert_eq!(contents, vec!["content 1", "content 2", "content 3"]);
+    }
+}
+
+#[cfg(test)]
+mod archive_tests {
+    use super::*;
+    use flate2::write::GzEncoder;
+    use flate2::Compression;
+    use std::fs::File;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_read_inputs_tar_gz() {
+        let temp_dir = tempdir().unwrap();
+        let archive_path = temp_dir.path().join("test.tar.gz");
+
+        let tar_gz = File::create(&archive_path).unwrap();
+        let enc = GzEncoder::new(tar_gz, Compression::default());
+        let mut builder = tar::Builder::new(enc);
+
+        let mut header1 = tar::Header::new_gnu();
+        let content1 = b"# Rule 1
+content";
+        header1.set_size(content1.len() as u64);
+        header1.set_mode(0o644);
+        header1.set_cksum();
+        builder.append_data(&mut header1, "rule1.md", &content1[..]).unwrap();
+
+        let mut header2 = tar::Header::new_gnu();
+        let content2 = b"ignored content";
+        header2.set_size(content2.len() as u64);
+        header2.set_mode(0o644);
+        header2.set_cksum();
+        builder.append_data(&mut header2, "ignored.txt", &content2[..]).unwrap();
+
+        builder.into_inner().unwrap().finish().unwrap();
+
+        let paths = vec![archive_path.to_string_lossy().into_owned()];
+        let results = read_inputs(&paths).unwrap();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].content, "# Rule 1\ncontent");
+        assert!(results[0].filename.as_ref().unwrap().contains("rule1.md"));
     }
 }

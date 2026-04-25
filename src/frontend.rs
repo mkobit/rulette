@@ -391,12 +391,15 @@ fn extract_description_from_body(body: &str) -> Option<String> {
         let trimmed = line.trim();
         if !trimmed.is_empty() && !trimmed.starts_with('#') && !trimmed.starts_with("---") {
             // Take first non-empty, non-heading line
-            // Limit to 100 chars
-            let truncated = if trimmed.len() > 100 {
-                &trimmed[..100]
-            } else {
-                trimmed
-            };
+            // Limit to 100 chars, ensuring char boundaries
+            let mut end_idx = 0;
+            for (i, c) in trimmed.char_indices() {
+                if i >= 100 {
+                    break;
+                }
+                end_idx = i + c.len_utf8();
+            }
+            let truncated = &trimmed[..end_idx];
             return Some(truncated.to_string());
         }
     }
