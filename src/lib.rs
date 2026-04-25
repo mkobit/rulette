@@ -61,7 +61,22 @@ pub struct ToolAccessRule {
 
 #[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RuletteDocument {
+    #[serde(default = "default_ir_version")]
+    pub ir_version: String,
     pub entities: Vec<Entity>,
+}
+
+fn default_ir_version() -> String {
+    "0.1".to_string()
+}
+
+impl Default for RuletteDocument {
+    fn default() -> Self {
+        Self {
+            ir_version: "0.1".to_string(),
+            entities: Vec::new(),
+        }
+    }
 }
 
 #[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]

@@ -35,6 +35,7 @@ impl InspectArgs {
         }
 
         let doc = crate::RuletteDocument {
+            ir_version: "0.1".to_string(),
             entities: combined_entities,
         };
 

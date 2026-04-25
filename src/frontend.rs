@@ -9,29 +9,35 @@ use std::path::Path;
 
 pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result<RuletteDocument> {
     tracing::info!("Parsing input as format: {:?}", format);
-    let entities = match format {
+    match format {
         InputFormat::Auto => {
             if input.trim_start().starts_with('{') {
-                if let Ok(doc) = serde_json::from_str::<RuletteDocument>(input) {
+                if let Ok(mut doc) = serde_json::from_str::<RuletteDocument>(input) {
+                    doc.ir_version = "0.1".to_string();
                     return Ok(doc);
                 }
                 if input.contains("\"permissions\"")
                     || input.contains("\"allowManagedPermissionRulesOnly\"")
                 {
                     return Ok(RuletteDocument {
+                        ir_version: "0.1".to_string(),
                         entities: parse_claude_settings(input)?,
                     });
                 }
                 if input.contains("\"mcpServers\"") {
                     if let Ok(entities) = parse_claude_settings(input) {
-                        return Ok(RuletteDocument { entities });
+                        return Ok(RuletteDocument {
+                            ir_version: "0.1".to_string(),
+                            entities,
+                        });
                     }
                     return Ok(RuletteDocument {
+                        ir_version: "0.1".to_string(),
                         entities: parse_cursor_mcp(input)?,
                     });
                 }
             }
-            if input.starts_with("---\n") || input.starts_with("---\r\n") {
+            let entities = if input.starts_with("---\n") || input.starts_with("---\r\n") {
                 if input.contains("name:") && input.contains("description:") {
                     match parse_agent_skills(input, filename) {
                         Ok(skill) => vec![Entity::Skill(skill)],
@@ -42,33 +48,46 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
                 }
             } else {
                 vec![Entity::Rule(parse_claude(input, filename)?)]
-            }
+            };
+            Ok(RuletteDocument {
+                ir_version: "0.1".to_string(),
+                entities,
+            })
         }
         InputFormat::IrJson => {
-            let doc: RuletteDocument = serde_json::from_str(input)?;
-            return Ok(doc);
+            let mut doc: RuletteDocument = serde_json::from_str(input)?;
+            doc.ir_version = "0.1".to_string();
+            Ok(doc)
         }
         InputFormat::IrToml => {
-            let doc: RuletteDocument = toml::from_str(input)?;
-            return Ok(doc);
+            let mut doc: RuletteDocument = toml::from_str(input)?;
+            doc.ir_version = "0.1".to_string();
+            Ok(doc)
         }
-        InputFormat::SkillMd | InputFormat::AgentSkills => {
-            vec![Entity::Skill(parse_agent_skills(input, filename)?)]
+        _ => {
+            let entities = match format {
+                InputFormat::SkillMd | InputFormat::AgentSkills => {
+                    vec![Entity::Skill(parse_agent_skills(input, filename)?)]
+                }
+                InputFormat::CursorMdc => vec![Entity::Rule(parse_cursor_mdc(input, filename)?)],
+                InputFormat::CursorMcp => parse_cursor_mcp(input)?,
+                InputFormat::ClaudeSettings => parse_claude_settings(input)?,
+                InputFormat::Claude
+                | InputFormat::Codex
+                | InputFormat::Copilot
+                | InputFormat::Windsurf
+                | InputFormat::CursorLegacy => {
+                    vec![Entity::Rule(parse_claude(input, filename)?)]
+                }
+                InputFormat::Gemini => parse_gemini(input, filename)?,
+                _ => unreachable!(),
+            };
+            Ok(RuletteDocument {
+                ir_version: "0.1".to_string(),
+                entities,
+            })
         }
-        InputFormat::CursorMdc => vec![Entity::Rule(parse_cursor_mdc(input, filename)?)],
-        InputFormat::CursorMcp => parse_cursor_mcp(input)?,
-        InputFormat::ClaudeSettings => parse_claude_settings(input)?,
-        InputFormat::Claude
-        | InputFormat::Codex
-        | InputFormat::Copilot
-        | InputFormat::Windsurf
-        | InputFormat::CursorLegacy => {
-            vec![Entity::Rule(parse_claude(input, filename)?)]
-        }
-        InputFormat::Gemini => parse_gemini(input, filename)?,
-    };
-
-    Ok(RuletteDocument { entities })
+    }
 }
 
 fn parse_gemini(input: &str, filename: Option<&str>) -> Result<Vec<Entity>> {

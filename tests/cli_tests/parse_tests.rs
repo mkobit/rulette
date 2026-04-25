@@ -6,7 +6,7 @@ use std::str;
 fn test_claude_skill_parsing() {
     let mut cmd = Command::cargo_bin("rulette").unwrap();
     let assert = cmd
-        .arg("parse")
+        .arg("transform")
         .arg("tests/fixtures/claude/example.md")
         .arg("--from")
         .arg("claude")
@@ -22,7 +22,7 @@ fn test_claude_skill_parsing() {
 fn test_agent_skills_invalid_name_length() {
     let mut cmd = Command::cargo_bin("rulette").unwrap();
     let assert = cmd
-        .arg("parse")
+        .arg("transform")
         .arg("tests/fixtures/agent-skills/invalid-name-length.skill.md")
         .arg("--from")
         .arg("agent-skills")
@@ -37,7 +37,7 @@ fn test_agent_skills_invalid_name_length() {
 fn test_agent_skills_parsing() {
     let mut cmd = Command::cargo_bin("rulette").unwrap();
     let assert = cmd
-        .arg("parse")
+        .arg("transform")
         .arg("tests/fixtures/agent-skills/example.skill.md")
         .arg("--from")
         .arg("agent-skills")
@@ -53,7 +53,7 @@ fn test_agent_skills_parsing() {
 fn test_codex_parsing() {
     let mut cmd = Command::cargo_bin("rulette").unwrap();
     let assert = cmd
-        .arg("parse")
+        .arg("transform")
         .arg("tests/fixtures/codex/CLAUDE.md")
         .arg("--from")
         .arg("codex")

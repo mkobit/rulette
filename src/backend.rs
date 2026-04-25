@@ -167,6 +167,7 @@ mod tests {
         });
 
         let doc = crate::RuletteDocument {
+            ir_version: "0.1".to_string(),
             entities: vec![mcp, perms, rule],
         };
 
@@ -671,6 +672,7 @@ mod tests_gemini {
         };
 
         let doc = RuletteDocument {
+            ir_version: "0.1".to_string(),
             entities: vec![agent.clone()],
         };
 

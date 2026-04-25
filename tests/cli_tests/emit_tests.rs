@@ -5,7 +5,7 @@ use std::str;
 fn emit_to_format(format: &str) -> String {
     let mut cmd = Command::cargo_bin("rulette").unwrap();
     let assert = cmd
-        .arg("emit")
+        .arg("transform")
         .arg("tests/fixtures/emit_fixture.json")
         .arg("-o")
         .arg(format!("{}:-", format))

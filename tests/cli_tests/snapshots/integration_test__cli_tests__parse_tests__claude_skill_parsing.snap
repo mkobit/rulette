@@ -1,8 +1,10 @@
 ---
 source: tests/cli_tests/parse_tests.rs
-expression: output
+assertion_line: 18
+expression: normalized_output
 ---
 {
+  "ir_version": "0.1",
   "entities": [
     {
       "kind": "rule",

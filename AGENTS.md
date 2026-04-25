@@ -27,5 +27,6 @@ Single files (path or stdin) and tar archives containing multiple files are both
 
 ## Pipeline
 
-Between parsing and emission, the IR passes through an ordered transformation pipeline (filter, map, rename, merge) before reaching any backend.
-New backends are additive and do not affect existing ones.
+Rulette uses a single `transform` command to handle the full lifecycle of AI rules.
+It reads from any source, applies a transformation pipeline (filter, rename, set, dedup), and emits to any target.
+This command replaces the separate parse, convert, and emit verbs with a unified, source-to-sink engine.

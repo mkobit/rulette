@@ -1,7 +1,10 @@
 ---
 source: tests/cli_tests/emit_tests.rs
+assertion_line: 61
 expression: "emit_to_format(\"ir-toml\")"
 ---
+ir_version = "0.1"
+
 [[entities]]
 kind = "skill"
 body = """
