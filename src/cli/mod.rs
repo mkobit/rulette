@@ -30,5 +30,5 @@ pub enum Commands {
     Schema(commands::schema::SchemaArgs),
 
     /// Parse, transform, and emit rules across formats
-    Transform(commands::transform::TransformArgs),
+    Transform(Box<commands::transform::TransformArgs>),
 }
