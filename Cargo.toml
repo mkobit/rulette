@@ -47,3 +47,8 @@ ureq = "3.3.0"
 [[bin]]
 name = "gen_docs"
 path = "src/bin/gen_docs.rs"
+
+
+[workspace.metadata.llvm-cov]
+workspace = true
+fail-under-lines = 75
