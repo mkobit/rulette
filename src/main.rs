@@ -4,7 +4,7 @@ use rulette::cli::{Cli, Commands};
 
 use tracing_subscriber::EnvFilter;
 
-#[cfg_attr(coverage_nightly, coverage(off))]
+
 fn init_tracing(log_level: &Option<String>) {
     let level = log_level.as_deref().unwrap_or("warn");
 
@@ -16,7 +16,7 @@ fn init_tracing(log_level: &Option<String>) {
         .init();
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
+
 fn main() -> Result<()> {
     let args = Cli::parse();
 

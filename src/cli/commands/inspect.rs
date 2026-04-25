@@ -21,7 +21,7 @@ pub struct InspectArgs {
 }
 
 impl InspectArgs {
-    #[cfg_attr(coverage_nightly, coverage(off))]
+
     pub fn execute(&self, strict: bool) -> anyhow::Result<()> {
         let mut combined_entities = vec![];
 

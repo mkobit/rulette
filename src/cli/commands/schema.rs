@@ -9,7 +9,7 @@ pub struct SchemaArgs {
 }
 
 impl SchemaArgs {
-    #[cfg_attr(coverage_nightly, coverage(off))]
+
     pub fn execute(&self) -> anyhow::Result<()> {
         let schema = match self.format.as_str() {
             "ir" => schema_for!(crate::RuletteDocument),
