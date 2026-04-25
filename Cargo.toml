@@ -45,6 +45,9 @@ tempfile = "3.27.0"
 ureq = "3.3.0"
 flate2 = "1.1.9"
 tar = "0.4.45"
+sha2 = "0.10"
+hex = "0.4"
+anyhow = "1.0"
 
 [[bin]]
 name = "gen_docs"

@@ -50,13 +50,29 @@ fn test_agent_skills_parsing() {
 }
 
 #[test]
-fn test_codex_parsing() {
+fn test_cursor_mdc_parsing() {
     let mut cmd = Command::cargo_bin("rulette").unwrap();
     let assert = cmd
         .arg("transform")
-        .arg("tests/fixtures/codex/CLAUDE.md")
+        .arg("tests/fixtures/cursor/example.mdc")
         .arg("--from")
-        .arg("codex")
+        .arg("cursor-mdc")
+        .assert()
+        .success();
+
+    let output = str::from_utf8(&assert.get_output().stdout).unwrap();
+    let normalized_output = output.replace("\r\n", "\n").replace("\\r\\n", "\\n");
+    assert_snapshot!(normalized_output);
+}
+
+#[test]
+fn test_gemini_subagent_parsing() {
+    let mut cmd = Command::cargo_bin("rulette").unwrap();
+    let assert = cmd
+        .arg("transform")
+        .arg("tests/fixtures/gemini/subagent.md")
+        .arg("--from")
+        .arg("gemini")
         .assert()
         .success();
 
