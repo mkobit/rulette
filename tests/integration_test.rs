@@ -1,6 +1,60 @@
 mod cli_tests;
 
 #[cfg(test)]
+mod main_tests {
+    use std::process::Command;
+    use assert_cmd::prelude::*;
+
+    #[test]
+    fn test_main_schema_command() {
+        let mut cmd = Command::cargo_bin("rulette").unwrap();
+        cmd.arg("schema");
+        cmd.assert().success();
+    }
+
+    #[test]
+    fn test_main_inspect_command() {
+        let mut cmd = Command::cargo_bin("rulette").unwrap();
+        cmd.arg("inspect")
+           .arg("-");
+
+        use std::io::Write;
+        let mut child = cmd.stdin(std::process::Stdio::piped())
+                           .spawn()
+                           .unwrap();
+        let mut stdin = child.stdin.take().unwrap();
+        std::thread::spawn(move || {
+            stdin.write_all(b"{\"entities\": []}").unwrap();
+        });
+
+        let output = child.wait_with_output().unwrap();
+        assert!(output.status.success());
+    }
+
+    #[test]
+    fn test_main_inspect_dry_run_command() {
+        let mut cmd = Command::cargo_bin("rulette").unwrap();
+        cmd.arg("inspect")
+           .arg("-")
+           .arg("--target")
+           .arg("claude");
+
+        use std::io::Write;
+        let mut child = cmd.stdin(std::process::Stdio::piped())
+                           .spawn()
+                           .unwrap();
+        let mut stdin = child.stdin.take().unwrap();
+        std::thread::spawn(move || {
+            stdin.write_all(b"{\"entities\": []}").unwrap();
+        });
+
+        let output = child.wait_with_output().unwrap();
+        assert!(output.status.success());
+    }
+}
+
+
+#[cfg(test)]
 mod data_input_tests {
     use std::path::Path;
 
