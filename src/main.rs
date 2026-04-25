@@ -25,5 +25,6 @@ fn main() -> Result<()> {
         Commands::Inspect(args) => args.execute(strict),
         Commands::Schema(args) => args.execute(),
         Commands::Transform(args) => args.execute(strict),
+        Commands::Init(args) => args.execute(),
     }
 }
