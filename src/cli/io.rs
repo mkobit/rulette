@@ -46,7 +46,10 @@ pub fn read_inputs(paths: &[String]) -> anyhow::Result<Vec<InputFile>> {
             }
         } else {
             let path_str_lower = path_str.to_lowercase();
-            if path_str_lower.ends_with(".tar.gz") || path_str_lower.ends_with(".tgz") || path_str_lower.ends_with(".tar") {
+            if path_str_lower.ends_with(".tar.gz")
+                || path_str_lower.ends_with(".tgz")
+                || path_str_lower.ends_with(".tar")
+            {
                 let file = fs::File::open(path)?;
                 let mut archive: tar::Archive<Box<dyn Read>> = if path_str_lower.ends_with(".tar") {
                     tar::Archive::new(Box::new(file))
@@ -57,7 +60,10 @@ pub fn read_inputs(paths: &[String]) -> anyhow::Result<Vec<InputFile>> {
                 for entry_result in archive.entries()? {
                     let mut entry = entry_result?;
                     let entry_path = entry.path()?.into_owned();
-                    let file_name = entry_path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+                    let file_name = entry_path
+                        .file_name()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("");
                     let is_supported = match entry_path.extension().and_then(|s| s.to_str()) {
                         Some("md" | "mdc" | "json" | "toml" | "yaml" | "yml") => true,
                         _ => matches!(file_name, ".cursorrules" | ".windsurfrules"),
@@ -66,7 +72,8 @@ pub fn read_inputs(paths: &[String]) -> anyhow::Result<Vec<InputFile>> {
                     if entry.header().entry_type().is_file() && is_supported {
                         let mut file_content = String::new();
                         entry.read_to_string(&mut file_content)?;
-                        let extracted_filename = format!("{}/{}", path_str, entry_path.to_string_lossy());
+                        let extracted_filename =
+                            format!("{}/{}", path_str, entry_path.to_string_lossy());
                         tracing::debug!("Read file from archive: {}", extracted_filename);
                         results.push(InputFile {
                             content: file_content,
@@ -146,14 +153,18 @@ content";
         header1.set_size(content1.len() as u64);
         header1.set_mode(0o644);
         header1.set_cksum();
-        builder.append_data(&mut header1, "rule1.md", &content1[..]).unwrap();
+        builder
+            .append_data(&mut header1, "rule1.md", &content1[..])
+            .unwrap();
 
         let mut header2 = tar::Header::new_gnu();
         let content2 = b"ignored content";
         header2.set_size(content2.len() as u64);
         header2.set_mode(0o644);
         header2.set_cksum();
-        builder.append_data(&mut header2, "ignored.txt", &content2[..]).unwrap();
+        builder
+            .append_data(&mut header2, "ignored.txt", &content2[..])
+            .unwrap();
 
         builder.into_inner().unwrap().finish().unwrap();
 

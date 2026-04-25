@@ -35,7 +35,10 @@ fn test_e2e_parse_conductor_fixture() {
     });
 
     let sorted_json = serde_json::json!({ "entities": entities });
-    let normalized_output = serde_json::to_string_pretty(&sorted_json).unwrap().replace("\r\n", "\n").replace("\\r\\n", "\\n");
+    let normalized_output = serde_json::to_string_pretty(&sorted_json)
+        .unwrap()
+        .replace("\r\n", "\n")
+        .replace("\\r\\n", "\\n");
 
     // The fixture is real and large, so we just snapshot a portion or the whole thing.
     // For deterministic output, let's snapshot it.
