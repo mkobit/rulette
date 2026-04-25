@@ -6,6 +6,7 @@ pub mod codex;
 pub mod cursor;
 pub mod frontend;
 pub mod gemini;
+pub mod translate;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

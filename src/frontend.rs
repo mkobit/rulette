@@ -18,6 +18,7 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
                 }
                 if input.contains("\"permissions\"")
                     || input.contains("\"allowManagedPermissionRulesOnly\"")
+                    || input.contains("\"hooks\"")
                 {
                     return Ok(RuletteDocument {
                         ir_version: "0.1".to_string(),
@@ -257,14 +258,8 @@ fn parse_cursor_mdc(input: &str, filename: Option<&str>) -> Result<Rule> {
 }
 
 fn parse_claude_settings(input: &str) -> Result<Vec<Entity>> {
-    #[derive(serde::Deserialize)]
-    struct ClaudeMcpConfig {
-        command: String,
-        #[serde(default)]
-        args: Vec<String>,
-        #[serde(default)]
-        env: HashMap<String, String>,
-    }
+    use crate::translate::claude_v1::{ClaudeMcpConfig, ClaudeV1};
+    use crate::translate::Translator;
 
     #[derive(serde::Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -279,34 +274,17 @@ fn parse_claude_settings(input: &str) -> Result<Vec<Entity>> {
 
     let parsed: ClaudeSettingsFile = serde_json::from_str(input)?;
     let mut entities = Vec::new();
+    let translator = ClaudeV1;
 
     if let Some(mcp_servers) = parsed.mcp_servers {
         for (name, config) in mcp_servers {
-            entities.push(Entity::McpServer(McpServer {
-                metadata: McpServerMetadata {
-                    name,
-                    extra: HashMap::new(),
-                },
-                config: McpServerConfig {
-                    command: config.command,
-                    args: config.args,
-                    env: config.env,
-                },
-            }));
+            entities.push(Entity::McpServer(translator.translate_mcp(&name, &config)?));
         }
     }
 
     if let Some(hooks) = parsed.hooks {
         for (name, hook_data) in hooks {
-            let mut extra = HashMap::new();
-            extra.insert(name.clone(), hook_data);
-            entities.push(Entity::Hook(crate::Hook {
-                metadata: crate::HookMetadata {
-                    name,
-                    hook_event: None,
-                    extra,
-                },
-            }));
+            entities.push(Entity::Hook(translator.translate_hook(&name, &hook_data)?));
         }
     }
 
