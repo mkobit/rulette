@@ -23,24 +23,12 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Parse one or more input files (or stdin) into the Rulette IR
-    Parse(commands::parse::ParseArgs),
-
-    /// Emit IR (from stdin or files) to a target format
-    Emit(commands::emit::EmitArgs),
-
-    /// Parse input and emit to a target format in one step
-    Convert(commands::convert::ConvertArgs),
-
     /// Pretty-print the IR for debugging
     Inspect(commands::inspect::InspectArgs),
 
     /// Output JSON Schema for the IR or a specific target format
     Schema(commands::schema::SchemaArgs),
 
-    /// Apply transformations to IR (v0.1.1)
-    Transform(commands::transform::TransformArgs),
-
-    /// Fetch rules from a remote source
-    Fetch(commands::fetch::FetchArgs),
+    /// Parse, transform, and emit rules across formats
+    Transform(Box<commands::transform::TransformArgs>),
 }

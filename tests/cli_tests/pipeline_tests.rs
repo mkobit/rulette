@@ -62,7 +62,7 @@ This is a basic rule."#
 
     let mut parse_cmd = StdCommand::new(&cargo_bin);
     parse_cmd
-        .arg("parse")
+        .arg("transform")
         .arg(input_dir.to_str().unwrap())
         .arg("--from")
         .arg("auto")
@@ -87,7 +87,7 @@ This is a basic rule."#
 
     let mut emit_cmd = StdCommand::new(&cargo_bin);
     let output = emit_cmd
-        .arg("emit")
+        .arg("transform")
         .arg("-")
         .arg("-o")
         .arg("ir-json:-")
@@ -150,7 +150,7 @@ Content"#
 
     let mut parse_cmd = StdCommand::new(&cargo_bin);
     let mut parse_child = parse_cmd
-        .arg("parse")
+        .arg("transform")
         .arg(input_dir.to_str().unwrap())
         .stdout(Stdio::piped())
         .spawn()
@@ -172,7 +172,7 @@ Content"#
 
     let mut emit_cmd = StdCommand::new(&cargo_bin);
     let output = emit_cmd
-        .arg("emit")
+        .arg("transform")
         .arg("-")
         .arg("-o")
         .arg(format!("claude:{}", output_dir.display()))

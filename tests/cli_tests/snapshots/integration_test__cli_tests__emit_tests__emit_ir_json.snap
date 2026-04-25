@@ -1,8 +1,10 @@
 ---
 source: tests/cli_tests/emit_tests.rs
+assertion_line: 56
 expression: "emit_to_format(\"ir-json\")"
 ---
 {
+  "ir_version": "0.1",
   "entities": [
     {
       "kind": "skill",

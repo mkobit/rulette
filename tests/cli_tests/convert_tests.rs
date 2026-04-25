@@ -11,7 +11,7 @@ fn test_multiple_target_outputs_with_claude_fixture() {
     let claude_output_dir = temp_dir.path().join(".claude").join("skills");
 
     let mut cmd = Command::cargo_bin("rulette").unwrap();
-    cmd.arg("convert")
+    cmd.arg("transform")
         .arg(fixture_dir)
         .arg("-o")
         .arg(format!("ir-json:{}", json_output_path.display()))
@@ -48,7 +48,7 @@ fn test_round_trip_preserves_semantics() {
 
     // Convert agent-skills to agent-skills
     let mut cmd = Command::cargo_bin("rulette").unwrap();
-    cmd.arg("convert")
+    cmd.arg("transform")
         .arg(original_file)
         .arg("--to")
         .arg("agent-skills")

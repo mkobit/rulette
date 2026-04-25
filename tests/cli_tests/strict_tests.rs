@@ -12,7 +12,7 @@ fn test_rule_to_agent_skills_warning() {
     writeln!(temp_file, "Rule body").unwrap();
 
     let mut cmd = Command::cargo_bin("rulette").unwrap();
-    cmd.arg("convert")
+    cmd.arg("transform")
         .arg(temp_file.path())
         .arg("--to")
         .arg("agent-skills")
@@ -30,7 +30,7 @@ fn test_rule_to_agent_skills_strict_error() {
     writeln!(temp_file, "Rule body").unwrap();
 
     let mut cmd = Command::cargo_bin("rulette").unwrap();
-    cmd.arg("convert")
+    cmd.arg("transform")
         .arg(temp_file.path())
         .arg("--to")
         .arg("agent-skills")
@@ -45,7 +45,7 @@ fn test_skill_to_claude_strict_error() {
     let original_file = "tests/fixtures/agent-skills/example.skill.md";
 
     let mut cmd = Command::cargo_bin("rulette").unwrap();
-    cmd.arg("convert")
+    cmd.arg("transform")
         .arg(original_file)
         .arg("--to")
         .arg("claude")
@@ -59,6 +59,7 @@ fn test_skill_to_claude_strict_error() {
 fn test_lossless_conversion_strict_success() {
     let mut temp_file = NamedTempFile::new().unwrap();
     writeln!(temp_file, "{{").unwrap();
+    writeln!(temp_file, "  \"ir_version\": \"0.1\",").unwrap();
     writeln!(temp_file, "  \"entities\": [").unwrap();
     writeln!(temp_file, "    {{").unwrap();
     writeln!(temp_file, "      \"kind\": \"rule\",").unwrap();
@@ -71,7 +72,7 @@ fn test_lossless_conversion_strict_success() {
     writeln!(temp_file, "}}").unwrap();
 
     let mut cmd = Command::cargo_bin("rulette").unwrap();
-    cmd.arg("convert")
+    cmd.arg("transform")
         .arg(temp_file.path())
         .arg("--from")
         .arg("ir-json")

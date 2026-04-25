@@ -5,13 +5,9 @@ This document contains the help content for the `rulette` command-line program.
 **Command Overview:**
 
 * [`rulette`↴](#rulette)
-* [`rulette parse`↴](#rulette-parse)
-* [`rulette emit`↴](#rulette-emit)
-* [`rulette convert`↴](#rulette-convert)
 * [`rulette inspect`↴](#rulette-inspect)
 * [`rulette schema`↴](#rulette-schema)
 * [`rulette transform`↴](#rulette-transform)
-* [`rulette fetch`↴](#rulette-fetch)
 
 ## `rulette`
 
@@ -21,13 +17,9 @@ Stateless CLI tool for transforming AI rules and skills across systems
 
 ###### **Subcommands:**
 
-* `parse` — Parse one or more input files (or stdin) into the Rulette IR
-* `emit` — Emit IR (from stdin or files) to a target format
-* `convert` — Parse input and emit to a target format in one step
 * `inspect` — Pretty-print the IR for debugging
 * `schema` — Output JSON Schema for the IR or a specific target format
-* `transform` — Apply transformations to IR (v0.1.1)
-* `fetch` — Fetch rules from a remote source
+* `transform` — Parse, transform, and emit rules across formats
 
 ###### **Options:**
 
@@ -35,91 +27,6 @@ Stateless CLI tool for transforming AI rules and skills across systems
 * `--strict` — Fail on warnings (including lossy conversion warnings)
 * `--no-color` — Disable colored output
 * `--log-level <LOG_LEVEL>` — Log verbosity (error, warn, info, debug, trace)
-
-
-
-## `rulette parse`
-
-Parse one or more input files (or stdin) into the Rulette IR
-
-**Usage:** `rulette parse [OPTIONS] [INPUT]...`
-
-###### **Arguments:**
-
-* `<INPUT>` — Input files or directories (or "-" for stdin)
-
-  Default value: `-`
-
-###### **Options:**
-
-* `--from <FROM>` — Force input format detection
-
-  Default value: `auto`
-
-  Possible values: `auto`, `skill-md`, `agent-skills`, `claude`, `claude-settings`, `cursor-mdc`, `cursor-legacy`, `cursor-mcp`, `codex`, `windsurf`, `copilot`, `gemini`, `ir-json`, `ir-toml`
-
-* `-o`, `--out <OUT>` — Write output to file instead of stdout
-* `--strict` — Fail on parse warnings
-* `--name <NAME>` — Override name metadata for parsed entities
-* `--description <DESCRIPTION>` — Override description metadata for parsed entities
-
-
-
-## `rulette emit`
-
-Emit IR (from stdin or files) to a target format
-
-**Usage:** `rulette emit [OPTIONS] [INPUT]...`
-
-###### **Arguments:**
-
-* `<INPUT>` — Input files or directories (or "-" for stdin)
-
-  Default value: `-`
-
-###### **Options:**
-
-* `-t`, `--to <TO>` — Target output format
-
-  Possible values: `claude`, `claude-settings`, `cursor-mdc`, `codex`, `windsurf`, `copilot`, `gemini`, `agent-skills`, `ir-json`, `ir-toml`
-
-* `-o`, `--out <OUT>` — Output path (file or directory) or multiple targets via format:path
-* `--scope <SCOPE>` — Output scope: project (default) or user
-
-  Default value: `project`
-
-
-
-## `rulette convert`
-
-Parse input and emit to a target format in one step
-
-**Usage:** `rulette convert [OPTIONS] [INPUT]...`
-
-###### **Arguments:**
-
-* `<INPUT>` — Input files or directories (or "-" for stdin)
-
-  Default value: `-`
-
-###### **Options:**
-
-* `--from <FROM>` — Source format (auto-detected if omitted)
-
-  Default value: `auto`
-
-  Possible values: `auto`, `skill-md`, `agent-skills`, `claude`, `claude-settings`, `cursor-mdc`, `cursor-legacy`, `cursor-mcp`, `codex`, `windsurf`, `copilot`, `gemini`, `ir-json`, `ir-toml`
-
-* `--to <TO>` — Target output format
-
-  Possible values: `claude`, `claude-settings`, `cursor-mdc`, `codex`, `windsurf`, `copilot`, `gemini`, `agent-skills`, `ir-json`, `ir-toml`
-
-* `-o`, `--out <OUT>` — Output path (file or directory) or multiple targets via format:path
-* `--scope <SCOPE>` — Output scope: project (default) or user
-
-  Default value: `project`
-* `--name <NAME>` — Override name metadata for parsed entities
-* `--description <DESCRIPTION>` — Override description metadata for parsed entities
 
 
 
@@ -139,7 +46,7 @@ Pretty-print the IR for debugging
 
 * `-t`, `--target <TARGET>` — Target format to dry-run emission and show lossy conversion warnings
 
-  Possible values: `claude`, `claude-settings`, `cursor-mdc`, `codex`, `windsurf`, `copilot`, `gemini`, `agent-skills`, `ir-json`, `ir-toml`
+  Possible values: `claude`, `cursor-mdc`, `codex`, `windsurf`, `copilot`, `gemini`, `agent-skills`, `ir-json`, `ir-toml`
 
 
 
@@ -160,7 +67,7 @@ Output JSON Schema for the IR or a specific target format
 
 ## `rulette transform`
 
-Apply transformations to IR (v0.1.1)
+Parse, transform, and emit rules across formats
 
 **Usage:** `rulette transform [OPTIONS] [INPUT]...`
 
@@ -172,36 +79,34 @@ Apply transformations to IR (v0.1.1)
 
 ###### **Options:**
 
+* `--from <FROM>` — Source format (auto-detected if omitted)
+
+  Default value: `auto`
+
+  Possible values: `auto`, `skill-md`, `agent-skills`, `claude`, `claude-settings`, `cursor-mdc`, `cursor-legacy`, `cursor-mcp`, `codex`, `windsurf`, `copilot`, `gemini`, `ir-json`, `ir-toml`
+
+* `--to <TO>` — Target output format
+
+  Possible values: `claude`, `cursor-mdc`, `codex`, `windsurf`, `copilot`, `gemini`, `agent-skills`, `ir-json`, `ir-toml`
+
+* `-o`, `--out <OUT>` — Output path (file or directory) or multiple targets via format:path
+* `--scope <SCOPE>` — Output scope: project (default) or user
+
+  Default value: `project`
+* `--name <NAME>` — Override name metadata for parsed entities
+* `--description <DESCRIPTION>` — Override description metadata for parsed entities
 * `--filter <FILTER>` — Keep only rules matching expression (e.g., 'license == "MIT"')
 * `--exclude <EXCLUDE>` — Remove rules matching expression
 * `--rename <RENAME>` — Rename a metadata field value (from=to)
 * `--set <SET>` — Set a metadata field (field=value)
 * `--config <CONFIG>` — Load transform pipeline from TOML file
 * `--dedup` — Remove duplicate entities
-* `-o`, `--out <OUT>` — Target output format (currently only IrJson is fully supported here)
+* `--on-conflict <ON_CONFLICT>` — How to handle duplicate entities with the same identity but different content
 
+  Default value: `error`
 
+  Possible values: `error`, `take-first`, `take-last`
 
-## `rulette fetch`
-
-Fetch rules from a remote source
-
-**Usage:** `rulette fetch [OPTIONS] <SOURCE>`
-
-###### **Arguments:**
-
-* `<SOURCE>` — Remote source URL to fetch rules or skills from
-
-###### **Options:**
-
-* `--allow-mutable` — Allow mutable fetched content without verification
-* `--no-verify` — Disable integrity verification (must be used with --allow-mutable)
-* `--lockfile <LOCKFILE>` — Lockfile to verify against (default: rules.lock)
-
-  Default value: `rules.lock`
-* `-o`, `--out <OUT>` — Output path (file) to save the fetched content (or "-" for stdout)
-
-  Default value: `-`
 
 
 
@@ -211,3 +116,4 @@ Fetch rules from a remote source
     This document was generated automatically by
     <a href="https://crates.io/crates/clap-markdown"><code>clap-markdown</code></a>.
 </i></small>
+

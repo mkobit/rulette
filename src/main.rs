@@ -22,12 +22,8 @@ fn main() -> Result<()> {
     let strict = args.globals.strict;
 
     match args.command {
-        Commands::Parse(args) => args.execute(),
-        Commands::Emit(args) => args.execute(strict),
-        Commands::Convert(args) => args.execute(strict),
         Commands::Inspect(args) => args.execute(strict),
         Commands::Schema(args) => args.execute(),
-        Commands::Transform(args) => args.execute(),
-        Commands::Fetch(args) => args.execute(),
+        Commands::Transform(args) => args.execute(strict),
     }
 }
