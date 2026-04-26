@@ -62,6 +62,7 @@ Output JSON Schema for the IR or a specific target format
 * `-f`, `--format <FORMAT>` — Format to output schema for (ir, claude, cursor-mdc, etc.)
 
   Default value: `ir`
+* `--extension <EXTENSION>` — Extension key to output schema for (e.g., rulette:activation)
 
 
 
