@@ -200,3 +200,66 @@ Content"#
     let output_str = str::from_utf8(&output.stdout).unwrap();
     assert!(output_str.contains("injected_key = \"injected_val\""));
 }
+
+#[test]
+fn test_claude_hook_roundtrip() {
+    let temp_dir = tempdir().unwrap();
+    let claude_dir = temp_dir.path().join(".claude");
+    fs::create_dir_all(&claude_dir).unwrap();
+    let input_file = claude_dir.join("settings.json");
+    fs::write(
+        &input_file,
+        r#"{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 script.py"
+          }
+        ]
+      }
+    ]
+  }
+}"#,
+    )
+    .unwrap();
+
+    let cargo_bin = assert_cmd::cargo::cargo_bin("rulette");
+
+    // Run transform: .claude/settings.json -> IR -> settings.json
+    let mut cmd = StdCommand::new(&cargo_bin);
+    let output_dir = temp_dir.path().join("output");
+    fs::create_dir_all(&output_dir).unwrap();
+
+    let output = cmd
+        .arg("transform")
+        .arg(temp_dir.path().to_str().unwrap())
+        .arg("--to")
+        .arg("claude")
+        .arg("--out")
+        .arg(output_dir.to_str().unwrap())
+        .output()
+        .expect("Failed to execute rulette");
+
+    assert!(
+        output.status.success(),
+        "Command failed: {}",
+        str::from_utf8(&output.stderr).unwrap()
+    );
+
+    let emitted_settings = output_dir.join("settings.json");
+    assert!(emitted_settings.exists());
+    let settings_content = fs::read_to_string(emitted_settings).unwrap();
+
+    // Verify it preserved the semantic meaning in the output JSON
+    let json: serde_json::Value = serde_json::from_str(&settings_content).unwrap();
+    let hooks = json.get("hooks").unwrap().as_object().unwrap();
+    let pre_tool_use = hooks.get("PreToolUse").unwrap().as_array().unwrap();
+    let first_hook = pre_tool_use[0].get("hooks").unwrap().as_array().unwrap();
+    assert_eq!(
+        first_hook[0].get("command").unwrap().as_str().unwrap(),
+        "python3 script.py"
+    );
+}

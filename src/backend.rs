@@ -69,8 +69,42 @@ impl Emitter for ClaudeEmitter {
                     );
                 }
                 Entity::Hook(hook) => {
-                    for (k, v) in &hook.metadata.extra {
-                        hooks.insert(k.clone(), v.clone());
+                    use crate::HookEventKind;
+                    use serde_json::json;
+
+                    // If we have a semantic event, we can reconstruct the Claude structure
+                    if let Some(event) = &hook.metadata.hook_event {
+                        let name = match event.event {
+                            HookEventKind::PreToolUse => "PreToolUse",
+                            HookEventKind::PostToolUse => "PostToolUse",
+                            HookEventKind::Notification => "Notification",
+                            HookEventKind::Stop => "Stop",
+                            HookEventKind::SubagentStop => "SubagentStop",
+                        };
+
+                        if let Some(cmd) = &event.command {
+                            let hook_val = json!([
+                                {
+                                    "hooks": [
+                                        {
+                                            "type": "command",
+                                            "command": cmd
+                                        }
+                                    ]
+                                }
+                            ]);
+                            hooks.insert(name.to_string(), hook_val);
+                        } else {
+                            // Fallback to extra if no command but has event
+                            for (k, v) in &hook.metadata.extra {
+                                hooks.insert(k.clone(), v.clone());
+                            }
+                        }
+                    } else {
+                        // Passthrough for hooks without semantic mapping
+                        for (k, v) in &hook.metadata.extra {
+                            hooks.insert(k.clone(), v.clone());
+                        }
                     }
                 }
                 Entity::Permissions(perms) => {
