@@ -197,6 +197,12 @@ fn main() {
             repo: "agency-agents",
             sha: "783f6a72bfd7f3135700ac273c619d92821b419a",
         },
+        Fixture {
+            env_name: "FIXTURE_MATTPOCOCK_SKILLS_DIR",
+            owner: "mattpocock",
+            repo: "skills",
+            sha: "90ea8eec03d4ae8f43427aaf6fe4722653561a42",
+        },
     ];
 
     for fixture in fixtures {

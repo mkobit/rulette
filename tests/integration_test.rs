@@ -76,4 +76,14 @@ mod data_input_tests {
             "Agency agents fixture directory should exist"
         );
     }
+
+    #[test]
+    fn test_mattpocock_skills_fixture_is_available() {
+        let dir = env!("FIXTURE_MATTPOCOCK_SKILLS_DIR");
+        let path = Path::new(dir);
+        assert!(
+            path.exists(),
+            "Matt Pocock skills fixture directory should exist"
+        );
+    }
 }
