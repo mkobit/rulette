@@ -20,6 +20,8 @@ walkdir = "2.5.0"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 ureq = "3.3.0"
+flate2 = "1.1.9"
+tar = "0.4.45"
 
 [lib]
 path = "src/lib.rs"
@@ -40,9 +42,9 @@ predicates = "3.1.4"
 tempfile = "3.27.0"
 
 [build-dependencies]
+ureq = "3.3.0"
 flate2 = "1.1.9"
 tar = "0.4.45"
-ureq = "3.3.0"
 
 [[bin]]
 name = "gen_docs"
