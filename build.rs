@@ -235,6 +235,7 @@ fn main() {
             owner: "mattpocock",
             repo: "skills",
             sha: "90ea8eec03d4ae8f43427aaf6fe4722653561a42",
+            sha256: "9f686b788f09d406023393eeb4a823da390c4482a82970adebffd6eaa5e3ba67",
         },
     ];
 
