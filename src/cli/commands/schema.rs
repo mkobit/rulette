@@ -28,11 +28,11 @@ impl SchemaArgs {
 
         let schema = match self.format.as_str() {
             "ir" => schema_for!(crate::RuletteDocument),
-            "claude" => schema_for!(crate::claude::ClaudeSkill),
-            "cursor-mdc" => schema_for!(crate::cursor::CursorSkill),
-            "agent-skills" => schema_for!(crate::agent_skills::Skill),
-            "gemini" => schema_for!(crate::gemini::GeminiSkill),
-            "codex" => schema_for!(crate::codex::CodexSkill),
+            "claude" => schema_for!(crate::formats::claude::ClaudeSkill),
+            "cursor-mdc" => schema_for!(crate::formats::cursor::CursorSkill),
+            "agent-skills" => schema_for!(crate::formats::agent_skills::Skill),
+            "gemini" => schema_for!(crate::formats::gemini::GeminiSkill),
+            "codex" => schema_for!(crate::formats::codex::CodexSkill),
             _ => anyhow::bail!("Unsupported schema format: {}. Try 'ir', 'claude', 'cursor-mdc', 'agent-skills', 'gemini', 'codex'.", self.format),
         };
 

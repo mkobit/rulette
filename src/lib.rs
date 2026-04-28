@@ -1,12 +1,8 @@
-pub mod agent_skills;
 pub mod backend;
-pub mod claude;
+pub mod converters;
 pub mod cli;
-pub mod codex;
-pub mod cursor;
+pub mod formats;
 pub mod frontend;
-pub mod gemini;
-pub mod translate;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -56,7 +52,7 @@ pub struct ToolAccessRule {
     pub tool: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pattern: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(action = "Option::is_none")]
     pub action: Option<String>,
 }
 
@@ -86,7 +82,7 @@ pub enum Entity {
     #[serde(rename = "rule")]
     Rule(Rule),
     #[serde(rename = "skill")]
-    Skill(agent_skills::Skill),
+    Skill(formats::agent_skills::Skill),
     #[serde(rename = "mcp-server")]
     McpServer(McpServer),
     #[serde(rename = "hook")]

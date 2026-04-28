@@ -258,8 +258,8 @@ fn parse_cursor_mdc(input: &str, filename: Option<&str>) -> Result<Rule> {
 }
 
 fn parse_claude_settings(input: &str) -> Result<Vec<Entity>> {
-    use crate::translate::claude_v1::{ClaudeMcpConfig, ClaudeV1};
-    use crate::translate::Translator;
+    use crate::converters::claude_v1::{ClaudeMcpConfig, ClaudeV1};
+    use crate::converters::Converter;
 
     #[derive(serde::Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -274,17 +274,17 @@ fn parse_claude_settings(input: &str) -> Result<Vec<Entity>> {
 
     let parsed: ClaudeSettingsFile = serde_json::from_str(input)?;
     let mut entities = Vec::new();
-    let translator = ClaudeV1;
+    let converter = ClaudeV1;
 
     if let Some(mcp_servers) = parsed.mcp_servers {
         for (name, config) in mcp_servers {
-            entities.push(Entity::McpServer(translator.translate_mcp(&name, &config)?));
+            entities.push(Entity::McpServer(converter.translate_mcp(&name, &config)?));
         }
     }
 
     if let Some(hooks) = parsed.hooks {
         for (name, hook_data) in hooks {
-            entities.push(Entity::Hook(translator.translate_hook(&name, &hook_data)?));
+            entities.push(Entity::Hook(converter.translate_hook(&name, &hook_data)?));
         }
     }
 

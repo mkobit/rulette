@@ -17,7 +17,7 @@ pub struct ClaudeMcpConfig {
     pub env: HashMap<String, String>,
 }
 
-impl Translator for ClaudeV1 {
+impl Converter for ClaudeV1 {
     fn translate_hook(&self, name: &str, data: &serde_json::Value) -> Result<Hook> {
         let mut event = None;
         let kind = match name {
