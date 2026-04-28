@@ -195,6 +195,7 @@ fn download_and_extract(fixture: &Fixture, out_dir: &Path, github_token: Option<
 }
 
 fn main() {
+    // Trivial comment to force CI re-evaluation
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-env-changed=GITHUB_TOKEN");
     println!("cargo:rerun-if-env-changed=GITHUB_API_TOKEN");
