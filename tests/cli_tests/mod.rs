@@ -5,3 +5,5 @@ pub mod parse_tests;
 pub mod pipeline_tests;
 pub mod strict_tests;
 pub mod transform_tests;
+pub mod orchestration_tests;
+pub mod skill_parsing_tests;

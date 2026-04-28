@@ -12,7 +12,7 @@ pub struct InputFile {
 
 fn is_supported_extension(path: &Path) -> bool {
     if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
-        matches!(ext, "md" | "mdc" | "json" | "toml" | "yaml" | "yml")
+        matches!(ext, "md" | "mdc" | "json" | "toml" | "yaml" | "yml" | "sh")
     } else {
         false
     }

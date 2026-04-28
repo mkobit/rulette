@@ -1,0 +1,8 @@
+---
+description: Experimental UI rules for next-gen framework
+status: experimental
+---
+# Experimental UI Rules
+
+- Use the new `<Sparkle />` component for all buttons.
+- Animation duration must be exactly 42ms.
