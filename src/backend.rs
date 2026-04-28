@@ -569,7 +569,7 @@ impl Emitter for GeminiEmitter {
                         }
                     }
 
-                    let subagent_metadata = crate::gemini::GeminiSubAgentMetadata {
+                    let subagent_metadata = crate::formats::gemini::GeminiSubAgentMetadata {
                         name: agent.metadata.name.clone(),
                         description: agent.metadata.description.clone().unwrap_or_default(),
                         kind,

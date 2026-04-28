@@ -52,7 +52,7 @@ pub struct ToolAccessRule {
     pub tool: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pattern: Option<String>,
-    #[serde(action = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub action: Option<String>,
 }
 

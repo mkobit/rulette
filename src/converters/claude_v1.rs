@@ -1,4 +1,4 @@
-use super::Translator;
+use super::Converter;
 use crate::{
     Hook, HookEvent, HookEventKind, HookMetadata, McpServer, McpServerConfig, McpServerMetadata,
 };

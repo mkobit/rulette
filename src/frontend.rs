@@ -1,4 +1,4 @@
-use crate::agent_skills::{Skill, SkillMetadata};
+use crate::formats::agent_skills::{Skill, SkillMetadata};
 use crate::cli::formats::InputFormat;
 use crate::{
     Entity, McpServer, McpServerConfig, McpServerMetadata, Rule, RuleMetadata, RuletteDocument,
@@ -92,7 +92,7 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
 }
 
 fn parse_gemini(input: &str, filename: Option<&str>) -> Result<Vec<Entity>> {
-    if let Ok(subagent) = crate::gemini::GeminiSubAgent::parse(input) {
+    if let Ok(subagent) = crate::formats::gemini::GeminiSubAgent::parse(input) {
         let mut extra = subagent.metadata.extra.clone();
         if let Some(kind) = subagent.metadata.kind {
             extra.insert("kind".to_string(), serde_json::Value::String(kind));

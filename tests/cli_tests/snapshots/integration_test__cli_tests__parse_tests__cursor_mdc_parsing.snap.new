@@ -1,0 +1,22 @@
+---
+source: tests/cli_tests/parse_tests.rs
+assertion_line: 65
+expression: normalized_output
+---
+{
+  "ir_version": "0.1",
+  "entities": [
+    {
+      "kind": "rule",
+      "metadata": {
+        "description": "Test rule for Cursor",
+        "name": "example",
+        "globs": [
+          "src/**/*.rs"
+        ],
+        "alwaysApply": true
+      },
+      "body": "# Rust Rules\n- Use idiomatic Rust.\n- Prefer `anyhow` for errors.\n"
+    }
+  ]
+}
