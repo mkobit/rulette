@@ -40,16 +40,16 @@ jobs:
       - name: Install Rust toolchain
         run: |
           rustup show
-          rustup component add rustfmt clippy llvm-tools-preview
+          rustup component add rustfmt clippy
 
       - name: Set up rust cache
         uses: Swatinem/rust-cache@v2
 
       - name: Cache fixtures
-        uses: actions/cache@v5.0.5
+        uses: actions/cache@v4
         with:
           path: target/fixtures
-          key: fixtures-${{ runner.os }}-${{ hashFiles('build.rs') }}
+          key: fixtures-${{ runner.os }}-${{ hashFiles('build.rs', 'Cargo.lock') }}
           restore-keys: |
             fixtures-${{ runner.os }}-
 
@@ -86,10 +86,10 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Cache fixtures
-        uses: actions/cache@v5.0.5
+        uses: actions/cache@v4
         with:
           path: target/fixtures
-          key: fixtures-${{ runner.os }}-${{ hashFiles('build.rs') }}
+          key: fixtures-${{ runner.os }}-${{ hashFiles('build.rs', 'Cargo.lock') }}
           restore-keys: |
             fixtures-${{ runner.os }}-
 
