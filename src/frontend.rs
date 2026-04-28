@@ -38,14 +38,6 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
                     });
                 }
             }
-            if let Some(fname) = filename {
-                if fname.ends_with(".sh") {
-                    return Ok(RuletteDocument {
-                        ir_version: "0.1".to_string(),
-                        entities: vec![Entity::Hook(parse_script_as_hook(input, filename)?)],
-                    });
-                }
-            }
             let entities = if input.starts_with("---\n") || input.starts_with("---\r\n") {
                 if input.contains("name:") && input.contains("description:") {
                     match parse_agent_skills(input, filename) {
@@ -361,25 +353,6 @@ fn parse_cursor_mcp(input: &str) -> Result<Vec<Entity>> {
     }
 
     Ok(entities)
-}
-
-fn parse_script_as_hook(input: &str, filename: Option<&str>) -> Result<crate::Hook> {
-    let name = filename
-        .and_then(|f| Path::new(f).file_name())
-        .and_then(|s| s.to_str())
-        .unwrap_or("unnamed-hook")
-        .to_string();
-
-    let mut extra = HashMap::new();
-    extra.insert("script".to_string(), serde_json::Value::String(input.to_string()));
-
-    Ok(crate::Hook {
-        metadata: crate::HookMetadata {
-            name,
-            hook_event: None,
-            extra,
-        },
-    })
 }
 
 fn extract_frontmatter(input: &str) -> (Option<&str>, &str) {

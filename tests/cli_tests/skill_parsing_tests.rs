@@ -19,12 +19,12 @@ fn test_complex_skill_directory_parsing() {
     let json: Value = serde_json::from_str(out_str).unwrap();
     let entities = json.get("entities").unwrap().as_array().unwrap();
 
-    // Currently we only parse the .md files individually.
-    // We want it to recognize the directory as a Skill and its scripts as Hooks.
-    
+    // Verify that the skill itself is parsed.
     let has_skill = entities.iter().any(|e| e["kind"] == "skill" && e["metadata"]["name"] == "complex-skill");
-    let has_hook = entities.iter().any(|e| e["kind"] == "hook" && e["metadata"]["name"] == "pre-commit.sh");
-
     assert!(has_skill, "Should have parsed complex-skill");
-    assert!(has_hook, "Should have parsed pre-commit.sh as a hook");
+
+    // Semantic refinement: Scripts are NOT hooks by default.
+    // They are implementation assets. For now, they should not appear as top-level Hook entities.
+    let has_hook = entities.iter().any(|e| e["kind"] == "hook" && e["metadata"]["name"] == "pre-commit.sh");
+    assert!(!has_hook, "Scripts should NOT be parsed as hooks by default (semantic refinement)");
 }
