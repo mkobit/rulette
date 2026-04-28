@@ -1,0 +1,9 @@
+---
+description: Test rule for Cursor
+globs: 
+  - "src/**/*.rs"
+alwaysApply: true
+---
+# Rust Rules
+- Use idiomatic Rust.
+- Prefer `anyhow` for errors.

@@ -1,5 +1,7 @@
+use sha2::{Digest, Sha256};
 use std::env;
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -8,28 +10,25 @@ struct Fixture {
     owner: &'static str,
     repo: &'static str,
     sha: &'static str,
+    sha256: &'static str,
 }
 
 impl Fixture {
-    fn primary_url(&self) -> String {
-        format!(
-            "https://github.com/{}/{}/archive/{}.tar.gz",
-            self.owner, self.repo, self.sha
-        )
-    }
-
-    fn fallback_url(&self) -> String {
-        format!(
-            "https://codeload.github.com/{}/{}/tar.gz/{}",
-            self.owner, self.repo, self.sha
-        )
+    fn urls(&self) -> Vec<String> {
+        vec![
+            format!(
+                "https://github.com/{}/{}/archive/{}.tar.gz",
+                self.owner, self.repo, self.sha
+            ),
+            format!(
+                "https://codeload.github.com/{}/{}/tar.gz/{}",
+                self.owner, self.repo, self.sha
+            ),
+        ]
     }
 }
 
-fn fetch_with_retries(
-    url: &str,
-    github_token: Option<&String>,
-) -> Result<ureq::http::Response<ureq::Body>, ureq::Error> {
+fn fetch_with_retries(url: &str, github_token: Option<&String>) -> Result<Vec<u8>, anyhow::Error> {
     let mut retries = 3;
     loop {
         let mut req = ureq::get(url);
@@ -37,11 +36,18 @@ fn fetch_with_retries(
             req = req.header("Authorization", &format!("Bearer {}", token));
         }
         match req.call() {
-            Ok(response) => return Ok(response),
+            Ok(response) => {
+                let mut buffer = Vec::new();
+                response
+                    .into_body()
+                    .into_reader()
+                    .read_to_end(&mut buffer)?;
+                return Ok(buffer);
+            }
             Err(e) => {
                 retries -= 1;
                 if retries == 0 {
-                    return Err(e);
+                    return Err(anyhow::anyhow!("Request failed after retries: {}", e));
                 }
                 println!(
                     "cargo:warning=Request failed: {}, retrying... ({} attempts left)",
@@ -51,6 +57,22 @@ fn fetch_with_retries(
             }
         }
     }
+}
+
+fn verify_integrity(data: &[u8], expected_sha256: &str) -> Result<(), anyhow::Error> {
+    let mut hasher = Sha256::new();
+    hasher.update(data);
+    let result = hasher.finalize();
+    let actual_sha256 = hex::encode(result);
+
+    if actual_sha256 != expected_sha256 {
+        return Err(anyhow::anyhow!(
+            "Integrity check failed. Expected: {}, Actual: {}",
+            expected_sha256,
+            actual_sha256
+        ));
+    }
+    Ok(())
 }
 
 fn cleanup_old_fixtures(fixture: &Fixture, out_dir: &Path) {
@@ -68,7 +90,6 @@ fn cleanup_old_fixtures(fixture: &Fixture, out_dir: &Path) {
                     let file_name = entry.file_name();
                     let name_str = file_name.to_string_lossy();
 
-                    // If it belongs to the same repo but is a DIFFERENT sha, remove it.
                     if name_str.starts_with(&repo_prefix) && name_str != current_dir_name {
                         println!(
                             "cargo:warning=Cleaning up old fixture directory: {}",
@@ -83,7 +104,6 @@ fn cleanup_old_fixtures(fixture: &Fixture, out_dir: &Path) {
 }
 
 fn download_and_extract(fixture: &Fixture, out_dir: &Path, github_token: Option<&String>) {
-    // First, prune any stale versions of this fixture to prevent unbounded growth
     cleanup_old_fixtures(fixture, out_dir);
 
     let extract_dir = out_dir.join(format!("{}-{}", fixture.repo, fixture.sha));
@@ -98,34 +118,45 @@ fn download_and_extract(fixture: &Fixture, out_dir: &Path, github_token: Option<
         return;
     }
 
-    // Clean up partial extractions for this specific SHA
     if extract_dir.exists() {
         fs::remove_dir_all(&extract_dir).expect("Failed to clean up incomplete extract directory");
     }
 
-    let primary = fixture.primary_url();
-    let fallback = fixture.fallback_url();
+    let mut downloaded_data = None;
+    let urls = fixture.urls();
 
-    println!("cargo:warning=Downloading fixture: {}", primary);
+    for url in &urls {
+        println!("cargo:warning=Downloading fixture from: {}", url);
+        match fetch_with_retries(url, github_token) {
+            Ok(data) => {
+                if let Err(e) = verify_integrity(&data, fixture.sha256) {
+                    println!(
+                        "cargo:warning=Integrity verification failed for {}: {}",
+                        url, e
+                    );
+                    continue;
+                }
+                downloaded_data = Some(data);
+                break;
+            }
+            Err(e) => {
+                println!("cargo:warning=Failed to download from {}: {}", url, e);
+            }
+        }
+    }
 
-    let response = fetch_with_retries(&primary, github_token)
-        .or_else(|e| {
-            println!(
-                "cargo:warning=Primary download failed after retries: {}, trying fallback: {}",
-                e, fallback
-            );
-            fetch_with_retries(&fallback, github_token)
-        })
-        .expect("Failed to download fixture");
+    let data =
+        downloaded_data.expect("Failed to download fixture from any mirror with valid integrity");
 
     println!(
-        "cargo:warning=Extracting {} directly to memory",
-        fixture.repo
+        "cargo:warning=Extracting {} to {}",
+        fixture.repo,
+        extract_dir.display()
     );
 
     fs::create_dir_all(&extract_dir).expect("Failed to create extract directory");
 
-    let tar = flate2::read::GzDecoder::new(response.into_body().into_reader());
+    let tar = flate2::read::GzDecoder::new(&data[..]);
     let mut archive = tar::Archive::new(tar);
 
     for entry_result in archive.entries().expect("Failed to read archive entries") {
@@ -164,6 +195,7 @@ fn download_and_extract(fixture: &Fixture, out_dir: &Path, github_token: Option<
 }
 
 fn main() {
+    // Trivial comment to force CI re-evaluation
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-env-changed=GITHUB_TOKEN");
     println!("cargo:rerun-if-env-changed=GITHUB_API_TOKEN");
@@ -172,8 +204,6 @@ fn main() {
         .or_else(|_| env::var("GITHUB_API_TOKEN"))
         .ok();
 
-    // To ensure a stable path for caching across CI runs, we place this in a target/fixtures dir
-    // rather than the ephemeral OUT_DIR.
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
     let target_dir = Path::new(&manifest_dir).join("target").join("fixtures");
     fs::create_dir_all(&target_dir).expect("Failed to create target/fixtures directory");
@@ -184,18 +214,21 @@ fn main() {
             owner: "anthropics",
             repo: "claude-code",
             sha: "2b53fac3b2dd381bfb29f456f43c0b3eb9b3ebff",
+            sha256: "339b9bdfa4c77d7432740880e9da01701009e22af8cf7da365c4071e2df475c1",
         },
         Fixture {
             env_name: "FIXTURE_CONDUCTOR_DIR",
             owner: "gemini-cli-extensions",
             repo: "conductor",
             sha: "080a3697da33bf2bd17a868889653a3aa05b5e02",
+            sha256: "c15de0f15f14a3934d44a8afe57caa606f7e3e7ce0077b0696375d6db5a11ce5",
         },
         Fixture {
             env_name: "FIXTURE_AGENCY_AGENTS_DIR",
             owner: "msitarzewski",
             repo: "agency-agents",
             sha: "783f6a72bfd7f3135700ac273c619d92821b419a",
+            sha256: "29b5f837ccc8a35eb7f6f84384b00211f3c4729b7bd7f850124eaea6234b66d6",
         },
         Fixture {
             env_name: "FIXTURE_MATTPOCOCK_SKILLS_DIR",
