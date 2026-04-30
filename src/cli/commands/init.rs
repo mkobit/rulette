@@ -47,9 +47,6 @@ This is a sample rule. Rulette will parse the frontmatter and use it to generate
 # Use this to define common transform pipelines
 
 [transform]
-dedup = true
-on-conflict = "error"
-
 # Example: Define a default target format
 # to = "claude"
 # out = [ "claude:.claude" ]

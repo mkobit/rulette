@@ -62,13 +62,13 @@ fn test_round_trip_preserves_semantics() {
     let original_content = fs::read_to_string(original_file).unwrap();
     let output_content = fs::read_to_string(&output_file).unwrap();
 
-    let original_doc = rulette::frontend::parse(
+    let original_doc = rulette::parsers::parse(
         &original_content,
         rulette::cli::formats::InputFormat::AgentSkills,
         Some(original_file),
     )
     .unwrap();
-    let output_doc = rulette::frontend::parse(
+    let output_doc = rulette::parsers::parse(
         &output_content,
         rulette::cli::formats::InputFormat::AgentSkills,
         Some(output_file.to_str().unwrap()),

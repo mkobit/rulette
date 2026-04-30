@@ -1,10 +1,10 @@
-use crate::backend::{
+use crate::cli::formats::{InputFormat, OutputFormat};
+use crate::cli::io::read_inputs;
+use crate::emitters::{
     AgentSkillsEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter, CursorEmitter, Emitter,
     GeminiEmitter, WindsurfEmitter,
 };
-use crate::cli::formats::{InputFormat, OutputFormat};
-use crate::cli::io::read_inputs;
-use crate::frontend::parse;
+use crate::parsers::parse;
 use clap::Args;
 use std::collections::BTreeMap as HashMap;
 use std::path::PathBuf;
@@ -17,7 +17,7 @@ pub struct InspectArgs {
 
     /// Target format to dry-run emission and show lossy conversion warnings
     #[arg(short, long, value_enum)]
-    pub target: Option<OutputFormat>,
+    pub to: Option<OutputFormat>,
 }
 
 impl InspectArgs {
@@ -43,10 +43,10 @@ impl InspectArgs {
         println!("=== Rulette IR ===");
         println!("{}", ir_json);
 
-        if let Some(target) = &self.target {
-            println!("\n=== Dry-run Emission to {:?} ===", target);
+        if let Some(to) = &self.to {
+            println!("\n=== Dry-run Emission to {:?} ===", to);
 
-            let output_map = match target {
+            let output_map = match to {
                 OutputFormat::Claude => ClaudeEmitter.emit(&doc, strict)?,
                 OutputFormat::CursorMdc => CursorEmitter.emit(&doc, strict)?,
                 OutputFormat::AgentSkills => AgentSkillsEmitter.emit(&doc, strict)?,
@@ -65,6 +65,15 @@ impl InspectArgs {
                 OutputFormat::IrToml => {
                     let mut map = HashMap::new();
                     map.insert(PathBuf::from("ir.toml"), toml::to_string(&doc)?);
+                    map
+                }
+                OutputFormat::JsonSchema => {
+                    let mut map = HashMap::new();
+                    let schema = schemars::schema_for!(crate::RuletteDocument);
+                    map.insert(
+                        PathBuf::from("schema.json"),
+                        serde_json::to_string_pretty(&schema)?,
+                    );
                     map
                 }
             };

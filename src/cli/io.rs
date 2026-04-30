@@ -11,6 +11,23 @@ pub struct InputFile {
 }
 
 fn is_supported_extension(path: &Path) -> bool {
+    let filename = path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or_default()
+        .to_lowercase();
+    if matches!(
+        filename.as_str(),
+        "package.json"
+            | "package-lock.json"
+            | "cargo.lock"
+            | "cargo.toml"
+            | "rulette.toml"
+            | "plugin.json"
+    ) {
+        return false;
+    }
+
     if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
         matches!(ext, "md" | "mdc" | "json" | "toml" | "yaml" | "yml")
     } else {

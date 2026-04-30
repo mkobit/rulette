@@ -190,8 +190,8 @@ Content"#
     let _ = parse_child.wait();
     let _ = transform_child.wait();
 
-    // Verify Claude output (Claude puts it in CLAUDE.md for rules)
-    let emitted_claude_file = output_dir.join("CLAUDE.md");
+    // Verify Claude output (Skills go to individual files)
+    let emitted_claude_file = output_dir.join("target-skill.md");
     assert!(emitted_claude_file.exists());
     let claude_content = fs::read_to_string(emitted_claude_file).unwrap();
     assert!(claude_content.contains("# Target\nContent"));
@@ -262,4 +262,46 @@ fn test_claude_hook_roundtrip() {
         first_hook[0].get("command").unwrap().as_str().unwrap(),
         "python3 script.py"
     );
+}
+
+#[test]
+fn test_rule_to_skill_promotion_pipeline() {
+    let temp_dir = tempdir().unwrap();
+    let input_file = temp_dir.path().join("generic-rule.md");
+    fs::write(&input_file, "# Generic Rule\nThis is the rule body.").unwrap();
+
+    let cargo_bin = assert_cmd::cargo::cargo_bin("rulette");
+
+    let output_dir = temp_dir.path().join("promoted-skill");
+    fs::create_dir_all(&output_dir).unwrap();
+
+    // Promote generic rule to agent-skill
+    let mut cmd = StdCommand::new(&cargo_bin);
+    let output = cmd
+        .arg("transform")
+        .arg(input_file.to_str().unwrap())
+        .arg("--to")
+        .arg("agent-skills")
+        .arg("--name")
+        .arg("refactor-pro")
+        .arg("--description")
+        .arg("Advanced refactoring skill")
+        .arg("--out")
+        .arg(output_dir.to_str().unwrap())
+        .output()
+        .expect("Failed to execute rulette");
+
+    assert!(
+        output.status.success(),
+        "Command failed: {}",
+        str::from_utf8(&output.stderr).unwrap()
+    );
+
+    // Verify Agent Skill structure
+    let skill_md = output_dir.join("refactor-pro.skill.md");
+    assert!(skill_md.exists());
+    let content = fs::read_to_string(skill_md).unwrap();
+    assert!(content.contains("name: refactor-pro"));
+    assert!(content.contains("description: Advanced refactoring skill"));
+    assert!(content.contains("# Generic Rule\nThis is the rule body."));
 }

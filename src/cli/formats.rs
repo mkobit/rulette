@@ -1,6 +1,11 @@
 use clap::ValueEnum;
+use schemars::JsonSchema;
+use serde::Deserialize;
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
+#[derive(
+    Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug, Deserialize, JsonSchema,
+)]
+#[serde(rename_all = "kebab-case")]
 pub enum InputFormat {
     Auto,
     SkillMd,
@@ -18,7 +23,10 @@ pub enum InputFormat {
     IrToml,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
+#[derive(
+    Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug, Deserialize, JsonSchema,
+)]
+#[serde(rename_all = "kebab-case")]
 pub enum OutputFormat {
     Claude,
     CursorMdc,
@@ -29,4 +37,5 @@ pub enum OutputFormat {
     AgentSkills,
     IrJson,
     IrToml,
+    JsonSchema,
 }

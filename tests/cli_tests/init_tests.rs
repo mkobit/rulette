@@ -14,7 +14,7 @@ fn test_init_creates_files() {
     assert!(temp_dir.path().join("RULETTE.toml").exists());
 
     let config_content = fs::read_to_string(temp_dir.path().join("RULETTE.toml")).unwrap();
-    assert!(config_content.contains("dedup = true"));
+    assert!(config_content.contains("[transform]"));
 }
 
 #[test]
@@ -41,5 +41,5 @@ fn test_init_force_overwrites() {
         .success();
 
     let content = fs::read_to_string(&config_path).unwrap();
-    assert!(content.contains("dedup = true"));
+    assert!(content.contains("[transform]"));
 }

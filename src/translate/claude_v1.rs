@@ -17,8 +17,13 @@ pub struct ClaudeMcpConfig {
     pub env: HashMap<String, String>,
 }
 
-impl Translator for ClaudeV1 {
-    fn translate_hook(&self, name: &str, data: &serde_json::Value) -> Result<Hook> {
+impl ClaudeV1 {
+    pub fn translate_hook(
+        &self,
+        name: &str,
+        data: &serde_json::Value,
+        filename: Option<&str>,
+    ) -> Result<Hook> {
         let mut event = None;
         let kind = match name {
             "PreToolUse" => Some(HookEventKind::PreToolUse),
@@ -51,6 +56,12 @@ impl Translator for ClaudeV1 {
 
         let mut extra = HashMap::new();
         extra.insert(name.to_string(), data.clone());
+        if let Some(f) = filename {
+            extra.insert(
+                "rulette:source_file".to_string(),
+                serde_json::Value::String(f.to_string()),
+            );
+        }
 
         Ok(Hook {
             metadata: HookMetadata {
@@ -59,6 +70,12 @@ impl Translator for ClaudeV1 {
                 extra,
             },
         })
+    }
+}
+
+impl Translator for ClaudeV1 {
+    fn translate_hook(&self, name: &str, data: &serde_json::Value) -> Result<Hook> {
+        self.translate_hook(name, data, None)
     }
 
     fn translate_mcp(&self, name: &str, config: &ClaudeMcpConfig) -> Result<McpServer> {
@@ -95,7 +112,9 @@ mod tests {
             }
         ]);
 
-        let hook = ClaudeV1.translate_hook("PreToolUse", &hook_data).unwrap();
+        let hook = ClaudeV1
+            .translate_hook("PreToolUse", &hook_data, None)
+            .unwrap();
         assert_eq!(hook.metadata.name, "PreToolUse");
         let event = hook.metadata.hook_event.unwrap();
         assert_eq!(event.event, HookEventKind::PreToolUse);

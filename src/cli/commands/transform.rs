@@ -1,26 +1,18 @@
-use crate::backend::{
+use crate::cli::formats::{InputFormat, OutputFormat};
+use crate::cli::io::read_inputs;
+use crate::emitters::{
     AgentSkillsEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter, CursorEmitter, Emitter,
     GeminiEmitter, WindsurfEmitter,
 };
-use crate::cli::formats::{InputFormat, OutputFormat};
-use crate::cli::io::read_inputs;
-use crate::frontend::parse;
+use crate::parsers::parse;
+use crate::pipeline;
 use crate::{Entity, RuletteDocument};
 use anyhow::Result;
-use clap::{Args, ValueEnum};
+use clap::Args;
 use serde::Deserialize;
 use std::collections::BTreeMap as HashMap;
 use std::fs;
 use std::path::PathBuf;
-
-#[derive(ValueEnum, Clone, Debug, Default, Deserialize, PartialEq)]
-#[serde(rename_all = "kebab-case")]
-pub enum ConflictResolution {
-    #[default]
-    Error,
-    TakeFirst,
-    TakeLast,
-}
 
 #[derive(Args, Debug)]
 pub struct TransformArgs {
@@ -39,10 +31,6 @@ pub struct TransformArgs {
     /// Output path (file or directory) or multiple targets via format:path
     #[arg(short, long)]
     pub out: Vec<String>,
-
-    /// Output scope: project (default) or user
-    #[arg(long, default_value = "project")]
-    pub scope: String,
 
     /// Override name metadata for parsed entities
     #[arg(long)]
@@ -71,14 +59,6 @@ pub struct TransformArgs {
     /// Load transform pipeline from TOML file
     #[arg(long)]
     pub config: Option<String>,
-
-    /// Remove duplicate entities
-    #[arg(long)]
-    pub dedup: bool,
-
-    /// How to handle duplicate entities with the same identity but different content
-    #[arg(long, default_value = "error")]
-    pub on_conflict: ConflictResolution,
 }
 
 #[derive(Deserialize, Debug)]
@@ -92,9 +72,9 @@ struct TransformConfig {
     #[serde(default)]
     set: Option<String>,
     #[serde(default)]
-    dedup: Option<bool>,
+    to: Option<OutputFormat>,
     #[serde(default)]
-    on_conflict: Option<ConflictResolution>,
+    out: Vec<String>,
 }
 
 pub struct OutputTarget {
@@ -102,33 +82,11 @@ pub struct OutputTarget {
     pub path: Option<String>,
 }
 
-pub fn resolve_output_path(
-    to: &OutputFormat,
-    scope: &str,
-    out: Option<&String>,
-) -> Option<PathBuf> {
+pub fn resolve_output_path(_to: &OutputFormat, out: Option<&String>) -> Option<PathBuf> {
     if let Some(path) = out {
         return Some(PathBuf::from(path));
     }
 
-    if scope == "user" {
-        let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        let home_path = PathBuf::from(home_dir);
-
-        let path = match to {
-            OutputFormat::Claude => home_path.join(".claude"),
-            OutputFormat::CursorMdc => home_path.join(".cursor").join("rules"),
-            OutputFormat::Copilot => home_path
-                .join(".config")
-                .join("github-copilot")
-                .join("instructions.md"),
-            OutputFormat::Codex => home_path.join(".codex").join("AGENTS.md"),
-            OutputFormat::Gemini => home_path.join(".gemini").join("GEMINI.md"),
-            OutputFormat::Windsurf => home_path.join(".windsurf").join("windsurfrules"),
-            _ => return None,
-        };
-        return Some(path);
-    }
     None
 }
 
@@ -208,75 +166,6 @@ pub fn parse_targets(
     Ok(targets)
 }
 
-fn match_expr(entity: &Entity, expr: &str) -> bool {
-    let parts: Vec<&str> = expr.split("==").collect();
-    if parts.len() == 2 {
-        let key = parts[0].trim();
-        let val = parts[1].trim().trim_matches(|c| c == '"' || c == '\'');
-
-        if let Ok(json_val) = serde_json::to_value(entity) {
-            if let Some(metadata) = json_val.get("metadata") {
-                if let Some(field) = metadata.get(key) {
-                    if field.as_str() == Some(val) {
-                        return true;
-                    }
-                }
-                if let Some(extra) = metadata.get("extra") {
-                    if let Some(field) = extra.get(key) {
-                        if field.as_str() == Some(val) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    if let Ok(json) = serde_json::to_string(entity) {
-        if json.contains(expr) {
-            return true;
-        }
-    }
-    false
-}
-
-fn rename_field(entity: &mut Entity, from: &str, to: &str) {
-    match entity {
-        crate::Entity::Hook(_) | crate::Entity::Agent(_) | crate::Entity::Permissions(_) => {}
-        Entity::Rule(rule) => {
-            if let Some(val) = rule.metadata.extra.remove(from) {
-                rule.metadata.extra.insert(to.to_string(), val);
-            }
-        }
-        Entity::Skill(skill) => {
-            if let Some(val) = skill.metadata.extra.remove(from) {
-                skill.metadata.extra.insert(to.to_string(), val);
-            }
-        }
-        Entity::McpServer(mcp) => {
-            if let Some(val) = mcp.metadata.extra.remove(from) {
-                mcp.metadata.extra.insert(to.to_string(), val);
-            }
-        }
-    }
-}
-
-fn set_field(entity: &mut Entity, key: &str, value: &str) {
-    let json_val = serde_json::Value::String(value.to_string());
-    match entity {
-        crate::Entity::Hook(_) | crate::Entity::Agent(_) | crate::Entity::Permissions(_) => {}
-        Entity::Rule(rule) => {
-            rule.metadata.extra.insert(key.to_string(), json_val);
-        }
-        Entity::Skill(skill) => {
-            skill.metadata.extra.insert(key.to_string(), json_val);
-        }
-        Entity::McpServer(mcp) => {
-            mcp.metadata.extra.insert(key.to_string(), json_val);
-        }
-    }
-}
-
 impl TransformArgs {
     pub fn execute(&self, strict: bool) -> Result<()> {
         let mut combined_entities = vec![];
@@ -327,8 +216,8 @@ impl TransformArgs {
         let mut run_exclude = self.exclude.clone();
         let mut run_rename = self.rename.clone();
         let mut run_set = self.set.clone();
-        let mut run_dedup = self.dedup;
-        let mut run_on_conflict = self.on_conflict.clone();
+        let mut run_to = self.to;
+        let mut run_out = self.out.clone();
 
         if let Some(config_path) = &self.config {
             let config_str = fs::read_to_string(config_path)?;
@@ -345,20 +234,22 @@ impl TransformArgs {
             if run_set.is_none() {
                 run_set = config.set;
             }
-            if !run_dedup {
-                run_dedup = config.dedup.unwrap_or(false);
+            if run_to.is_none() {
+                run_to = config.to;
             }
-            if let Some(oc) = config.on_conflict {
-                run_on_conflict = oc;
+            if run_out.is_empty() {
+                run_out = config.out;
             }
         }
 
+        let run_targets = parse_targets(&run_out, run_to)?;
+
         if let Some(filter_expr) = &run_filter {
-            combined_entities.retain(|entity| match_expr(entity, filter_expr));
+            combined_entities.retain(|entity| pipeline::match_expr(entity, filter_expr));
         }
 
         if let Some(exclude_expr) = &run_exclude {
-            combined_entities.retain(|entity| !match_expr(entity, exclude_expr));
+            combined_entities.retain(|entity| !pipeline::match_expr(entity, exclude_expr));
         }
 
         if let Some(rename_expr) = &run_rename {
@@ -367,7 +258,7 @@ impl TransformArgs {
                 let from = parts[0].trim();
                 let to = parts[1].trim();
                 for entity in &mut combined_entities {
-                    rename_field(entity, from, to);
+                    pipeline::rename_field(entity, from, to);
                 }
             }
         }
@@ -378,18 +269,18 @@ impl TransformArgs {
                 let key = parts[0].trim();
                 let val = parts[1].trim();
                 for entity in &mut combined_entities {
-                    set_field(entity, key, val);
+                    pipeline::set_field(entity, key, val);
                 }
             }
         }
 
-        if run_dedup {
-            let mut result_entities = vec![];
-            let mut seen: std::collections::HashMap<String, usize> =
+        // Strict Identity Collision Detection
+        {
+            let mut seen: std::collections::HashMap<String, &Entity> =
                 std::collections::HashMap::new();
 
-            for entity in combined_entities.into_iter() {
-                let identity = match &entity {
+            for entity in &combined_entities {
+                let name = match entity {
                     Entity::Rule(rule) => rule
                         .metadata
                         .extra
@@ -403,33 +294,71 @@ impl TransformArgs {
                     Entity::Permissions(perms) => perms.metadata.name.clone(),
                 };
 
-                let identity_key = identity.unwrap_or_else(|| {
-                    serde_json::to_string(&entity).unwrap_or_else(|_| "unknown".to_string())
-                });
+                let filename = match entity {
+                    Entity::Rule(rule) => rule
+                        .metadata
+                        .extra
+                        .get("rulette:source_file")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    Entity::Skill(skill) => skill
+                        .metadata
+                        .extra
+                        .get("rulette:source_file")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    Entity::McpServer(mcp) => mcp
+                        .metadata
+                        .extra
+                        .get("rulette:source_file")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    Entity::Hook(hook) => hook
+                        .metadata
+                        .extra
+                        .get("rulette:source_file")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    Entity::Agent(agent) => agent
+                        .metadata
+                        .extra
+                        .get("rulette:source_file")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    Entity::Permissions(perms) => perms
+                        .metadata
+                        .extra
+                        .get("rulette:source_file")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                };
 
-                if let Some(&index) = seen.get(&identity_key) {
-                    let existing_entity = &result_entities[index];
-                    let new_val = serde_json::to_value(&entity).unwrap_or(serde_json::Value::Null);
-                    let existing_val =
-                        serde_json::to_value(existing_entity).unwrap_or(serde_json::Value::Null);
-
-                    if new_val != existing_val {
-                        match run_on_conflict {
-                            ConflictResolution::Error => {
-                                anyhow::bail!("Conflict detected for entity '{}'.", identity_key);
-                            }
-                            ConflictResolution::TakeFirst => {}
-                            ConflictResolution::TakeLast => {
-                                result_entities[index] = entity;
-                            }
-                        }
-                    }
+                let id = if let (Some(n), Some(f)) = (name, filename) {
+                    format!("{}:{}", f, n)
                 } else {
-                    seen.insert(identity_key, result_entities.len());
-                    result_entities.push(entity);
+                    match entity {
+                        Entity::Rule(rule) => rule
+                            .metadata
+                            .extra
+                            .get("name")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string()),
+                        Entity::Skill(skill) => Some(skill.metadata.name.clone()),
+                        Entity::McpServer(mcp) => Some(mcp.metadata.name.clone()),
+                        Entity::Hook(hook) => Some(hook.metadata.name.clone()),
+                        Entity::Agent(agent) => Some(agent.metadata.name.clone()),
+                        Entity::Permissions(perms) => perms.metadata.name.clone(),
+                    }
+                    .unwrap_or_else(|| {
+                        serde_json::to_string(&entity).unwrap_or_else(|_| "unknown".to_string())
+                    })
+                };
+
+                if let Some(_existing) = seen.get(&id) {
+                    anyhow::bail!("Identity collision detected: entity '{}' already exists. Rulette requires unique identities across all inputs.", id);
                 }
+                seen.insert(id, entity);
             }
-            combined_entities = result_entities;
         }
 
         let doc = RuletteDocument {
@@ -437,11 +366,10 @@ impl TransformArgs {
             entities: combined_entities,
         };
 
-        // Emission logic (from Emit/Convert)
-        let targets = parse_targets(&self.out, self.to)?;
+        // Emission logic
         let mut generated_outputs = Vec::new();
 
-        for target in targets {
+        for target in run_targets {
             let output_map = match target.format {
                 OutputFormat::Claude => ClaudeEmitter.emit(&doc, strict)?,
                 OutputFormat::CursorMdc => CursorEmitter.emit(&doc, strict)?,
@@ -463,12 +391,21 @@ impl TransformArgs {
                     map.insert(PathBuf::from("ir.toml"), toml::to_string(&doc)?);
                     map
                 }
+                OutputFormat::JsonSchema => {
+                    let mut map = HashMap::new();
+                    let schema = schemars::schema_for!(crate::RuletteDocument);
+                    map.insert(
+                        PathBuf::from("schema.json"),
+                        serde_json::to_string_pretty(&schema)?,
+                    );
+                    map
+                }
             };
             generated_outputs.push((target, output_map));
         }
 
         for (target, output_map) in generated_outputs {
-            let base_path = resolve_output_path(&target.format, &self.scope, target.path.as_ref());
+            let base_path = resolve_output_path(&target.format, target.path.as_ref());
 
             let mut sorted_paths: Vec<_> = output_map.keys().collect();
             sorted_paths.sort();

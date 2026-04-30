@@ -22,11 +22,11 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
                 {
                     return Ok(RuletteDocument {
                         ir_version: "0.1".to_string(),
-                        entities: parse_claude_settings(input)?,
+                        entities: parse_claude_settings(input, filename)?,
                     });
                 }
                 if input.contains("\"mcpServers\"") {
-                    if let Ok(entities) = parse_claude_settings(input) {
+                    if let Ok(entities) = parse_claude_settings(input, filename) {
                         return Ok(RuletteDocument {
                             ir_version: "0.1".to_string(),
                             entities,
@@ -42,27 +42,43 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
                 if input.contains("name:") && input.contains("description:") {
                     match parse_agent_skills(input, filename) {
                         Ok(skill) => vec![Entity::Skill(skill)],
-                        Err(_) => vec![Entity::Rule(parse_cursor_mdc(input, filename)?)],
+                        Err(_) => match parse_cursor_mdc(input, filename) {
+                            Ok(rule) => vec![Entity::Rule(rule)],
+                            Err(e) if e.to_string().contains("ignored") => vec![],
+                            Err(e) => return Err(e),
+                        },
                     }
                 } else {
-                    vec![Entity::Rule(parse_cursor_mdc(input, filename)?)]
+                    match parse_cursor_mdc(input, filename) {
+                        Ok(rule) => vec![Entity::Rule(rule)],
+                        Err(e) if e.to_string().contains("ignored") => vec![],
+                        Err(e) => return Err(e),
+                    }
                 }
             } else {
-                vec![Entity::Rule(parse_claude(input, filename)?)]
+                match parse_claude(input, filename) {
+                    Ok(rule) => vec![Entity::Rule(rule)],
+                    Err(e) if e.to_string().contains("ignored") => vec![],
+                    Err(e) => return Err(e),
+                }
             };
-            Ok(RuletteDocument {
+            let mut doc = RuletteDocument {
                 ir_version: "0.1".to_string(),
                 entities,
-            })
+            };
+            inject_source_file(&mut doc, filename);
+            Ok(doc)
         }
         InputFormat::IrJson => {
             let mut doc: RuletteDocument = serde_json::from_str(input)?;
             doc.ir_version = "0.1".to_string();
+            inject_source_file(&mut doc, filename);
             Ok(doc)
         }
         InputFormat::IrToml => {
             let mut doc: RuletteDocument = toml::from_str(input)?;
             doc.ir_version = "0.1".to_string();
+            inject_source_file(&mut doc, filename);
             Ok(doc)
         }
         _ => {
@@ -70,29 +86,82 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
                 InputFormat::SkillMd | InputFormat::AgentSkills => {
                     vec![Entity::Skill(parse_agent_skills(input, filename)?)]
                 }
-                InputFormat::CursorMdc => vec![Entity::Rule(parse_cursor_mdc(input, filename)?)],
+                InputFormat::CursorMdc => match parse_cursor_mdc(input, filename) {
+                    Ok(rule) => vec![Entity::Rule(rule)],
+                    Err(e) if e.to_string().contains("ignored") => vec![],
+                    Err(e) => return Err(e),
+                },
                 InputFormat::CursorMcp => parse_cursor_mcp(input)?,
-                InputFormat::ClaudeSettings => parse_claude_settings(input)?,
+                InputFormat::ClaudeSettings => parse_claude_settings(input, filename)?,
                 InputFormat::Claude
                 | InputFormat::Codex
                 | InputFormat::Copilot
                 | InputFormat::Windsurf
-                | InputFormat::CursorLegacy => {
-                    vec![Entity::Rule(parse_claude(input, filename)?)]
-                }
+                | InputFormat::CursorLegacy => match parse_claude(input, filename) {
+                    Ok(rule) => vec![Entity::Rule(rule)],
+                    Err(e) if e.to_string().contains("ignored") => vec![],
+                    Err(e) => return Err(e),
+                },
                 InputFormat::Gemini => parse_gemini(input, filename)?,
                 _ => unreachable!(),
             };
-            Ok(RuletteDocument {
+            let mut doc = RuletteDocument {
                 ir_version: "0.1".to_string(),
                 entities,
-            })
+            };
+            inject_source_file(&mut doc, filename);
+            Ok(doc)
+        }
+    }
+}
+
+fn inject_source_file(doc: &mut RuletteDocument, filename: Option<&str>) {
+    if let Some(f) = filename {
+        for entity in &mut doc.entities {
+            match entity {
+                Entity::Rule(rule) => {
+                    rule.metadata.extra.insert(
+                        "rulette:source_file".to_string(),
+                        serde_json::Value::String(f.to_string()),
+                    );
+                }
+                Entity::Skill(skill) => {
+                    skill.metadata.extra.insert(
+                        "rulette:source_file".to_string(),
+                        serde_json::Value::String(f.to_string()),
+                    );
+                }
+                Entity::Agent(agent) => {
+                    agent.metadata.extra.insert(
+                        "rulette:source_file".to_string(),
+                        serde_json::Value::String(f.to_string()),
+                    );
+                }
+                Entity::McpServer(mcp) => {
+                    mcp.metadata.extra.insert(
+                        "rulette:source_file".to_string(),
+                        serde_json::Value::String(f.to_string()),
+                    );
+                }
+                Entity::Hook(hook) => {
+                    hook.metadata.extra.insert(
+                        "rulette:source_file".to_string(),
+                        serde_json::Value::String(f.to_string()),
+                    );
+                }
+                Entity::Permissions(perms) => {
+                    perms.metadata.extra.insert(
+                        "rulette:source_file".to_string(),
+                        serde_json::Value::String(f.to_string()),
+                    );
+                }
+            }
         }
     }
 }
 
 fn parse_gemini(input: &str, filename: Option<&str>) -> Result<Vec<Entity>> {
-    if let Ok(subagent) = crate::gemini::GeminiSubAgent::parse(input) {
+    if let Ok(subagent) = super::gemini::GeminiSubAgent::parse(input) {
         let mut extra = subagent.metadata.extra.clone();
         if let Some(kind) = subagent.metadata.kind {
             extra.insert("kind".to_string(), serde_json::Value::String(kind));
@@ -140,6 +209,11 @@ fn parse_gemini(input: &str, filename: Option<&str>) -> Result<Vec<Entity>> {
 }
 
 fn parse_agent_skills(input: &str, filename: Option<&str>) -> Result<Skill> {
+    if let Some(f) = filename {
+        if f.to_lowercase().ends_with("readme.md") {
+            return Err(anyhow::anyhow!("README.md is ignored"));
+        }
+    }
     let (frontmatter, body) = extract_frontmatter(input);
     let mut metadata = SkillMetadata {
         name: "unnamed-skill".to_string(),
@@ -223,6 +297,11 @@ fn parse_agent_skills(input: &str, filename: Option<&str>) -> Result<Skill> {
 }
 
 fn parse_cursor_mdc(input: &str, filename: Option<&str>) -> Result<Rule> {
+    if let Some(f) = filename {
+        if f.to_lowercase().ends_with("readme.md") {
+            return Err(anyhow::anyhow!("README.md is ignored"));
+        }
+    }
     let (frontmatter, body) = extract_frontmatter(input);
     let mut metadata = RuleMetadata::default();
 
@@ -257,7 +336,7 @@ fn parse_cursor_mdc(input: &str, filename: Option<&str>) -> Result<Rule> {
     })
 }
 
-fn parse_claude_settings(input: &str) -> Result<Vec<Entity>> {
+fn parse_claude_settings(input: &str, filename: Option<&str>) -> Result<Vec<Entity>> {
     use crate::translate::claude_v1::{ClaudeMcpConfig, ClaudeV1};
     use crate::translate::Translator;
 
@@ -284,7 +363,9 @@ fn parse_claude_settings(input: &str) -> Result<Vec<Entity>> {
 
     if let Some(hooks) = parsed.hooks {
         for (name, hook_data) in hooks {
-            entities.push(Entity::Hook(translator.translate_hook(&name, &hook_data)?));
+            entities.push(Entity::Hook(
+                translator.translate_hook(&name, &hook_data, filename)?,
+            ));
         }
     }
 
@@ -303,6 +384,11 @@ fn parse_claude_settings(input: &str) -> Result<Vec<Entity>> {
 }
 
 fn parse_claude(input: &str, filename: Option<&str>) -> Result<Rule> {
+    if let Some(f) = filename {
+        if f.to_lowercase().ends_with("readme.md") {
+            return Err(anyhow::anyhow!("README.md is ignored"));
+        }
+    }
     // CLAUDE.md generally doesn't use frontmatter natively in the same structured way
     let mut metadata = RuleMetadata::default();
     if let Some(name) = extract_name_from_filename(filename) {

@@ -5,7 +5,7 @@ use schemars::schema_for;
 pub struct SchemaArgs {
     /// Format to output schema for (ir, claude, cursor-mdc, etc.)
     #[arg(short, long, default_value = "ir")]
-    pub format: String,
+    pub to: String,
 
     /// Extension key to output schema for (e.g., rulette:activation)
     #[arg(long)]
@@ -26,14 +26,14 @@ impl SchemaArgs {
             return Ok(());
         }
 
-        let schema = match self.format.as_str() {
+        let schema = match self.to.as_str() {
             "ir" => schema_for!(crate::RuletteDocument),
-            "claude" => schema_for!(crate::claude::ClaudeSkill),
-            "cursor-mdc" => schema_for!(crate::cursor::CursorSkill),
+            "claude" => schema_for!(crate::parsers::claude::ClaudeSkill),
+            "cursor-mdc" => schema_for!(crate::parsers::cursor::CursorSkill),
             "agent-skills" => schema_for!(crate::agent_skills::Skill),
-            "gemini" => schema_for!(crate::gemini::GeminiSkill),
-            "codex" => schema_for!(crate::codex::CodexSkill),
-            _ => anyhow::bail!("Unsupported schema format: {}. Try 'ir', 'claude', 'cursor-mdc', 'agent-skills', 'gemini', 'codex'.", self.format),
+            "gemini" => schema_for!(crate::parsers::gemini::GeminiSkill),
+            "codex" => schema_for!(crate::parsers::codex::CodexSkill),
+            _ => anyhow::bail!("Unsupported schema format: {}. Try 'ir', 'claude', 'cursor-mdc', 'agent-skills', 'gemini', 'codex'.", self.to),
         };
 
         let schema_json = serde_json::to_string_pretty(&schema)?;

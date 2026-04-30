@@ -41,12 +41,14 @@ fn test_rule_to_agent_skills_strict_error() {
 }
 
 #[test]
-fn test_skill_to_claude_strict_error() {
-    let original_file = "tests/fixtures/agent-skills/example.skill.md";
+fn test_agent_to_claude_strict_error() {
+    let original_file = "tests/fixtures/gemini/subagent.md";
 
     let mut cmd = Command::cargo_bin("rulette").unwrap();
     cmd.arg("transform")
         .arg(original_file)
+        .arg("--from")
+        .arg("gemini")
         .arg("--to")
         .arg("claude")
         .arg("--strict")
