@@ -1,6 +1,6 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap as HashMap;
 
 #[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Skill {

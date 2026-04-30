@@ -4,7 +4,7 @@ use crate::{
 };
 use anyhow::Result;
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::BTreeMap as HashMap;
 
 pub struct ClaudeV1;
 

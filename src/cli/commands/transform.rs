@@ -9,7 +9,7 @@ use crate::{Entity, RuletteDocument};
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::BTreeMap as HashMap;
 use std::fs;
 use std::path::PathBuf;
 
