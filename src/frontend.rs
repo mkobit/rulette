@@ -4,7 +4,7 @@ use crate::{
     Entity, McpServer, McpServerConfig, McpServerMetadata, Rule, RuleMetadata, RuletteDocument,
 };
 use anyhow::Result;
-use std::collections::HashMap;
+use std::collections::BTreeMap as HashMap;
 use std::path::Path;
 
 pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result<RuletteDocument> {

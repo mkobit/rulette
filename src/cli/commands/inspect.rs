@@ -6,7 +6,7 @@ use crate::cli::formats::{InputFormat, OutputFormat};
 use crate::cli::io::read_inputs;
 use crate::frontend::parse;
 use clap::Args;
-use std::collections::HashMap;
+use std::collections::BTreeMap as HashMap;
 use std::path::PathBuf;
 
 #[derive(Args, Debug)]
