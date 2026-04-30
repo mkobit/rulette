@@ -20,7 +20,7 @@ expression: normalized_output
         "license": "MIT",
         "name": "awesome-skill",
         "pipeline_processed": "true",
-        "rulette:source_file": "/tmp/.tmp2gKjWp/complex_input/skills/skill1.md",
+        "rulette:source_file": "/tmp/.tmpagsa20/complex_input/skills/skill1.md",
         "version": "1.0.0"
       }
     },
@@ -31,7 +31,7 @@ expression: normalized_output
         "description": "A basic rule",
         "name": "basic-rule",
         "pipeline_processed": "true",
-        "rulette:source_file": "/tmp/.tmp2gKjWp/complex_input/rule1.md"
+        "rulette:source_file": "/tmp/.tmpagsa20/complex_input/rule1.md"
       }
     }
   ]
