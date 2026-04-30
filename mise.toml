@@ -2,7 +2,6 @@
 node = "22"
 "npm:markdownlint-cli2" = "0.17.1"
 rust = { version = "1.94.1", components = ["rustfmt", "clippy"] }
-gemini-cli = "latest"
 
 [tasks."lint:md"]
 description = "Lint markdown files"
