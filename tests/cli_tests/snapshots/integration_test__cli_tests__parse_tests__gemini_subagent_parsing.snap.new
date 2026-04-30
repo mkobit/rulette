@@ -17,6 +17,7 @@ expression: normalized_output
         "rulette:models": [
           "gemini-2.0-flash"
         ],
+        "rulette:source_file": "tests/fixtures/gemini/subagent.md",
         "mcpServers": {
           "filesystem": {
             "args": [
@@ -27,7 +28,6 @@ expression: normalized_output
             "command": "npx"
           }
         },
-        "rulette:source_file": "tests/fixtures/gemini/subagent.md",
         "kind": "local"
       },
       "body": "# Security Expert System Prompt\nFind bugs.\n"
