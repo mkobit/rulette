@@ -1,6 +1,6 @@
 use crate::RuletteDocument;
 use anyhow::Result;
-use std::collections::HashMap;
+use std::collections::BTreeMap as HashMap;
 use std::path::PathBuf;
 
 pub mod agent_skills;

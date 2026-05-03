@@ -1,7 +1,7 @@
 use super::Emitter;
 use crate::{Entity, RuletteDocument};
 use anyhow::{anyhow, Result};
-use std::collections::HashMap;
+use std::collections::BTreeMap as HashMap;
 use std::path::PathBuf;
 
 pub struct AgentSkillsEmitter;
@@ -55,8 +55,8 @@ impl Emitter for AgentSkillsEmitter {
                         name: &'a str,
                         description: &'a str,
                         #[serde(flatten)]
-                        #[serde(skip_serializing_if = "std::collections::HashMap::is_empty")]
-                        extra: std::collections::HashMap<&'a String, &'a serde_json::Value>,
+                        #[serde(skip_serializing_if = "HashMap::is_empty")]
+                        extra: HashMap<&'a String, &'a serde_json::Value>,
                     }
                     let name_val = if let Some(serde_json::Value::String(n)) =
                         rule.metadata.extra.get("name")
@@ -70,7 +70,7 @@ impl Emitter for AgentSkillsEmitter {
                     } else {
                         "Generated from rule"
                     };
-                    let extra: std::collections::HashMap<_, _> = rule
+                    let extra: HashMap<_, _> = rule
                         .metadata
                         .extra
                         .iter()

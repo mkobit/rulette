@@ -1,7 +1,7 @@
 use super::Emitter;
 use crate::{Entity, RuletteDocument};
 use anyhow::{anyhow, Result};
-use std::collections::HashMap;
+use std::collections::BTreeMap as HashMap;
 use std::path::PathBuf;
 
 pub struct GeminiEmitter;
@@ -112,7 +112,7 @@ impl Emitter for GeminiEmitter {
 mod tests_gemini {
     use super::*;
     use crate::{Agent, AgentMetadata, Entity, RuletteDocument};
-    use std::collections::HashMap;
+    use std::collections::BTreeMap as HashMap;
 
     #[test]
     fn test_gemini_emitter_agent_roundtrip() {

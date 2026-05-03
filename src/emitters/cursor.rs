@@ -1,7 +1,7 @@
 use super::Emitter;
 use crate::{Entity, RuletteDocument};
 use anyhow::{anyhow, Result};
-use std::collections::HashMap;
+use std::collections::BTreeMap as HashMap;
 use std::path::PathBuf;
 
 pub struct CursorEmitter;
@@ -27,10 +27,10 @@ impl Emitter for CursorEmitter {
                         #[serde(skip_serializing_if = "Option::is_none")]
                         description: Option<&'a String>,
                         #[serde(flatten)]
-                        #[serde(skip_serializing_if = "std::collections::HashMap::is_empty")]
-                        extra: std::collections::HashMap<&'a String, &'a serde_json::Value>,
+                        #[serde(skip_serializing_if = "HashMap::is_empty")]
+                        extra: HashMap<&'a String, &'a serde_json::Value>,
                     }
-                    let extra: std::collections::HashMap<_, _> = rule
+                    let extra: HashMap<_, _> = rule
                         .metadata
                         .extra
                         .iter()
@@ -81,10 +81,10 @@ impl Emitter for CursorEmitter {
                     struct CursorSkillMeta<'a> {
                         description: &'a String,
                         #[serde(flatten)]
-                        #[serde(skip_serializing_if = "std::collections::HashMap::is_empty")]
-                        extra: std::collections::HashMap<&'a String, &'a serde_json::Value>,
+                        #[serde(skip_serializing_if = "HashMap::is_empty")]
+                        extra: HashMap<&'a String, &'a serde_json::Value>,
                     }
-                    let extra: std::collections::HashMap<_, _> =
+                    let extra: HashMap<_, _> =
                         skill.metadata.extra.iter().collect();
                     let meta = CursorSkillMeta {
                         description: &skill.metadata.description,

@@ -1,7 +1,7 @@
 use super::Emitter;
 use crate::{Entity, RuletteDocument};
 use anyhow::{anyhow, Result};
-use std::collections::HashMap;
+use std::collections::BTreeMap as HashMap;
 use std::path::PathBuf;
 
 pub struct CopilotEmitter;
