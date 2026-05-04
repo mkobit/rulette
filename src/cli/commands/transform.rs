@@ -276,8 +276,7 @@ impl TransformArgs {
 
         // Strict Identity Collision Detection
         {
-            let mut seen: HashMap<String, &Entity> =
-                HashMap::new();
+            let mut seen: HashMap<String, &Entity> = HashMap::new();
 
             for entity in &combined_entities {
                 let name = match entity {

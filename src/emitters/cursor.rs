@@ -84,8 +84,7 @@ impl Emitter for CursorEmitter {
                         #[serde(skip_serializing_if = "HashMap::is_empty")]
                         extra: HashMap<&'a String, &'a serde_json::Value>,
                     }
-                    let extra: HashMap<_, _> =
-                        skill.metadata.extra.iter().collect();
+                    let extra: HashMap<_, _> = skill.metadata.extra.iter().collect();
                     let meta = CursorSkillMeta {
                         description: &skill.metadata.description,
                         extra,
