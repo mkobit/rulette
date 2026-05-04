@@ -1,5 +1,6 @@
 ---
 source: tests/cli_tests/parse_tests.rs
+assertion_line: 81
 expression: normalized_output
 ---
 {
@@ -16,6 +17,7 @@ expression: normalized_output
         "rulette:models": [
           "gemini-2.0-flash"
         ],
+        "kind": "local",
         "mcpServers": {
           "filesystem": {
             "args": [
@@ -26,7 +28,6 @@ expression: normalized_output
             "command": "npx"
           }
         },
-        "kind": "local",
         "rulette:source_file": "tests/fixtures/gemini/subagent.md"
       },
       "body": "# Security Expert System Prompt\nFind bugs.\n"
