@@ -123,11 +123,13 @@ This is a basic rule."#
     });
 
     let sorted_json = serde_json::json!({ "entities": entities });
-    let mut normalized_output = serde_json::to_string_pretty(&sorted_json).unwrap();
+    let normalized_output = serde_json::to_string_pretty(&sorted_json).unwrap();
 
-    // Sanitize absolute paths in rulette:source_file to make snapshots stable across environments
-    let temp_path_str = temp_dir.path().to_str().unwrap();
-    normalized_output = normalized_output.replace(temp_path_str, "[TEMP_DIR]");
+    // Sanitize absolute paths and normalize separators for cross-platform snapshot stability
+    let temp_path_str = temp_dir.path().to_str().unwrap().replace("\\", "/");
+    let normalized_output = normalized_output
+        .replace("\\\\", "/")
+        .replace(&temp_path_str, "[TEMP_DIR]");
 
     assert_snapshot!(normalized_output);
 }
