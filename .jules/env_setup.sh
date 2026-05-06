@@ -21,4 +21,7 @@ rustup show
 echo "Rust: $(rustc --version)"
 echo "Cargo: $(cargo --version)"
 
+# Check mise version
+echo "Mise: $(mise --version || echo "mise not installed")"
+
 echo "Environment ready"
