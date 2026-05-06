@@ -14,7 +14,10 @@ fn test_claude_skill_parsing() {
         .success();
 
     let output = str::from_utf8(&assert.get_output().stdout).unwrap();
-    let normalized_output = output.replace("\r\n", "\n").replace("\\r\\n", "\\n");
+    let normalized_output = output
+        .replace("\r\n", "\n")
+        .replace("\\r\\n", "\\n")
+        .replace("\\\\", "/");
     assert_snapshot!(normalized_output);
 }
 
@@ -45,7 +48,10 @@ fn test_agent_skills_parsing() {
         .success();
 
     let output = str::from_utf8(&assert.get_output().stdout).unwrap();
-    let normalized_output = output.replace("\r\n", "\n").replace("\\r\\n", "\\n");
+    let normalized_output = output
+        .replace("\r\n", "\n")
+        .replace("\\r\\n", "\\n")
+        .replace("\\\\", "/");
     assert_snapshot!(normalized_output);
 }
 
@@ -61,7 +67,10 @@ fn test_cursor_mdc_parsing() {
         .success();
 
     let output = str::from_utf8(&assert.get_output().stdout).unwrap();
-    let normalized_output = output.replace("\r\n", "\n").replace("\\r\\n", "\\n");
+    let normalized_output = output
+        .replace("\r\n", "\n")
+        .replace("\\r\\n", "\\n")
+        .replace("\\\\", "/");
     assert_snapshot!(normalized_output);
 }
 
@@ -77,6 +86,9 @@ fn test_gemini_subagent_parsing() {
         .success();
 
     let output = str::from_utf8(&assert.get_output().stdout).unwrap();
-    let normalized_output = output.replace("\r\n", "\n").replace("\\r\\n", "\\n");
+    let normalized_output = output
+        .replace("\r\n", "\n")
+        .replace("\\r\\n", "\\n")
+        .replace("\\\\", "/");
     assert_snapshot!(normalized_output);
 }
