@@ -127,9 +127,7 @@ This is a basic rule."#
 
     // Sanitize absolute paths and normalize separators for cross-platform snapshot stability
     let temp_path_str = temp_dir.path().to_str().unwrap().replace("\\", "/");
-    let normalized_output = normalized_output
-        .replace("\\\\", "/")
-        .replace(&temp_path_str, "[TEMP_DIR]");
+    let normalized_output = normalized_output.replace(&temp_path_str, "[TEMP_DIR]");
 
     assert_snapshot!(normalized_output);
 }

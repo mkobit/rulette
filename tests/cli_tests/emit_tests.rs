@@ -16,7 +16,6 @@ fn emit_to_format(format: &str) -> String {
     output
         .replace("\r\n", "\n")
         .replace("\\r\\n", "\\n")
-        .replace("\\\\", "/")
 }
 
 #[test]
