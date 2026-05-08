@@ -26,8 +26,11 @@ jobs:
           version: ${{ env.MISE_VERSION }}
           install: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          MISE_USE_VERSIONS_HOST: 1
+          MISE_RUST_DOWNLOAD: 1
       - name: Run markdown lint
-        run: mise run lint:md
+        run: markdownlint-cli2
 
   check:
     name: Check
@@ -57,10 +60,10 @@ jobs:
             fixtures-${{ runner.os }}-
 
       - name: Check formatting
-        run: mise run fmt
+        run: cargo fmt --check
 
       - name: Lint
-        run: mise run lint:rust
+        run: cargo clippy -- -D warnings
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -98,7 +101,7 @@ jobs:
 
       - name: Test
         if: matrix.os != 'ubuntu-latest'
-        run: mise run test
+        run: cargo test
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
