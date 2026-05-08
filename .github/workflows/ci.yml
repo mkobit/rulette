@@ -43,9 +43,7 @@ jobs:
           install: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install Rust components
-        run: rustup component add rustfmt clippy
+          MISE_USE_VERSIONS_HOST: 1
 
       - name: Set up rust cache
         uses: Swatinem/rust-cache@v2
@@ -84,9 +82,7 @@ jobs:
           install: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install Rust components
-        run: rustup component add rustfmt clippy
+          MISE_USE_VERSIONS_HOST: 1
 
       - name: Set up rust cache
         uses: Swatinem/rust-cache@v2
