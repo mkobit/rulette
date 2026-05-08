@@ -25,10 +25,9 @@ jobs:
         with:
           version: ${{ env.MISE_VERSION }}
           install: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run markdown lint
-        run: markdownlint-cli2
+        run: mise run lint:md
 
   check:
     name: Check
@@ -41,8 +40,8 @@ jobs:
         with:
           version: ${{ env.MISE_VERSION }}
           install: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MISE_USE_VERSIONS_HOST: 1
 
       - name: Set up rust cache
@@ -57,12 +56,12 @@ jobs:
             fixtures-${{ runner.os }}-
 
       - name: Check formatting
-        run: cargo fmt --check
+        run: mise run fmt
 
       - name: Lint
+        run: mise run lint:rust
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo clippy -- -D warnings
 
   test:
     name: Test (${{ matrix.os }})
@@ -80,8 +79,8 @@ jobs:
         with:
           version: ${{ env.MISE_VERSION }}
           install: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MISE_USE_VERSIONS_HOST: 1
 
       - name: Set up rust cache
@@ -97,9 +96,9 @@ jobs:
 
       - name: Test
         if: matrix.os != 'ubuntu-latest'
+        run: mise run test
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo test
 
       - name: Install cargo-llvm-cov
         if: matrix.os == 'ubuntu-latest'
@@ -107,9 +106,9 @@ jobs:
 
       - name: Test and coverage gate
         if: matrix.os == 'ubuntu-latest'
+        run: cargo llvm-cov
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo llvm-cov
 
   audit:
     name: Security audit
