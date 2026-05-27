@@ -4,6 +4,11 @@
 
 set -euo pipefail
 
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    echo "Error: This script must be sourced, not executed. Run 'source .jules/env_setup.sh'"
+    exit 1
+fi
+
 echo "Setting up environment..."
 echo "--- Diagnostic Information ---"
 echo "User: $(whoami)"
