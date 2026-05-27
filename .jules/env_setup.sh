@@ -5,23 +5,45 @@
 set -euo pipefail
 
 echo "Setting up environment..."
+echo "--- Diagnostic Information ---"
 echo "User: $(whoami)"
 echo "Git commit: $(git rev-parse --short HEAD) ($(git log -1 --format=%cI))"
+echo "------------------------------"
 
-# Install rustup if missing
-if ! command -v rustup &> /dev/null; then
-    echo "Installing rustup..."
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
-    export PATH="$HOME/.cargo/bin:$PATH"
+# Install mise if missing
+if ! command -v mise &> /dev/null; then
+    echo "Installing mise..."
+    MISE_VERSION="v2026.5.15"
+    mkdir -p ~/.local/bin
+    curl -L "https://github.com/jdx/mise/releases/download/${MISE_VERSION}/mise-${MISE_VERSION}-linux-x64" > ~/.local/bin/mise
+    chmod +x ~/.local/bin/mise
+    export PATH="$HOME/.local/bin:$PATH"
 fi
 
-# Activate toolchain pinned in rust-toolchain.toml
-rustup show
+echo "Installing tools with mise..."
+mise trust
+mise install
+eval "$(mise activate bash)"
+eval "$(mise env bash)"
 
-echo "Rust: $(rustc --version)"
-echo "Cargo: $(cargo --version)"
+if ! grep -q "mise activate bash" ~/.bashrc 2>/dev/null; then
+    echo 'eval "$(mise activate bash)"' >> ~/.bashrc
+fi
 
-# Check mise version
-echo "Mise: $(mise --version || echo "mise not installed")"
+if command -v rustc &> /dev/null; then
+    echo "Rust: $(rustc --version)"
+else
+    echo "Error: rustc not found after mise install"
+    exit 1
+fi
+
+if command -v cargo &> /dev/null; then
+    echo "Cargo: $(cargo --version)"
+else
+    echo "Error: cargo not found after mise install"
+    exit 1
+fi
+
+echo "Mise: $(mise --version)"
 
 echo "Environment ready"
