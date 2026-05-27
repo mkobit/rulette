@@ -129,16 +129,18 @@ This is a basic rule."#
     // Canonicalize to resolve symlinks like /var -> /private/var on macOS
     let temp_path = fs::canonicalize(temp_dir.path()).unwrap();
     let mut temp_path_str = temp_path.to_string_lossy().replace("\\", "/");
-    
+
     // Strip UNC prefix on Windows (e.g. //?/C:/...)
     if temp_path_str.starts_with("//?/") {
         temp_path_str = temp_path_str[4..].to_string();
     }
-    
+
     // Normalize both for comparison (lowercase drive letters on Windows)
     let normalized_output = normalized_output.replace("\\\\", "/");
     let normalized_output = if cfg!(windows) {
-        normalized_output.to_lowercase().replace(&temp_path_str.to_lowercase(), "[TEMP_DIR]")
+        normalized_output
+            .to_lowercase()
+            .replace(&temp_path_str.to_lowercase(), "[TEMP_DIR]")
     } else {
         normalized_output.replace(&temp_path_str, "[TEMP_DIR]")
     };
