@@ -1,6 +1,5 @@
 ---
 source: tests/cli_tests/parse_tests.rs
-assertion_line: 49
 expression: normalized_output
 ---
 {
@@ -18,7 +17,8 @@ expression: normalized_output
           "bash",
           "read",
           "write"
-        ]
+        ],
+        "rulette:source_file": "tests/fixtures/agent-skills/example.skill.md"
       },
       "body": "# File System Operations\n\nThis skill allows an agent to perform file system operations safely by constraining the scope of operations to the current directory and disallowing destructive operations like `rm -rf`.\n\n## Instructions\n\n1. Use standard bash commands to explore the filesystem.\n2. Read files using the `read` tool.\n3. Write files using the `write` tool.\n4. Do NOT execute any `rm` commands.\n"
     }

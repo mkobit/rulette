@@ -13,7 +13,9 @@ fn emit_to_format(format: &str) -> String {
         .success();
 
     let output = str::from_utf8(&assert.get_output().stdout).unwrap();
-    output.replace("\r\n", "\n").replace("\\r\\n", "\\n")
+    output
+        .replace("\r\n", "\n")
+        .replace("\\r\\n", "\\n")
 }
 
 #[test]

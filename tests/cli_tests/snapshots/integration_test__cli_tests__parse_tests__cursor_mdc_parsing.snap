@@ -1,5 +1,6 @@
 ---
 source: tests/cli_tests/parse_tests.rs
+assertion_line: 65
 expression: normalized_output
 ---
 {
@@ -13,7 +14,8 @@ expression: normalized_output
         "globs": [
           "src/**/*.rs"
         ],
-        "name": "example"
+        "name": "example",
+        "rulette:source_file": "tests/fixtures/cursor/example.mdc"
       },
       "body": "# Rust Rules\n- Use idiomatic Rust.\n- Prefer `anyhow` for errors.\n"
     }

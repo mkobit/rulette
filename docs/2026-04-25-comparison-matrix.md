@@ -12,6 +12,7 @@ This document tracks how Rulette compares to other tools in the ecosystem and th
 | **State** | Stateless (Compiler) | Stateful (Sync) | Rulette treats config as code to be compiled, not state to be synced. |
 | **Determinism** | Guaranteed | Best Effort | Same input always produces bit-identical output in Rulette. |
 | **Transformation** | Pipe-based (Unix) | Internal Plugin System | Rulette integrates with `jq`, `sed`, and custom scripts via IR. |
+| **Integrity** | Strict Collision Error | Automatic Merge | Rulette fails on name collisions; RuleSync merges files automatically. |
 | **Hermeticity** | Fully Hermetic | Requires Node/Registry | Rulette has zero runtime dependencies. |
 
 ## Target support matrix
@@ -48,4 +49,5 @@ Rulette is optimized for use in restricted build environments:
 
 1. **Bazel/Buck**: The static binary can be checked into the repo or fetched via `http_archive` with SHA-256 verification.
 2. **Deterministic Outputs**: Ensuring that re-running the transformation on the same input produces the exact same files prevents unnecessary build invalidations or git churn.
-3. **No Network by Default**: Unlike tools that might fetch "latest rules" or "registry updates," Rulette only interacts with the filesystem (or stdin/stdout) unless explicit flags like `--allow-mutable` are used (planned).
+3. **Identity Integrity**: Rulette treats entity names as unique primary keys. It rejects any input set where the same entity name is defined in multiple locations, preventing accidental configuration overrides.
+4. **No Network by Default**: Unlike tools that might fetch "latest rules" or "registry updates," Rulette only interacts with the filesystem (or stdin/stdout) unless explicit flags like `--allow-mutable` are used (planned).

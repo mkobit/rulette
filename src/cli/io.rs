@@ -11,8 +11,28 @@ pub struct InputFile {
 }
 
 fn is_supported_extension(path: &Path) -> bool {
+    let filename = path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or_default()
+        .to_lowercase();
+    if matches!(
+        filename.as_str(),
+        "package.json"
+            | "package-lock.json"
+            | "cargo.lock"
+            | "cargo.toml"
+            | "rulette.toml"
+            | "plugin.json"
+    ) {
+        return false;
+    }
+
     if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
-        matches!(ext, "md" | "mdc" | "json" | "toml" | "yaml" | "yml")
+        matches!(
+            ext.to_lowercase().as_str(),
+            "md" | "mdc" | "json" | "toml" | "yaml" | "yml"
+        )
     } else {
         false
     }
@@ -31,9 +51,13 @@ fn read_archive<R: Read>(reader: R, archive_name: Option<&str>) -> anyhow::Resul
             entry.read_to_string(&mut content)?;
 
             let filename = if let Some(base) = archive_name {
-                format!("{}:{}", base, path.display())
+                format!(
+                    "{}:{}",
+                    base.replace("\\", "/"),
+                    path.display().to_string().replace("\\", "/")
+                )
             } else {
-                path.display().to_string()
+                path.display().to_string().replace("\\", "/")
             };
 
             results.push(InputFile {
@@ -82,12 +106,12 @@ pub fn read_inputs(paths: &[String]) -> anyhow::Result<Vec<InputFile>> {
                     tracing::debug!("Read file: {}", p.to_string_lossy());
                     results.push(InputFile {
                         content,
-                        filename: Some(p.to_string_lossy().into_owned()),
+                        filename: Some(p.to_string_lossy().replace("\\", "/")),
                     });
                 }
             }
         } else {
-            let filename = path.to_string_lossy().into_owned();
+            let filename = path.to_string_lossy();
             if filename.ends_with(".tar.gz") || filename.ends_with(".tgz") {
                 tracing::debug!("Reading GZIP archive: {}", filename);
                 let file = fs::File::open(path)?;
@@ -102,11 +126,14 @@ pub fn read_inputs(paths: &[String]) -> anyhow::Result<Vec<InputFile>> {
                 tracing::debug!("Read file: {}", filename);
                 results.push(InputFile {
                     content,
-                    filename: Some(filename),
+                    filename: Some(filename.replace("\\", "/")),
                 });
             }
         }
     }
+
+    // Sort results by filename for deterministic entity ordering
+    results.sort_by(|a, b| a.filename.cmp(&b.filename));
 
     Ok(results)
 }

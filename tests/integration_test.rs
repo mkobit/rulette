@@ -31,7 +31,7 @@ mod main_tests {
     #[test]
     fn test_main_inspect_dry_run_command() {
         let mut cmd = Command::cargo_bin("rulette").unwrap();
-        cmd.arg("inspect").arg("-").arg("--target").arg("claude");
+        cmd.arg("inspect").arg("-").arg("--to").arg("claude");
 
         use std::io::Write;
         let mut child = cmd.stdin(std::process::Stdio::piped()).spawn().unwrap();
