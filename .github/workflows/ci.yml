@@ -48,10 +48,6 @@ jobs:
           MISE_USE_VERSIONS_HOST: 1
           MISE_RUST_DOWNLOAD: 1
 
-      - name: Debug toolchain
-        run: |
-          mise exec -- cargo --version
-
       - name: Set up rust cache
         uses: Swatinem/rust-cache@v2
 
@@ -62,9 +58,6 @@ jobs:
           key: fixtures-${{ runner.os }}-${{ hashFiles('build.rs') }}
           restore-keys: |
             fixtures-${{ runner.os }}-
-
-      - name: Debug mise config
-        run: mise run
 
       - name: Check formatting
         run: mise run fmt
@@ -94,10 +87,6 @@ jobs:
         env:
           MISE_USE_VERSIONS_HOST: 1
           MISE_RUST_DOWNLOAD: 1
-
-      - name: Debug toolchain
-        run: |
-          mise exec -- cargo --version
 
       - name: Set up rust cache
         uses: Swatinem/rust-cache@v2
