@@ -38,4 +38,4 @@ jobs:
         env:
           MISE_USE_VERSIONS_HOST: 1
       - name: Validate OpenSpec specs and changes
-        run: npx @fission-ai/openspec validate --all
+        run: mise run spec-validate
