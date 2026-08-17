@@ -57,21 +57,15 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
 - If a required sync or push is blocked, stop and report the exact command and error.
 <!-- END BEADS INTEGRATION -->
 
-
-## Build & Test
-
-_Add your build and test commands here_
+## Build and test
 
 ```bash
-# Example:
-# npm install
-# npm test
+mise run check         # Run markdown linting, cargo fmt, clippy, unit and integration tests
+mise run spec-validate # Validate all OpenSpec specifications strictly
+mise run bd-check      # Verify beads database health and unblocked work
 ```
 
-## Architecture Overview
+## Project conventions
 
-_Add a brief overview of your project architecture_
+See @AGENTS.md for hard constraints, documentation references, architectural pipeline, specs, and issue tracking protocols.
 
-## Conventions & Patterns
-
-_Add your project-specific conventions here_
