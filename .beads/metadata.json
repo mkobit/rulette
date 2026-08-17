@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "rulette",
+  "project_id": "22abb9d9-bd91-42d1-840c-84dbae24a5ae"
+}
