@@ -144,7 +144,10 @@ jobs:
           MISE_USE_VERSIONS_HOST: 1
           MISE_RUST_DOWNLOAD: 1
 
-      - name: Run security audit
-        uses: rustsec/audit-check@v2
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          tool: cargo-audit
+
+      - name: Run security audit
+        run: cargo audit
