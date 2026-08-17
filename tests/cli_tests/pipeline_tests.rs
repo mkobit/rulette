@@ -75,7 +75,7 @@ This is a basic rule."#
         .arg("transform")
         .arg("-")
         .arg("--exclude")
-        .arg("mcp-server")
+        .arg("kind == \"mcp-server\"")
         .arg("--set")
         .arg("pipeline_processed=true")
         .stdin(parse_child.stdout.take().unwrap())

@@ -30,6 +30,7 @@ pub enum InputFormat {
 pub enum OutputFormat {
     Claude,
     CursorMdc,
+    CursorMcp,
     Codex,
     Windsurf,
     Copilot,

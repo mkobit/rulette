@@ -1,8 +1,8 @@
 use crate::cli::formats::{InputFormat, OutputFormat};
 use crate::cli::io::read_inputs;
 use crate::emitters::{
-    AgentSkillsEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter, CursorEmitter, Emitter,
-    GeminiEmitter, WindsurfEmitter,
+    AgentSkillsEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter, CursorEmitter,
+    CursorMcpEmitter, Emitter, GeminiEmitter, WindsurfEmitter,
 };
 use crate::parsers::parse;
 use crate::pipeline;
@@ -119,6 +119,7 @@ pub fn parse_targets(
             let format_opt = match format_str {
                 "claude" => Some(OutputFormat::Claude),
                 "cursor-mdc" => Some(OutputFormat::CursorMdc),
+                "cursor-mcp" => Some(OutputFormat::CursorMcp),
                 "codex" => Some(OutputFormat::Codex),
                 "windsurf" => Some(OutputFormat::Windsurf),
                 "copilot" => Some(OutputFormat::Copilot),
@@ -167,7 +168,7 @@ pub fn parse_targets(
 }
 
 impl TransformArgs {
-    pub fn execute(&self, strict: bool) -> Result<()> {
+    pub fn execute(&self, strict: bool, quiet: bool) -> Result<()> {
         let mut combined_entities = vec![];
 
         let inputs = read_inputs(&self.input)?;
@@ -245,11 +246,13 @@ impl TransformArgs {
         let run_targets = parse_targets(&run_out, run_to)?;
 
         if let Some(filter_expr) = &run_filter {
-            combined_entities.retain(|entity| pipeline::match_expr(entity, filter_expr));
+            let expr = pipeline::FilterExpr::parse(filter_expr)?;
+            combined_entities.retain(|entity| expr.matches(entity));
         }
 
         if let Some(exclude_expr) = &run_exclude {
-            combined_entities.retain(|entity| !pipeline::match_expr(entity, exclude_expr));
+            let expr = pipeline::FilterExpr::parse(exclude_expr)?;
+            combined_entities.retain(|entity| !expr.matches(entity));
         }
 
         if let Some(rename_expr) = &run_rename {
@@ -372,6 +375,7 @@ impl TransformArgs {
             let output_map = match target.format {
                 OutputFormat::Claude => ClaudeEmitter.emit(&doc, strict)?,
                 OutputFormat::CursorMdc => CursorEmitter.emit(&doc, strict)?,
+                OutputFormat::CursorMcp => CursorMcpEmitter.emit(&doc, strict)?,
                 OutputFormat::AgentSkills => AgentSkillsEmitter.emit(&doc, strict)?,
                 OutputFormat::Copilot => CopilotEmitter.emit(&doc, strict)?,
                 OutputFormat::Windsurf => WindsurfEmitter.emit(&doc, strict)?,
@@ -403,7 +407,12 @@ impl TransformArgs {
             generated_outputs.push((target, output_map));
         }
 
-        for (target, output_map) in generated_outputs {
+        // Track files written this run so a mid-run failure can be rolled back,
+        // keeping multi-target emission all-or-nothing on disk.
+        let mut written_paths: Vec<PathBuf> = Vec::new();
+        let mut write_error: Option<anyhow::Error> = None;
+
+        'outer: for (target, output_map) in generated_outputs {
             let base_path = resolve_output_path(&target.format, target.path.as_ref());
 
             let mut sorted_paths: Vec<_> = output_map.keys().collect();
@@ -422,7 +431,10 @@ impl TransformArgs {
                 };
 
                 if let Some(parent) = final_path.parent() {
-                    fs::create_dir_all(parent)?;
+                    if let Err(e) = fs::create_dir_all(parent) {
+                        write_error = Some(e.into());
+                        break 'outer;
+                    }
                 }
 
                 if base_path.is_none() {
@@ -430,11 +442,23 @@ impl TransformArgs {
                         println!("--- {} ---", final_path.display());
                     }
                     println!("{}", content);
+                } else if let Err(e) = fs::write(&final_path, content) {
+                    write_error = Some(e.into());
+                    break 'outer;
                 } else {
-                    fs::write(&final_path, content)?;
-                    println!("Emitted to {}", final_path.display());
+                    written_paths.push(final_path.clone());
+                    if !quiet {
+                        println!("Emitted to {}", final_path.display());
+                    }
                 }
             }
+        }
+
+        if let Some(e) = write_error {
+            for path in written_paths.iter().rev() {
+                let _ = fs::remove_file(path);
+            }
+            return Err(e);
         }
 
         Ok(())

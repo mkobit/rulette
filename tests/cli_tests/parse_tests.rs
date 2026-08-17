@@ -66,6 +66,40 @@ fn test_cursor_mdc_parsing() {
 }
 
 #[test]
+fn test_cursor_mdc_auto_detection() {
+    // Spec scenario: a .cursor/rules/*.mdc file passed without --from SHALL be
+    // auto-detected as Cursor MDC and produce the same IR as an explicit --from.
+    let mut explicit_cmd = Command::cargo_bin("rulette").unwrap();
+    let explicit = explicit_cmd
+        .arg("transform")
+        .arg("tests/fixtures/cursor/example.mdc")
+        .arg("--from")
+        .arg("cursor-mdc")
+        .assert()
+        .success();
+    let explicit_output = str::from_utf8(&explicit.get_output().stdout).unwrap();
+
+    let mut auto_cmd = Command::cargo_bin("rulette").unwrap();
+    let auto = auto_cmd
+        .arg("transform")
+        .arg("tests/fixtures/cursor/example.mdc")
+        .assert()
+        .success();
+    let auto_output = str::from_utf8(&auto.get_output().stdout).unwrap();
+
+    assert_eq!(auto_output, explicit_output);
+
+    let json: serde_json::Value = serde_json::from_str(auto_output).unwrap();
+    let entities = json.get("entities").unwrap().as_array().unwrap();
+    assert_eq!(entities.len(), 1);
+    assert_eq!(entities[0]["kind"].as_str().unwrap(), "rule");
+    assert_eq!(
+        entities[0]["metadata"]["description"].as_str().unwrap(),
+        "Test rule for Cursor"
+    );
+}
+
+#[test]
 fn test_gemini_subagent_parsing() {
     let mut cmd = Command::cargo_bin("rulette").unwrap();
     let assert = cmd

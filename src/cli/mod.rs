@@ -31,7 +31,4 @@ pub enum Commands {
 
     /// Parse, transform, and emit rules across formats
     Transform(Box<commands::transform::TransformArgs>),
-
-    /// Initialize a new Rulette project
-    Init(commands::init::InitArgs),
 }
