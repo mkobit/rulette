@@ -135,6 +135,15 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v6
 
+      - uses: jdx/mise-action@v4
+        with:
+          version: ${{ env.MISE_VERSION }}
+          install: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          MISE_USE_VERSIONS_HOST: 1
+          MISE_RUST_DOWNLOAD: 1
+
       - name: Run security audit
         uses: rustsec/audit-check@v2
         with:

@@ -36,6 +36,17 @@ Rulette uses a single `transform` command to handle the full lifecycle of AI rul
 It reads from any source, applies a transformation pipeline (filter, rename, set, dedup), and emits to any target.
 This command replaces the separate parse, convert, and emit verbs with a unified, source-to-sink engine.
 
+## Specs
+
+This project uses OpenSpec for spec-driven development.
+Run `mise run spec-list` to see current changes and their status.
+Run `mise run spec-validate` to validate all specs strictly.
+Note that `npx @fission-ai/openspec validate --all` runs as a PR check on changes under `openspec/**`.
+Specs live in `openspec/changes/` and follow the `proposal → design → tasks` artifact flow.
+Workflow execution uses the `.beads/formulas/openspec-workflow.formula.toml` formula.
+All design proposals must undergo a mandatory adversarial review phase prior to staging implementation tasks.
+
+
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:970c3bf2 -->
 ## Beads Issue Tracker
 
