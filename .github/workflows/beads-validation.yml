@@ -31,7 +31,15 @@ jobs:
         env:
           MISE_USE_VERSIONS_HOST: 1
 
+      - name: Bootstrap beads database from git remote
+        # The Dolt database (.beads/embeddeddolt/) is gitignored and lives on
+        # refs/dolt/data. A fresh checkout has no database, so bootstrap it from
+        # the remote before auditing. BD_SYNC_REMOTE overrides the git+ssh sync
+        # remote in config.yaml with the HTTPS repo URL, which needs no SSH key;
+        # for this public repo the fetch is anonymous.
+        env:
+          BD_SYNC_REMOTE: ${{ github.server_url }}/${{ github.repository }}.git
+        run: bd bootstrap --yes
+
       - name: Validate beads ready work and lint
-        run: |
-          bd ready
-          bd lint
+        run: mise run bd-check
