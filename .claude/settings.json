@@ -10,6 +10,50 @@
         ],
         "matcher": ""
       }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "command": "bd prime",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/openspec-validate-hook.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/format-lint-hook.sh\""
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(mise run build)",
+      "Bash(mise run fmt)",
+      "Bash(mise run lint)",
+      "Bash(mise run lint:md)",
+      "Bash(mise run test)",
+      "Bash(mise run check)",
+      "Bash(mise run bd-push)",
+      "Bash(mise run bd-sync)",
+      "Bash(mise run bd-check)",
+      "Bash(mise run spec-list)",
+      "Bash(mise run spec-validate)",
+      "Bash(bd ready)",
+      "Bash(bd show *)",
+      "Bash(bd list *)"
     ]
   }
 }

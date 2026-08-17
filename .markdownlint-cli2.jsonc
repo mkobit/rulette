@@ -13,6 +13,8 @@
     "!docs/cli/rulette.md",
     "!.beads",
     "!.agents",
+    "!.claude/commands",
+    "!.claude/skills",
     "!CLAUDE.md",
     "!AGENTS.md"
   ]
