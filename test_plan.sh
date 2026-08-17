@@ -1,1 +1,4 @@
-cargo test
+#!/usr/bin/env bash
+set -euo pipefail
+
+mise run check
