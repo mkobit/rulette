@@ -16,9 +16,42 @@ impl Emitter for AgentSkillsEmitter {
         let mut map = HashMap::new();
         for entity in &doc.entities {
             match entity {
-                crate::Entity::Hook(_)
-                | crate::Entity::Agent(_)
-                | crate::Entity::Permissions(_) => {}
+                crate::Entity::Hook(hook) => {
+                    if strict {
+                        return Err(anyhow!(
+                            "Lossy conversion: Hook to Agent Skills drops metadata"
+                        ));
+                    } else {
+                        eprintln!(
+                            "Warning: Lossy conversion: Hook '{}' to Agent Skills drops metadata",
+                            hook.metadata.name
+                        );
+                    }
+                }
+                crate::Entity::Agent(agent) => {
+                    if strict {
+                        return Err(anyhow!(
+                            "Lossy conversion: Agent to Agent Skills drops metadata"
+                        ));
+                    } else {
+                        eprintln!(
+                            "Warning: Lossy conversion: Agent '{}' to Agent Skills drops metadata",
+                            agent.metadata.name
+                        );
+                    }
+                }
+                crate::Entity::Permissions(perms) => {
+                    if strict {
+                        return Err(anyhow!(
+                            "Lossy conversion: Permissions to Agent Skills drops metadata"
+                        ));
+                    } else {
+                        eprintln!(
+                            "Warning: Lossy conversion: Permissions '{}' to Agent Skills drops metadata",
+                            perms.metadata.name.as_deref().unwrap_or("(unnamed)")
+                        );
+                    }
+                }
                 Entity::McpServer(mcp) => {
                     if strict {
                         return Err(anyhow::anyhow!(
@@ -32,7 +65,11 @@ impl Emitter for AgentSkillsEmitter {
                     skill.metadata.validate()?;
                     let mut content = String::new();
                     content.push_str("---\n");
-                    content.push_str(&serde_yaml::to_string(&skill.metadata)?);
+                    let mut metadata_for_output = skill.metadata.clone();
+                    metadata_for_output
+                        .extra
+                        .retain(|k, _| !super::is_internal_extra_key(k));
+                    content.push_str(&serde_yaml::to_string(&metadata_for_output)?);
                     content.push_str("---\n");
                     content.push_str(&skill.body);
                     map.insert(
@@ -74,7 +111,7 @@ impl Emitter for AgentSkillsEmitter {
                         .metadata
                         .extra
                         .iter()
-                        .filter(|(k, _)| k.as_str() != "name")
+                        .filter(|(k, _)| k.as_str() != "name" && !super::is_internal_extra_key(k))
                         .collect();
                     let meta = AgentSkillRuleMeta {
                         name: name_val,
