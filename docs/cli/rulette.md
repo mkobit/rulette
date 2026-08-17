@@ -44,9 +44,9 @@ Pretty-print the IR for debugging
 
 ###### **Options:**
 
-* `-t`, `--target <TARGET>` — Target format to dry-run emission and show lossy conversion warnings
+* `-t`, `--to <TO>` — Target format to dry-run emission and show lossy conversion warnings
 
-  Possible values: `claude`, `cursor-mdc`, `codex`, `windsurf`, `copilot`, `gemini`, `agent-skills`, `ir-json`, `ir-toml`
+  Possible values: `claude`, `cursor-mdc`, `cursor-mcp`, `codex`, `windsurf`, `copilot`, `gemini`, `agent-skills`, `ir-json`, `ir-toml`, `json-schema`
 
 
 
@@ -59,7 +59,7 @@ Output JSON Schema for the IR or a specific target format
 
 ###### **Options:**
 
-* `-f`, `--format <FORMAT>` — Format to output schema for (ir, claude, cursor-mdc, etc.)
+* `-t`, `--to <TO>` — Format to output schema for (ir, claude, cursor-mdc, etc.)
 
   Default value: `ir`
 * `--extension <EXTENSION>` — Extension key to output schema for (e.g., rulette:activation)
@@ -88,12 +88,9 @@ Parse, transform, and emit rules across formats
 
 * `--to <TO>` — Target output format
 
-  Possible values: `claude`, `cursor-mdc`, `codex`, `windsurf`, `copilot`, `gemini`, `agent-skills`, `ir-json`, `ir-toml`
+  Possible values: `claude`, `cursor-mdc`, `cursor-mcp`, `codex`, `windsurf`, `copilot`, `gemini`, `agent-skills`, `ir-json`, `ir-toml`, `json-schema`
 
 * `-o`, `--out <OUT>` — Output path (file or directory) or multiple targets via format:path
-* `--scope <SCOPE>` — Output scope: project (default) or user
-
-  Default value: `project`
 * `--name <NAME>` — Override name metadata for parsed entities
 * `--description <DESCRIPTION>` — Override description metadata for parsed entities
 * `--filter <FILTER>` — Keep only rules matching expression (e.g., 'license == "MIT"')
@@ -101,13 +98,6 @@ Parse, transform, and emit rules across formats
 * `--rename <RENAME>` — Rename a metadata field value (from=to)
 * `--set <SET>` — Set a metadata field (field=value)
 * `--config <CONFIG>` — Load transform pipeline from TOML file
-* `--dedup` — Remove duplicate entities
-* `--on-conflict <ON_CONFLICT>` — How to handle duplicate entities with the same identity but different content
-
-  Default value: `error`
-
-  Possible values: `error`, `take-first`, `take-last`
-
 
 
 
