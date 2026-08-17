@@ -1,0 +1,33 @@
+formula = "openspec-workflow"
+name = "openspec-workflow"
+description = "Standard OpenSpec change lifecycle: proposal -> design -> adversarial review -> tasks -> beads"
+type = "workflow"
+
+[[steps]]
+id = "proposal"
+title = "Draft OpenSpec change proposal"
+description = "Create proposal artifact in openspec/changes/"
+
+[[steps]]
+id = "design"
+title = "Draft OpenSpec design proposal"
+description = "Create design artifact in openspec/changes/"
+needs = ["proposal"]
+
+[[steps]]
+id = "adversarial-review"
+title = "Perform adversarial review"
+description = "Run adversarial review and document mitigations in design proposal"
+needs = ["design"]
+
+[[steps]]
+id = "tasks"
+title = "Stage implementation tasks"
+description = "Create tasks artifact in openspec/changes/"
+needs = ["adversarial-review"]
+
+[[steps]]
+id = "beads"
+title = "Create beads issues for tasks"
+description = "Create tracking beads for each approved implementation task"
+needs = ["tasks"]
