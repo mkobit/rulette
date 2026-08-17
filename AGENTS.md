@@ -16,12 +16,17 @@ For CLI command documentation and options, see:
 
 - [docs/2026-04-11-man-page.md](docs/2026-04-11-man-page.md)
 
-For context on why Rulette exists and how it compares to alternatives, see:
-
 - [docs/2026-04-11-announcement.md](docs/2026-04-11-announcement.md)
 - [docs/2026-04-11-landscape.md](docs/2026-04-11-landscape.md)
 
+For executable capabilities and specifications, see:
+
+- [openspec/specs/ir-core/spec.md](openspec/specs/ir-core/spec.md)
+- [openspec/specs/transform-pipeline/spec.md](openspec/specs/transform-pipeline/spec.md)
+- [openspec/specs/frontends-and-backends/spec.md](openspec/specs/frontends-and-backends/spec.md)
+
 ## Inputs
+
 
 Single files (path or stdin) and tar archives containing multiple files are both valid inputs.
 

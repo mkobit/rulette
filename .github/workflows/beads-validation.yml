@@ -1,0 +1,37 @@
+name: Beads validation
+
+on:
+  schedule:
+    - cron: '0 12 * * 3'
+  workflow_dispatch: {}
+
+concurrency:
+  group: beads-validation
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Audit beads database
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup mise
+        uses: jdx/mise-action@v4
+        with:
+          version: v2026.8.6
+          install: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          MISE_USE_VERSIONS_HOST: 1
+
+      - name: Validate beads ready work and lint
+        run: |
+          bd ready
+          bd lint

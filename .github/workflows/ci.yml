@@ -11,8 +11,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  MISE_VERSION: "v2026.5.15"
+  MISE_VERSION: "v2026.8.6"
   CARGO_TERM_COLOR: always
+
   RUST_BACKTRACE: 1
 
 jobs:
