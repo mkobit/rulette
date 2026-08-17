@@ -142,12 +142,9 @@ This is a basic rule."#
     let mut normalized_output = normalized_output.replace("\\\\", "/");
 
     for p in temp_paths {
-        if cfg!(windows) {
-            normalized_output = normalized_output
-                .to_lowercase()
-                .replace(&p.to_lowercase(), "[TEMP_DIR]");
-        } else {
-            normalized_output = normalized_output.replace(&p, "[TEMP_DIR]");
+        let p_lower = p.to_lowercase();
+        while let Some(pos) = normalized_output.to_lowercase().find(&p_lower) {
+            normalized_output.replace_range(pos..pos + p.len(), "[TEMP_DIR]");
         }
     }
 
