@@ -22,9 +22,6 @@ It normalizes diverse rules, skills, and tool configurations into a single, type
 ### Quick start
 
 ```sh
-# Initialize a new rule set
-rulette init
-
 # Convert rules to Claude skills
 rulette transform ./rules/ --to claude --out .claude/skills/
 

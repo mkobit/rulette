@@ -16,9 +16,40 @@ impl Emitter for WindsurfEmitter {
         let mut output = String::new();
         for entity in &doc.entities {
             match entity {
-                crate::Entity::Hook(_)
-                | crate::Entity::Agent(_)
-                | crate::Entity::Permissions(_) => {}
+                crate::Entity::Hook(hook) => {
+                    if strict {
+                        return Err(anyhow!("Lossy conversion: Hook to Windsurf drops metadata"));
+                    } else {
+                        eprintln!(
+                            "Warning: Lossy conversion: Hook '{}' to Windsurf drops metadata",
+                            hook.metadata.name
+                        );
+                    }
+                }
+                crate::Entity::Agent(agent) => {
+                    if strict {
+                        return Err(anyhow!(
+                            "Lossy conversion: Agent to Windsurf drops metadata"
+                        ));
+                    } else {
+                        eprintln!(
+                            "Warning: Lossy conversion: Agent '{}' to Windsurf drops metadata",
+                            agent.metadata.name
+                        );
+                    }
+                }
+                crate::Entity::Permissions(perms) => {
+                    if strict {
+                        return Err(anyhow!(
+                            "Lossy conversion: Permissions to Windsurf drops metadata"
+                        ));
+                    } else {
+                        eprintln!(
+                            "Warning: Lossy conversion: Permissions '{}' to Windsurf drops metadata",
+                            perms.metadata.name.as_deref().unwrap_or("(unnamed)")
+                        );
+                    }
+                }
                 Entity::Rule(rule) => {
                     output.push_str(&rule.body);
                     output.push_str("\n\n");

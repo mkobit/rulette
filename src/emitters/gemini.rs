@@ -17,7 +17,30 @@ impl Emitter for GeminiEmitter {
         let mut map = HashMap::new();
         for entity in &doc.entities {
             match entity {
-                crate::Entity::Hook(_) | crate::Entity::Permissions(_) => {}
+                crate::Entity::Hook(hook) => {
+                    if strict {
+                        return Err(anyhow::anyhow!(
+                            "Lossy conversion: Hook to Gemini drops metadata"
+                        ));
+                    } else {
+                        eprintln!(
+                            "Warning: Lossy conversion: Hook '{}' to Gemini drops metadata",
+                            hook.metadata.name
+                        );
+                    }
+                }
+                crate::Entity::Permissions(perms) => {
+                    if strict {
+                        return Err(anyhow::anyhow!(
+                            "Lossy conversion: Permissions to Gemini drops metadata"
+                        ));
+                    } else {
+                        eprintln!(
+                            "Warning: Lossy conversion: Permissions '{}' to Gemini drops metadata",
+                            perms.metadata.name.as_deref().unwrap_or("(unnamed)")
+                        );
+                    }
+                }
                 Entity::Agent(agent) => {
                     let mut extra = agent.metadata.extra.clone();
                     let kind = extra
@@ -33,6 +56,7 @@ impl Emitter for GeminiEmitter {
                     let timeout_mins = extra
                         .remove("timeout_mins")
                         .and_then(|v| v.as_u64().map(|n| n as u32));
+                    extra.retain(|k, _| !super::is_internal_extra_key(k));
 
                     if strict {
                         if agent.metadata.tool_access.is_some() {

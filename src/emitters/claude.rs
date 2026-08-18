@@ -82,19 +82,25 @@ impl Emitter for ClaudeEmitter {
                         } else {
                             // Fallback to extra if no command but has event
                             for (k, v) in &hook.metadata.extra {
-                                hooks.insert(k.clone(), v.clone());
+                                if !super::is_internal_extra_key(k) {
+                                    hooks.insert(k.clone(), v.clone());
+                                }
                             }
                         }
                     } else {
                         // Passthrough for hooks without semantic mapping
                         for (k, v) in &hook.metadata.extra {
-                            hooks.insert(k.clone(), v.clone());
+                            if !super::is_internal_extra_key(k) {
+                                hooks.insert(k.clone(), v.clone());
+                            }
                         }
                     }
                 }
                 Entity::Permissions(perms) => {
                     for (k, v) in &perms.metadata.extra {
-                        extra.insert(k.clone(), v.clone());
+                        if !super::is_internal_extra_key(k) {
+                            extra.insert(k.clone(), v.clone());
+                        }
                     }
                 }
             }

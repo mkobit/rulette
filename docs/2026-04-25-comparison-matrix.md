@@ -8,7 +8,7 @@ This document tracks how Rulette compares to other tools in the ecosystem and th
 | Feature | Rulette | Rulesync | Logic |
 | :--- | :--- | :--- | :--- |
 | **Runtime** | Static Binary (Rust) | Node.js (NPM) | Rulette is designed for Bazel, Buck, and air-gapped CI. |
-| **Initialization** | `rulette init` | `rulesync init` | Scaffolds a `rules/` directory and config. |
+| **Initialization** | None (no `init`) | `rulesync init` | Rulette has no scaffolding or config-file step by design; write a rule file and run `transform`. |
 | **State** | Stateless (Compiler) | Stateful (Sync) | Rulette treats config as code to be compiled, not state to be synced. |
 | **Determinism** | Guaranteed | Best Effort | Same input always produces bit-identical output in Rulette. |
 | **Transformation** | Pipe-based (Unix) | Internal Plugin System | Rulette integrates with `jq`, `sed`, and custom scripts via IR. |
@@ -38,7 +38,7 @@ This matrix tracks the "Big 4" and other significant formats.
 | :--- | :--- | :--- | :--- |
 | **Claude Code** | ✅ | No | Reference implementation for IR. |
 | **Gemini CLI** | ✅ | No | Preserves subagent metadata. |
-| **Cursor** | ✅ | Yes | Drops MCP/Hooks (Cursor uses separate JSON). |
+| **Cursor** | ✅ | Yes | Rules go to `.mdc`, MCP servers go to a separate `cursor-mcp` target (`.cursor/mcp.json`); Hooks/Agents/Permissions are dropped. |
 | **Codex** | ✅ | Yes | Drops complex activation logic. |
 | **Agent Skills** | ✅ | No | Full fidelity. |
 | **IR (JSON/TOML)** | ✅ | No | The ultimate source of truth. |

@@ -1,8 +1,8 @@
 use crate::cli::formats::{InputFormat, OutputFormat};
 use crate::cli::io::read_inputs;
 use crate::emitters::{
-    AgentSkillsEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter, CursorEmitter, Emitter,
-    GeminiEmitter, WindsurfEmitter,
+    AgentSkillsEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter, CursorEmitter,
+    CursorMcpEmitter, Emitter, GeminiEmitter, WindsurfEmitter,
 };
 use crate::parsers::parse;
 use clap::Args;
@@ -21,7 +21,7 @@ pub struct InspectArgs {
 }
 
 impl InspectArgs {
-    pub fn execute(&self, strict: bool) -> anyhow::Result<()> {
+    pub fn execute(&self, strict: bool, quiet: bool) -> anyhow::Result<()> {
         let mut combined_entities = vec![];
 
         let inputs = read_inputs(&self.input)?;
@@ -39,16 +39,21 @@ impl InspectArgs {
             entities: combined_entities,
         };
 
-        let ir_json = serde_json::to_string_pretty(&doc)?;
-        println!("=== Rulette IR ===");
-        println!("{}", ir_json);
+        if !quiet {
+            let ir_json = serde_json::to_string_pretty(&doc)?;
+            println!("=== Rulette IR ===");
+            println!("{}", ir_json);
+        }
 
         if let Some(to) = &self.to {
-            println!("\n=== Dry-run Emission to {:?} ===", to);
+            if !quiet {
+                println!("\n=== Dry-run Emission to {:?} ===", to);
+            }
 
             let output_map = match to {
                 OutputFormat::Claude => ClaudeEmitter.emit(&doc, strict)?,
                 OutputFormat::CursorMdc => CursorEmitter.emit(&doc, strict)?,
+                OutputFormat::CursorMcp => CursorMcpEmitter.emit(&doc, strict)?,
                 OutputFormat::AgentSkills => AgentSkillsEmitter.emit(&doc, strict)?,
                 OutputFormat::Copilot => CopilotEmitter.emit(&doc, strict)?,
                 OutputFormat::Windsurf => WindsurfEmitter.emit(&doc, strict)?,
@@ -78,12 +83,14 @@ impl InspectArgs {
                 }
             };
 
-            println!("\n--- Survived Output ---");
-            for (rel_path, content) in &output_map {
-                if output_map.len() > 1 {
-                    println!("--- {} ---", rel_path.display());
+            if !quiet {
+                println!("\n--- Survived Output ---");
+                for (rel_path, content) in &output_map {
+                    if output_map.len() > 1 {
+                        println!("--- {} ---", rel_path.display());
+                    }
+                    println!("{}", content);
                 }
-                println!("{}", content);
             }
         }
 

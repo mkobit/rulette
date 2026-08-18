@@ -13,6 +13,45 @@ mod main_tests {
     }
 
     #[test]
+    fn test_main_schema_all_transform_targets() {
+        for format in [
+            "claude",
+            "cursor-mdc",
+            "cursor-mcp",
+            "codex",
+            "windsurf",
+            "copilot",
+            "gemini",
+            "agent-skills",
+        ] {
+            let mut cmd = Command::cargo_bin("rulette").unwrap();
+            cmd.arg("schema").arg("--to").arg(format);
+            cmd.assert()
+                .success()
+                .stdout(predicates::str::contains("$schema"));
+        }
+    }
+
+    #[test]
+    fn test_main_schema_all_extension_keys() {
+        for key in [
+            "rulette:activation",
+            "rulette:hook-event",
+            "rulette:tool-access",
+            "rulette:agent-tools",
+            "rulette:models",
+            "rulette:directory-scope",
+            "rulette:settings-overrides",
+        ] {
+            let mut cmd = Command::cargo_bin("rulette").unwrap();
+            cmd.arg("schema").arg("--extension").arg(key);
+            cmd.assert()
+                .success()
+                .stdout(predicates::str::contains("$schema"));
+        }
+    }
+
+    #[test]
     fn test_main_inspect_command() {
         let mut cmd = Command::cargo_bin("rulette").unwrap();
         cmd.arg("inspect").arg("-");
@@ -42,6 +81,27 @@ mod main_tests {
 
         let output = child.wait_with_output().unwrap();
         assert!(output.status.success());
+    }
+
+    #[test]
+    fn test_main_inspect_quiet_suppresses_output() {
+        let mut cmd = Command::cargo_bin("rulette").unwrap();
+        cmd.arg("-q")
+            .arg("inspect")
+            .arg("-")
+            .arg("--to")
+            .arg("claude");
+
+        use std::io::Write;
+        let mut child = cmd.stdin(std::process::Stdio::piped()).spawn().unwrap();
+        let mut stdin = child.stdin.take().unwrap();
+        std::thread::spawn(move || {
+            stdin.write_all(b"{\"entities\": []}").unwrap();
+        });
+
+        let output = child.wait_with_output().unwrap();
+        assert!(output.status.success());
+        assert!(output.stdout.is_empty());
     }
 }
 

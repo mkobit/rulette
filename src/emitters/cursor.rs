@@ -16,9 +16,42 @@ impl Emitter for CursorEmitter {
         let mut map = HashMap::new();
         for (i, entity) in doc.entities.iter().enumerate() {
             match entity {
-                crate::Entity::Hook(_)
-                | crate::Entity::Agent(_)
-                | crate::Entity::Permissions(_) => {}
+                crate::Entity::Hook(hook) => {
+                    if strict {
+                        return Err(anyhow!(
+                            "Lossy conversion: Hook to Cursor MDC drops metadata"
+                        ));
+                    } else {
+                        eprintln!(
+                            "Warning: Lossy conversion: Hook '{}' to Cursor MDC drops metadata",
+                            hook.metadata.name
+                        );
+                    }
+                }
+                crate::Entity::Agent(agent) => {
+                    if strict {
+                        return Err(anyhow!(
+                            "Lossy conversion: Agent to Cursor MDC drops metadata"
+                        ));
+                    } else {
+                        eprintln!(
+                            "Warning: Lossy conversion: Agent '{}' to Cursor MDC drops metadata",
+                            agent.metadata.name
+                        );
+                    }
+                }
+                crate::Entity::Permissions(perms) => {
+                    if strict {
+                        return Err(anyhow!(
+                            "Lossy conversion: Permissions to Cursor MDC drops metadata"
+                        ));
+                    } else {
+                        eprintln!(
+                            "Warning: Lossy conversion: Permissions '{}' to Cursor MDC drops metadata",
+                            perms.metadata.name.as_deref().unwrap_or("(unnamed)")
+                        );
+                    }
+                }
                 Entity::Rule(rule) => {
                     let mut content = String::new();
                     content.push_str("---\n");
@@ -34,7 +67,7 @@ impl Emitter for CursorEmitter {
                         .metadata
                         .extra
                         .iter()
-                        .filter(|(k, _)| k.as_str() != "name")
+                        .filter(|(k, _)| k.as_str() != "name" && !super::is_internal_extra_key(k))
                         .collect();
                     let meta = CursorRuleMeta {
                         description: rule.metadata.description.as_ref(),
@@ -84,7 +117,12 @@ impl Emitter for CursorEmitter {
                         #[serde(skip_serializing_if = "HashMap::is_empty")]
                         extra: HashMap<&'a String, &'a serde_json::Value>,
                     }
-                    let extra: HashMap<_, _> = skill.metadata.extra.iter().collect();
+                    let extra: HashMap<_, _> = skill
+                        .metadata
+                        .extra
+                        .iter()
+                        .filter(|(k, _)| !super::is_internal_extra_key(k))
+                        .collect();
                     let meta = CursorSkillMeta {
                         description: &skill.metadata.description,
                         extra,
