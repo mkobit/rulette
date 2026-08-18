@@ -1,4 +1,4 @@
-use super::Emitter;
+use super::{CapabilityEntry, CoverageStatus, Emitter};
 use crate::{Entity, HookEventKind, RuletteDocument};
 use anyhow::Result;
 use serde_json::json;
@@ -6,6 +6,13 @@ use std::collections::BTreeMap as HashMap;
 use std::path::PathBuf;
 
 pub struct ClaudeEmitter;
+
+/// Agent sub-agent definitions are unconditionally dropped: Claude Code
+/// supports them natively, but `ClaudeEmitter` doesn't implement that yet, so
+/// nothing is ever written for an `Agent` entity here.
+fn classify_agent() -> &'static str {
+    "Lossy conversion: Agent to Claude format drops metadata"
+}
 
 impl Emitter for ClaudeEmitter {
     fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
@@ -45,14 +52,11 @@ impl Emitter for ClaudeEmitter {
                     );
                 }
                 Entity::Agent(_) => {
+                    let reason = classify_agent();
                     if strict {
-                        return Err(anyhow::anyhow!(
-                            "Lossy conversion: Agent to Claude format drops metadata"
-                        ));
+                        return Err(anyhow::anyhow!("{reason}"));
                     } else {
-                        eprintln!(
-                            "Warning: Lossy conversion: Agent to Claude format drops metadata"
-                        );
+                        eprintln!("Warning: {reason}");
                     }
                 }
                 Entity::McpServer(mcp) => {
@@ -145,6 +149,26 @@ impl Emitter for ClaudeEmitter {
         }
 
         Ok(map)
+    }
+
+    fn capabilities(&self, doc: &RuletteDocument) -> Vec<CapabilityEntry> {
+        let raw: Vec<CapabilityEntry> = doc
+            .entities
+            .iter()
+            .map(|entity| match entity {
+                Entity::Agent(_) => CapabilityEntry::lossy_or_dropped(
+                    entity,
+                    CoverageStatus::Dropped,
+                    classify_agent(),
+                ),
+                Entity::Rule(_)
+                | Entity::Skill(_)
+                | Entity::McpServer(_)
+                | Entity::Hook(_)
+                | Entity::Permissions(_) => CapabilityEntry::supported(entity),
+            })
+            .collect();
+        super::aggregate_capabilities(raw)
     }
 }
 

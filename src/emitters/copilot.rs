@@ -1,4 +1,4 @@
-use super::Emitter;
+use super::{CapabilityEntry, CoverageStatus, Emitter};
 use crate::{Entity, RuletteDocument};
 use anyhow::{anyhow, Result};
 use std::collections::BTreeMap as HashMap;
@@ -83,5 +83,56 @@ impl Emitter for CopilotEmitter {
             );
         }
         Ok(map)
+    }
+
+    fn capabilities(&self, doc: &RuletteDocument) -> Vec<CapabilityEntry> {
+        let raw: Vec<CapabilityEntry> = doc
+            .entities
+            .iter()
+            .map(|entity| match entity {
+                Entity::Hook(hook) => CapabilityEntry::lossy_or_dropped(
+                    entity,
+                    CoverageStatus::Dropped,
+                    format!(
+                        "Lossy conversion: Hook '{}' to Copilot drops metadata",
+                        hook.metadata.name
+                    ),
+                ),
+                Entity::Agent(agent) => CapabilityEntry::lossy_or_dropped(
+                    entity,
+                    CoverageStatus::Dropped,
+                    format!(
+                        "Lossy conversion: Agent '{}' to Copilot drops metadata",
+                        agent.metadata.name
+                    ),
+                ),
+                Entity::Permissions(perms) => CapabilityEntry::lossy_or_dropped(
+                    entity,
+                    CoverageStatus::Dropped,
+                    format!(
+                        "Lossy conversion: Permissions '{}' to Copilot drops metadata",
+                        perms.metadata.name.as_deref().unwrap_or("(unnamed)")
+                    ),
+                ),
+                Entity::McpServer(mcp) => CapabilityEntry::lossy_or_dropped(
+                    entity,
+                    CoverageStatus::Dropped,
+                    format!(
+                        "Lossy conversion: McpServer '{}' to target format drops metadata",
+                        mcp.metadata.name
+                    ),
+                ),
+                Entity::Skill(skill) => CapabilityEntry::lossy_or_dropped(
+                    entity,
+                    CoverageStatus::Lossy,
+                    format!(
+                        "Lossy conversion: Skill '{}' to Copilot drops metadata",
+                        skill.metadata.name
+                    ),
+                ),
+                Entity::Rule(_) => CapabilityEntry::supported(entity),
+            })
+            .collect();
+        super::aggregate_capabilities(raw)
     }
 }

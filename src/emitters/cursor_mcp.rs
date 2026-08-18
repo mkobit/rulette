@@ -1,10 +1,29 @@
-use super::Emitter;
-use crate::{Entity, RuletteDocument};
+use super::{CapabilityEntry, CoverageStatus, Emitter};
+use crate::{Entity, McpServer, RuletteDocument};
 use anyhow::{anyhow, Result};
 use std::collections::BTreeMap as HashMap;
 use std::path::PathBuf;
 
 pub struct CursorMcpEmitter;
+
+/// Whether an `McpServer` entity survives conversion to Cursor MCP: fully
+/// supported if it carries no format-specific `extra` metadata Cursor's MCP
+/// schema (command/args/env only) can't represent, lossy otherwise. Shared by
+/// `emit()` and `capabilities()` so the two can't independently drift on this
+/// data-dependent determination.
+fn classify_mcp_server(mcp: &McpServer) -> (CoverageStatus, Option<String>) {
+    if mcp.metadata.extra.is_empty() {
+        (CoverageStatus::Supported, None)
+    } else {
+        (
+            CoverageStatus::Lossy,
+            Some(format!(
+                "Lossy conversion: McpServer '{}' extra metadata to Cursor MCP drops fields",
+                mcp.metadata.name
+            )),
+        )
+    }
+}
 
 #[derive(serde::Serialize)]
 struct CursorMcpServerConfig<'a> {
@@ -51,17 +70,13 @@ impl Emitter for CursorMcpEmitter {
         for entity in &doc.entities {
             match entity {
                 Entity::McpServer(mcp) => {
-                    if !mcp.metadata.extra.is_empty() {
+                    let (status, reason) = classify_mcp_server(mcp);
+                    if status != CoverageStatus::Supported {
+                        let reason = reason.expect("reason set for non-Supported status");
                         if strict {
-                            return Err(anyhow!(
-                                "Lossy conversion: McpServer '{}' extra metadata to Cursor MCP drops fields",
-                                mcp.metadata.name
-                            ));
+                            return Err(anyhow!("{reason}"));
                         } else {
-                            eprintln!(
-                                "Warning: Lossy conversion: McpServer '{}' extra metadata to Cursor MCP drops fields",
-                                mcp.metadata.name
-                            );
+                            eprintln!("Warning: {reason}");
                         }
                     }
                     mcp_servers.insert(
@@ -103,6 +118,35 @@ impl Emitter for CursorMcpEmitter {
             );
         }
         Ok(map)
+    }
+
+    fn capabilities(&self, doc: &RuletteDocument) -> Vec<CapabilityEntry> {
+        let raw: Vec<CapabilityEntry> = doc
+            .entities
+            .iter()
+            .map(|entity| match entity {
+                Entity::McpServer(mcp) => {
+                    let (status, reason) = classify_mcp_server(mcp);
+                    match reason {
+                        Some(reason) => CapabilityEntry::lossy_or_dropped(entity, status, reason),
+                        None => CapabilityEntry::supported(entity),
+                    }
+                }
+                Entity::Rule(_)
+                | Entity::Skill(_)
+                | Entity::Hook(_)
+                | Entity::Agent(_)
+                | Entity::Permissions(_) => CapabilityEntry::lossy_or_dropped(
+                    entity,
+                    CoverageStatus::Dropped,
+                    format!(
+                        "Lossy conversion: {} to Cursor MCP drops metadata",
+                        entity_kind_label(entity)
+                    ),
+                ),
+            })
+            .collect();
+        super::aggregate_capabilities(raw)
     }
 }
 
