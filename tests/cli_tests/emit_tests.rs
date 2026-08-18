@@ -190,6 +190,44 @@ fn test_codex_directory_scope_groups_into_nested_agents_md() {
 }
 
 #[test]
+fn test_codex_directory_scope_inferred_from_real_nested_agents_md_tree() {
+    // Parsing real nested AGENTS.md files (not --set, not IR JSON) must infer
+    // rulette:directory-scope from each file's location, so the round trip
+    // through `transform` reproduces the same nested layout on emit.
+    let input_dir = tempfile::tempdir().unwrap();
+    std::fs::write(input_dir.path().join("AGENTS.md"), "Always write tests.").unwrap();
+    std::fs::create_dir_all(input_dir.path().join("src/backend")).unwrap();
+    std::fs::write(
+        input_dir.path().join("src/backend/AGENTS.md"),
+        "Use Go idioms.",
+    )
+    .unwrap();
+
+    // Run with cwd set to the input dir and a relative "." input so the
+    // walked filenames are relative, matching the PRD's own `./rules/`-style
+    // examples -- an absolute input path is covered separately (see
+    // infer_codex_directory_scope's own unit tests for that fallback).
+    let output_dir = tempfile::tempdir().unwrap();
+    let mut cmd = Command::cargo_bin("rulette").unwrap();
+    cmd.current_dir(input_dir.path())
+        .arg("transform")
+        .arg(".")
+        .arg("-o")
+        .arg(format!("codex:{}", output_dir.path().display()))
+        .assert()
+        .success();
+
+    assert_eq!(
+        std::fs::read_to_string(output_dir.path().join("AGENTS.md")).unwrap(),
+        "Always write tests."
+    );
+    assert_eq!(
+        std::fs::read_to_string(output_dir.path().join("src/backend/AGENTS.md")).unwrap(),
+        "Use Go idioms."
+    );
+}
+
+#[test]
 fn test_codex_directory_scope_rejects_path_traversal() {
     let ir = r#"{
       "entities": [

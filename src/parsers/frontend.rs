@@ -1,11 +1,12 @@
 use crate::agent_skills::{Skill, SkillMetadata};
 use crate::cli::formats::InputFormat;
 use crate::{
-    Entity, McpServer, McpServerConfig, McpServerMetadata, Rule, RuleMetadata, RuletteDocument,
+    Activation, ActivationMode, Entity, McpServer, McpServerConfig, McpServerMetadata, Rule,
+    RuleMetadata, RuletteDocument,
 };
 use anyhow::Result;
 use std::collections::BTreeMap as HashMap;
-use std::path::Path;
+use std::path::{Component, Path, PathBuf};
 
 pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result<RuletteDocument> {
     tracing::info!("Parsing input as format: {:?}", format);
@@ -307,14 +308,40 @@ fn parse_cursor_mdc(input: &str, filename: Option<&str>) -> Result<Rule> {
 
     if let Some(fm) = frontmatter {
         #[derive(serde::Deserialize)]
+        #[serde(untagged)]
+        enum GlobsValue {
+            Single(String),
+            Many(Vec<String>),
+        }
+        impl GlobsValue {
+            fn into_vec(self) -> Vec<String> {
+                match self {
+                    // Cursor's real .mdc convention is a single comma-separated scalar.
+                    GlobsValue::Single(s) => s
+                        .split(',')
+                        .map(|g| g.trim().to_string())
+                        .filter(|g| !g.is_empty())
+                        .collect(),
+                    GlobsValue::Many(v) => v,
+                }
+            }
+        }
+        #[derive(serde::Deserialize)]
         struct FmParse {
             description: Option<String>,
+            globs: Option<GlobsValue>,
+            #[serde(rename = "alwaysApply")]
+            always_apply: Option<bool>,
             #[serde(flatten)]
             extra: HashMap<String, serde_json::Value>,
         }
         if let Ok(parsed_fm) = serde_yaml::from_str::<FmParse>(fm) {
             metadata.description = parsed_fm.description;
             metadata.extra = parsed_fm.extra;
+            metadata.activation = activation_from_cursor(
+                parsed_fm.always_apply,
+                parsed_fm.globs.map(GlobsValue::into_vec),
+            );
         }
     }
     if !metadata.extra.contains_key("name") {
@@ -333,6 +360,44 @@ fn parse_cursor_mdc(input: &str, filename: Option<&str>) -> Result<Rule> {
     Ok(Rule {
         metadata,
         body: body.to_string(),
+    })
+}
+
+/// Maps Cursor's `alwaysApply`/`globs` frontmatter pair onto the typed
+/// activation model, mirroring Cursor's own rule-type resolution: `alwaysApply:
+/// true` wins outright, glob patterns imply auto-attach, and the absence of
+/// both means the rule is manually referenced.
+fn activation_from_cursor(
+    always_apply: Option<bool>,
+    globs: Option<Vec<String>>,
+) -> Option<Activation> {
+    if always_apply.is_none() && globs.is_none() {
+        return None;
+    }
+    if always_apply == Some(true) {
+        // Cursor ignores `globs` when `alwaysApply` is true, but a rule can
+        // still declare both; preserve the globs for fidelity even though
+        // `Always` mode doesn't consult them.
+        return Some(Activation {
+            mode: vec![ActivationMode::Always],
+            globs: globs.filter(|g| !g.is_empty()),
+            pattern: None,
+            description: None,
+        });
+    }
+    if let Some(globs) = globs.filter(|g| !g.is_empty()) {
+        return Some(Activation {
+            mode: vec![ActivationMode::Glob],
+            globs: Some(globs),
+            pattern: None,
+            description: None,
+        });
+    }
+    Some(Activation {
+        mode: vec![ActivationMode::Manual],
+        globs: None,
+        pattern: None,
+        description: None,
     })
 }
 
@@ -383,6 +448,44 @@ fn parse_claude_settings(input: &str, filename: Option<&str>) -> Result<Vec<Enti
     Ok(entities)
 }
 
+/// Infers Codex's `rulette:directory-scope` extension key from a real nested
+/// `AGENTS.md` file's location, mirroring what `emitters::codex` already does
+/// in reverse (grouping entities by this same key back into nested files at
+/// emit time). Only triggers for files literally named `AGENTS.md`
+/// (case-insensitive) -- Codex's own namesake -- so unrelated markdown files
+/// routed through the same fallback parser (CLAUDE.md,
+/// copilot-instructions.md, etc.) are unaffected.
+///
+/// `emitters::codex` rejects an absolute `rulette:directory-scope`, so an
+/// absolute filename (e.g. from an absolute input path on the command line)
+/// is made relative to the current directory first. Rulette has no
+/// independent notion of "repo root" beyond that; a path outside the current
+/// directory yields no inferred scope rather than an invalid absolute one.
+fn infer_codex_directory_scope(filename: Option<&str>) -> Option<String> {
+    let f = filename?;
+    let path = Path::new(f);
+    let base = path.file_name()?.to_str()?;
+    if !base.eq_ignore_ascii_case("AGENTS.md") {
+        return None;
+    }
+    let parent = path.parent()?;
+    let relative_parent: PathBuf = if parent.is_absolute() {
+        let cwd = std::env::current_dir().ok()?;
+        parent.strip_prefix(&cwd).ok()?.to_path_buf()
+    } else {
+        parent.to_path_buf()
+    };
+    let scope: PathBuf = relative_parent
+        .components()
+        .filter(|c| !matches!(c, Component::CurDir))
+        .collect();
+    if scope.as_os_str().is_empty() {
+        None
+    } else {
+        Some(scope.to_string_lossy().replace('\\', "/"))
+    }
+}
+
 fn parse_claude(input: &str, filename: Option<&str>) -> Result<Rule> {
     if let Some(f) = filename {
         if f.to_lowercase().ends_with("readme.md") {
@@ -398,6 +501,12 @@ fn parse_claude(input: &str, filename: Option<&str>) -> Result<Rule> {
     }
     if let Some(desc) = extract_description_from_body(input) {
         metadata.description = Some(desc);
+    }
+    if let Some(scope) = infer_codex_directory_scope(filename) {
+        metadata.extra.insert(
+            "rulette:directory-scope".to_string(),
+            serde_json::Value::String(scope),
+        );
     }
     Ok(Rule {
         metadata,
@@ -718,5 +827,111 @@ mod tests {
             }
             _ => panic!("Expected Rule entity fallback"),
         }
+    }
+
+    #[test]
+    fn test_parse_cursor_mdc_always_apply_promotes_to_activation() {
+        let content = "---\ndescription: always on\nalwaysApply: true\n---\nBody.";
+        let rule = parse_cursor_mdc(content, None).unwrap();
+        let activation = rule.metadata.activation.expect("activation should be set");
+        assert_eq!(activation.mode, vec![crate::ActivationMode::Always]);
+        assert_eq!(activation.globs, None);
+        assert!(!rule.metadata.extra.contains_key("alwaysApply"));
+    }
+
+    #[test]
+    fn test_parse_cursor_mdc_globs_promote_to_activation() {
+        let content = "---\ndescription: ts only\nglobs: \"src/**/*.ts,src/**/*.tsx\"\nalwaysApply: false\n---\nBody.";
+        let rule = parse_cursor_mdc(content, None).unwrap();
+        let activation = rule.metadata.activation.expect("activation should be set");
+        assert_eq!(activation.mode, vec![crate::ActivationMode::Glob]);
+        assert_eq!(
+            activation.globs,
+            Some(vec!["src/**/*.ts".to_string(), "src/**/*.tsx".to_string()])
+        );
+        assert!(!rule.metadata.extra.contains_key("globs"));
+        assert!(!rule.metadata.extra.contains_key("alwaysApply"));
+    }
+
+    #[test]
+    fn test_parse_cursor_mdc_manual_when_no_globs_or_always_apply() {
+        let content = "---\ndescription: manual only\nalwaysApply: false\n---\nBody.";
+        let rule = parse_cursor_mdc(content, None).unwrap();
+        let activation = rule.metadata.activation.expect("activation should be set");
+        assert_eq!(activation.mode, vec![crate::ActivationMode::Manual]);
+    }
+
+    #[test]
+    fn test_parse_cursor_mdc_no_activation_fields_leaves_activation_none() {
+        let content = "---\ndescription: no activation info\n---\nBody.";
+        let rule = parse_cursor_mdc(content, None).unwrap();
+        assert!(rule.metadata.activation.is_none());
+    }
+
+    #[test]
+    fn test_infer_codex_directory_scope_from_nested_agents_md() {
+        assert_eq!(
+            infer_codex_directory_scope(Some("rules/src/backend/AGENTS.md")),
+            Some("rules/src/backend".to_string())
+        );
+    }
+
+    #[test]
+    fn test_infer_codex_directory_scope_none_for_top_level_agents_md() {
+        assert_eq!(infer_codex_directory_scope(Some("AGENTS.md")), None);
+        assert_eq!(infer_codex_directory_scope(Some("./AGENTS.md")), None);
+    }
+
+    #[test]
+    fn test_infer_codex_directory_scope_none_for_non_agents_md_filename() {
+        assert_eq!(
+            infer_codex_directory_scope(Some("src/backend/CLAUDE.md")),
+            None
+        );
+    }
+
+    #[test]
+    fn test_infer_codex_directory_scope_none_when_no_filename() {
+        assert_eq!(infer_codex_directory_scope(None), None);
+    }
+
+    #[test]
+    fn test_infer_codex_directory_scope_absolute_outside_cwd_yields_none() {
+        // An absolute path unrelated to the current directory (e.g. a temp
+        // dir elsewhere on disk) must not produce an absolute scope value --
+        // emitters::codex rejects those outright. Falling back to no
+        // inferred scope is the safe degradation.
+        assert_eq!(
+            infer_codex_directory_scope(Some("/definitely/not/cwd/src/backend/AGENTS.md")),
+            None
+        );
+    }
+
+    #[test]
+    fn test_infer_codex_directory_scope_absolute_under_cwd_is_relativized() {
+        let cwd = std::env::current_dir().unwrap();
+        let absolute = cwd.join("src/backend/AGENTS.md");
+        assert_eq!(
+            infer_codex_directory_scope(Some(absolute.to_str().unwrap())),
+            Some("src/backend".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_claude_nested_agents_md_sets_directory_scope() {
+        let rule = parse_claude("Backend rules.", Some("rules/src/backend/AGENTS.md")).unwrap();
+        assert_eq!(
+            rule.metadata
+                .extra
+                .get("rulette:directory-scope")
+                .and_then(|v| v.as_str()),
+            Some("rules/src/backend")
+        );
+    }
+
+    #[test]
+    fn test_parse_claude_top_level_agents_md_has_no_directory_scope() {
+        let rule = parse_claude("Top-level rules.", Some("AGENTS.md")).unwrap();
+        assert!(!rule.metadata.extra.contains_key("rulette:directory-scope"));
     }
 }

@@ -29,10 +29,19 @@ impl Emitter for ClaudeEmitter {
                     rules_output.push_str("\n\n");
                 }
                 Entity::Skill(skill) => {
-                    // Emit each skill as its own file
+                    skill.metadata.validate()?;
+                    let mut content = String::new();
+                    content.push_str("---\n");
+                    let mut metadata_for_output = skill.metadata.clone();
+                    metadata_for_output
+                        .extra
+                        .retain(|k, _| !super::is_internal_extra_key(k));
+                    content.push_str(&serde_yaml::to_string(&metadata_for_output)?);
+                    content.push_str("---\n");
+                    content.push_str(&skill.body);
                     map.insert(
-                        PathBuf::from(format!("{}.md", skill.metadata.name)),
-                        skill.body.clone(),
+                        PathBuf::from(format!("{}/SKILL.md", skill.metadata.name)),
+                        content,
                     );
                 }
                 Entity::Agent(_) => {
@@ -221,5 +230,71 @@ mod tests {
 
         let rule_content = map.get(&PathBuf::from("CLAUDE.md")).unwrap();
         assert_eq!(rule_content, "Be helpful.");
+    }
+
+    #[test]
+    fn test_skill_emission_preserves_frontmatter_and_writes_skill_md() {
+        use crate::agent_skills::{Skill, SkillMetadata};
+
+        let skill = Entity::Skill(Skill {
+            metadata: SkillMetadata {
+                name: "example-skill".to_string(),
+                description: "An example skill".to_string(),
+                version: Some("1.0.0".to_string()),
+                license: Some("MIT".to_string()),
+                compatibility: None,
+                metadata: HashMap::new(),
+                allowed_tools: None,
+                extra: HashMap::new(),
+            },
+            body: "# Example Skill\n\nContent.".to_string(),
+        });
+        let doc = crate::RuletteDocument {
+            ir_version: "0.1".to_string(),
+            entities: vec![skill],
+        };
+
+        let map = ClaudeEmitter.emit(&doc, false).unwrap();
+        let content = map
+            .get(&PathBuf::from("example-skill/SKILL.md"))
+            .expect("expected output at <name>/SKILL.md, matching the format's namesake file");
+
+        assert!(content.contains("name: example-skill"));
+        assert!(content.contains("description: An example skill"));
+        assert!(content.contains("version: 1.0.0"));
+        assert!(content.contains("license: MIT"));
+        assert!(content.contains("# Example Skill\n\nContent."));
+    }
+
+    #[test]
+    fn test_skill_emission_drops_internal_source_file_key() {
+        use crate::agent_skills::{Skill, SkillMetadata};
+
+        let mut extra = HashMap::new();
+        extra.insert(
+            "rulette:source_file".to_string(),
+            serde_json::Value::String("some/path.md".to_string()),
+        );
+        let skill = Entity::Skill(Skill {
+            metadata: SkillMetadata {
+                name: "example-skill".to_string(),
+                description: "An example skill".to_string(),
+                version: None,
+                license: None,
+                compatibility: None,
+                metadata: HashMap::new(),
+                allowed_tools: None,
+                extra,
+            },
+            body: "Content.".to_string(),
+        });
+        let doc = crate::RuletteDocument {
+            ir_version: "0.1".to_string(),
+            entities: vec![skill],
+        };
+
+        let map = ClaudeEmitter.emit(&doc, false).unwrap();
+        let content = map.get(&PathBuf::from("example-skill/SKILL.md")).unwrap();
+        assert!(!content.contains("rulette:source_file"));
     }
 }

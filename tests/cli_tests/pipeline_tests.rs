@@ -213,8 +213,9 @@ Content"#
     let _ = parse_child.wait();
     let _ = transform_child.wait();
 
-    // Verify Claude output (Skills go to individual files)
-    let emitted_claude_file = output_dir.join("target-skill.md");
+    // Verify Claude output (Skills go to individual SKILL.md files, matching
+    // the format's own namesake for round-trip identity)
+    let emitted_claude_file = output_dir.join("target-skill").join("SKILL.md");
     assert!(emitted_claude_file.exists());
     let claude_content = fs::read_to_string(emitted_claude_file).unwrap();
     assert!(claude_content.contains("# Target\nContent"));
@@ -320,8 +321,8 @@ fn test_rule_to_skill_promotion_pipeline() {
         str::from_utf8(&output.stderr).unwrap()
     );
 
-    // Verify Agent Skill structure
-    let skill_md = output_dir.join("refactor-pro.skill.md");
+    // Verify Agent Skill structure (namesake SKILL.md, directory form)
+    let skill_md = output_dir.join("refactor-pro").join("SKILL.md");
     assert!(skill_md.exists());
     let content = fs::read_to_string(skill_md).unwrap();
     assert!(content.contains("name: refactor-pro"));
