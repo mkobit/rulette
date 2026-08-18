@@ -12,7 +12,7 @@ use clap::Args;
 use serde::Deserialize;
 use std::collections::BTreeMap as HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Args, Debug)]
 pub struct TransformArgs {
@@ -59,6 +59,10 @@ pub struct TransformArgs {
     /// Load transform pipeline from TOML file
     #[arg(long)]
     pub config: Option<String>,
+
+    /// Report drift without writing; exits non-zero if any target would be created or updated
+    #[arg(long)]
+    pub check: bool,
 }
 
 #[derive(Deserialize, Debug)]
@@ -165,6 +169,59 @@ pub fn parse_targets(
     }
 
     Ok(targets)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WriteStatus {
+    Created,
+    Updated,
+    Unchanged,
+}
+
+enum Written {
+    Created(PathBuf),
+    Updated {
+        path: PathBuf,
+        original_content: String,
+    },
+}
+
+enum PlannedItem {
+    Stdout {
+        header: Option<String>,
+        content: String,
+    },
+    File {
+        path: PathBuf,
+        content: String,
+        status: WriteStatus,
+        original_content: Option<String>,
+    },
+}
+
+/// What's at a target path before it's touched, checked via `symlink_metadata`
+/// so a symlink is classified by the link itself rather than what it points to.
+enum ExistingTarget {
+    Absent,
+    Regular(String),
+    Unreadable,
+    NonRegular,
+}
+
+fn classify_existing_target(path: &Path) -> ExistingTarget {
+    match fs::symlink_metadata(path) {
+        Err(_) => ExistingTarget::Absent,
+        Ok(meta) => {
+            if !meta.is_file() {
+                ExistingTarget::NonRegular
+            } else {
+                match fs::read_to_string(path) {
+                    Ok(content) => ExistingTarget::Regular(content),
+                    Err(_) => ExistingTarget::Unreadable,
+                }
+            }
+        }
+    }
 }
 
 impl TransformArgs {
@@ -407,58 +464,173 @@ impl TransformArgs {
             generated_outputs.push((target, output_map));
         }
 
-        // Track files written this run so a mid-run failure can be rolled back,
-        // keeping multi-target emission all-or-nothing on disk.
-        let mut written_paths: Vec<PathBuf> = Vec::new();
-        let mut write_error: Option<anyhow::Error> = None;
+        let check = self.check;
 
-        'outer: for (target, output_map) in generated_outputs {
+        // Flatten every target's rendered output into an ordered plan, classifying
+        // each file target's existing content against disk before any writes happen.
+        // This keeps render / compare / write as distinct phases: a target whose
+        // existing content can't be read or isn't a regular file aborts here, before
+        // any target in the invocation is written.
+        let mut items: Vec<PlannedItem> = Vec::new();
+
+        for (target, output_map) in &generated_outputs {
             let base_path = resolve_output_path(&target.format, target.path.as_ref());
 
             let mut sorted_paths: Vec<_> = output_map.keys().collect();
             sorted_paths.sort();
 
             for rel_path in sorted_paths {
-                let content = &output_map[rel_path];
-                let final_path = if let Some(ref base) = base_path {
-                    let mut p = base.clone();
-                    if p.is_dir() || p.extension().is_none() || output_map.len() > 1 {
-                        p.push(rel_path);
-                    }
-                    p
-                } else {
-                    rel_path.clone()
+                let content = output_map[rel_path].clone();
+
+                let Some(ref base) = base_path else {
+                    let header = if output_map.len() > 1 {
+                        Some(format!("--- {} ---", rel_path.display()))
+                    } else {
+                        None
+                    };
+                    items.push(PlannedItem::Stdout { header, content });
+                    continue;
                 };
 
-                if let Some(parent) = final_path.parent() {
-                    if let Err(e) = fs::create_dir_all(parent) {
-                        write_error = Some(e.into());
-                        break 'outer;
-                    }
+                let mut path = base.clone();
+                if path.is_dir() || path.extension().is_none() || output_map.len() > 1 {
+                    path.push(rel_path);
                 }
 
-                if base_path.is_none() {
-                    if output_map.len() > 1 {
-                        println!("--- {} ---", final_path.display());
+                let (status, original_content) = match classify_existing_target(&path) {
+                    ExistingTarget::Absent => (WriteStatus::Created, None),
+                    ExistingTarget::Regular(existing) => {
+                        if existing == content {
+                            (WriteStatus::Unchanged, None)
+                        } else {
+                            (WriteStatus::Updated, Some(existing))
+                        }
                     }
-                    println!("{}", content);
-                } else if let Err(e) = fs::write(&final_path, content) {
-                    write_error = Some(e.into());
-                    break 'outer;
-                } else {
-                    written_paths.push(final_path.clone());
+                    ExistingTarget::Unreadable => {
+                        anyhow::bail!(
+                            "Cannot read existing target {} to compare content; aborting before any writes",
+                            path.display()
+                        );
+                    }
+                    ExistingTarget::NonRegular => {
+                        anyhow::bail!(
+                            "Existing target {} is not a regular file (a symlink or a directory); aborting before any writes",
+                            path.display()
+                        );
+                    }
+                };
+
+                items.push(PlannedItem::File {
+                    path,
+                    content,
+                    status,
+                    original_content,
+                });
+            }
+        }
+
+        if check
+            && !items
+                .iter()
+                .any(|item| matches!(item, PlannedItem::File { .. }))
+        {
+            anyhow::bail!(
+                "--check requires at least one output file target (-o); no target resolves to a file path"
+            );
+        }
+
+        // Track files written this run so a mid-run failure can be rolled back,
+        // keeping multi-target emission all-or-nothing on disk. Created paths are
+        // removed on rollback; Updated paths are restored to their pre-write content.
+        let mut written: Vec<Written> = Vec::new();
+        let mut write_error: Option<anyhow::Error> = None;
+
+        for item in &items {
+            match item {
+                PlannedItem::Stdout { header, content } => {
+                    if !check {
+                        if let Some(header) = header {
+                            println!("{}", header);
+                        }
+                        println!("{}", content);
+                    }
+                }
+                PlannedItem::File {
+                    path,
+                    content,
+                    status,
+                    original_content,
+                } => {
+                    match status {
+                        WriteStatus::Unchanged => {}
+                        WriteStatus::Created | WriteStatus::Updated => {
+                            if !check {
+                                if let Some(parent) = path.parent() {
+                                    if let Err(e) = fs::create_dir_all(parent) {
+                                        write_error = Some(e.into());
+                                        break;
+                                    }
+                                }
+                                if let Err(e) = fs::write(path, content) {
+                                    write_error = Some(e.into());
+                                    break;
+                                }
+                                written.push(if matches!(status, WriteStatus::Created) {
+                                    Written::Created(path.clone())
+                                } else {
+                                    Written::Updated {
+                                        path: path.clone(),
+                                        original_content: original_content
+                                            .clone()
+                                            .unwrap_or_default(),
+                                    }
+                                });
+                            }
+                        }
+                    }
+
                     if !quiet {
-                        println!("Emitted to {}", final_path.display());
+                        let label = match status {
+                            WriteStatus::Created => "Created",
+                            WriteStatus::Updated => "Updated",
+                            WriteStatus::Unchanged => "Unchanged",
+                        };
+                        println!("{} {}", label, path.display());
                     }
                 }
             }
         }
 
         if let Some(e) = write_error {
-            for path in written_paths.iter().rev() {
-                let _ = fs::remove_file(path);
+            for w in written.iter().rev() {
+                match w {
+                    Written::Created(path) => {
+                        let _ = fs::remove_file(path);
+                    }
+                    Written::Updated {
+                        path,
+                        original_content,
+                    } => {
+                        let _ = fs::write(path, original_content);
+                    }
+                }
             }
             return Err(e);
+        }
+
+        if check {
+            let has_drift = items.iter().any(|item| {
+                matches!(
+                    item,
+                    PlannedItem::File {
+                        status: WriteStatus::Created | WriteStatus::Updated,
+                        ..
+                    }
+                )
+            });
+            if has_drift {
+                anyhow::bail!("Drift detected: one or more targets would be created or updated");
+            }
         }
 
         Ok(())

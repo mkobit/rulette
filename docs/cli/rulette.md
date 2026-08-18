@@ -98,6 +98,7 @@ Parse, transform, and emit rules across formats
 * `--rename <RENAME>` — Rename a metadata field value (from=to)
 * `--set <SET>` — Set a metadata field (field=value)
 * `--config <CONFIG>` — Load transform pipeline from TOML file
+* `--check` — Report drift without writing; exits non-zero if any target would be created or updated
 
 
 
