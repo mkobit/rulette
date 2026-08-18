@@ -10,10 +10,14 @@ expression: normalized_output
       "kind": "rule",
       "metadata": {
         "description": "Test rule for Cursor",
-        "alwaysApply": true,
-        "globs": [
-          "src/**/*.rs"
-        ],
+        "rulette:activation": {
+          "mode": [
+            "always"
+          ],
+          "globs": [
+            "src/**/*.rs"
+          ]
+        },
         "name": "example",
         "rulette:source_file": "tests/fixtures/cursor/example.mdc"
       },

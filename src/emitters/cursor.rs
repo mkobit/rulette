@@ -6,6 +6,21 @@ use std::path::PathBuf;
 
 pub struct CursorEmitter;
 
+/// Inverse of `frontend::activation_from_cursor`: resolves the typed
+/// activation model back to Cursor's own `alwaysApply`/`globs` pair.
+fn cursor_fields_from_activation(activation: &crate::Activation) -> (Option<bool>, Option<String>) {
+    use crate::ActivationMode;
+    if activation.mode.contains(&ActivationMode::Always) {
+        let globs = activation.globs.as_ref().map(|g| g.join(","));
+        (Some(true), globs)
+    } else if activation.mode.contains(&ActivationMode::Glob) {
+        let globs = activation.globs.as_ref().map(|g| g.join(","));
+        (Some(false), globs)
+    } else {
+        (Some(false), None)
+    }
+}
+
 impl Emitter for CursorEmitter {
     fn emit(&self, doc: &RuletteDocument, strict: bool) -> Result<HashMap<PathBuf, String>> {
         tracing::debug!(
@@ -59,6 +74,10 @@ impl Emitter for CursorEmitter {
                     struct CursorRuleMeta<'a> {
                         #[serde(skip_serializing_if = "Option::is_none")]
                         description: Option<&'a String>,
+                        #[serde(skip_serializing_if = "Option::is_none")]
+                        globs: Option<String>,
+                        #[serde(rename = "alwaysApply", skip_serializing_if = "Option::is_none")]
+                        always_apply: Option<bool>,
                         #[serde(flatten)]
                         #[serde(skip_serializing_if = "HashMap::is_empty")]
                         extra: HashMap<&'a String, &'a serde_json::Value>,
@@ -69,8 +88,16 @@ impl Emitter for CursorEmitter {
                         .iter()
                         .filter(|(k, _)| k.as_str() != "name" && !super::is_internal_extra_key(k))
                         .collect();
+                    let (always_apply, globs) = rule
+                        .metadata
+                        .activation
+                        .as_ref()
+                        .map(cursor_fields_from_activation)
+                        .unwrap_or((None, None));
                     let meta = CursorRuleMeta {
                         description: rule.metadata.description.as_ref(),
+                        globs,
+                        always_apply,
                         extra,
                     };
                     content.push_str(&serde_yaml::to_string(&meta)?);
@@ -138,5 +165,75 @@ impl Emitter for CursorEmitter {
             }
         }
         Ok(map)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Activation, ActivationMode, Rule, RuleMetadata};
+
+    fn rule_with_activation(activation: Activation) -> Entity {
+        Entity::Rule(Rule {
+            metadata: RuleMetadata {
+                description: Some("test rule".to_string()),
+                activation: Some(activation),
+                extra: HashMap::new(),
+            },
+            body: "Body.".to_string(),
+        })
+    }
+
+    #[test]
+    fn emits_always_apply_true_for_always_mode() {
+        let doc = RuletteDocument {
+            ir_version: "0.1".to_string(),
+            entities: vec![rule_with_activation(Activation {
+                mode: vec![ActivationMode::Always],
+                globs: None,
+                pattern: None,
+                description: None,
+            })],
+        };
+        let output = CursorEmitter.emit(&doc, false).unwrap();
+        let content = output.values().next().unwrap();
+        assert!(content.contains("alwaysApply: true"));
+        assert!(!content.contains("globs:"));
+    }
+
+    #[test]
+    fn emits_comma_joined_globs_for_glob_mode() {
+        let doc = RuletteDocument {
+            ir_version: "0.1".to_string(),
+            entities: vec![rule_with_activation(Activation {
+                mode: vec![ActivationMode::Glob],
+                globs: Some(vec!["src/**/*.ts".to_string(), "src/**/*.tsx".to_string()]),
+                pattern: None,
+                description: None,
+            })],
+        };
+        let output = CursorEmitter.emit(&doc, false).unwrap();
+        let content = output.values().next().unwrap();
+        assert!(content.contains("alwaysApply: false"));
+        assert!(content.contains("src/**/*.ts,src/**/*.tsx"));
+    }
+
+    #[test]
+    fn omits_activation_fields_when_none() {
+        let doc = RuletteDocument {
+            ir_version: "0.1".to_string(),
+            entities: vec![Entity::Rule(Rule {
+                metadata: RuleMetadata {
+                    description: Some("test rule".to_string()),
+                    activation: None,
+                    extra: HashMap::new(),
+                },
+                body: "Body.".to_string(),
+            })],
+        };
+        let output = CursorEmitter.emit(&doc, false).unwrap();
+        let content = output.values().next().unwrap();
+        assert!(!content.contains("alwaysApply"));
+        assert!(!content.contains("globs"));
     }
 }

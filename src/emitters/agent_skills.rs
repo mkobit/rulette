@@ -73,7 +73,7 @@ impl Emitter for AgentSkillsEmitter {
                     content.push_str("---\n");
                     content.push_str(&skill.body);
                     map.insert(
-                        PathBuf::from(format!("{}.skill.md", skill.metadata.name)),
+                        PathBuf::from(format!("{}/SKILL.md", skill.metadata.name)),
                         content,
                     );
                 }
@@ -121,7 +121,7 @@ impl Emitter for AgentSkillsEmitter {
                     content.push_str(&serde_yaml::to_string(&meta)?);
                     content.push_str("---\n");
                     content.push_str(&rule.body);
-                    map.insert(PathBuf::from(format!("{}.skill.md", name_val)), content);
+                    map.insert(PathBuf::from(format!("{}/SKILL.md", name_val)), content);
                 }
             }
         }
