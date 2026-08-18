@@ -1,4 +1,4 @@
-use super::Emitter;
+use super::{CapabilityEntry, CoverageStatus, Emitter};
 use crate::{Entity, RuletteDocument};
 use anyhow::{anyhow, Result};
 use std::collections::BTreeMap as HashMap;
@@ -129,6 +129,85 @@ impl Emitter for GeminiEmitter {
             map.insert(PathBuf::from("GEMINI.md"), output.trim_end().to_string());
         }
         Ok(map)
+    }
+
+    fn capabilities(&self, doc: &RuletteDocument) -> Vec<CapabilityEntry> {
+        let raw: Vec<CapabilityEntry> = doc
+            .entities
+            .iter()
+            .map(|entity| match entity {
+                Entity::Hook(hook) => CapabilityEntry::lossy_or_dropped(
+                    entity,
+                    CoverageStatus::Dropped,
+                    format!(
+                        "Lossy conversion: Hook '{}' to Gemini drops metadata",
+                        hook.metadata.name
+                    ),
+                ),
+                Entity::Permissions(perms) => CapabilityEntry::lossy_or_dropped(
+                    entity,
+                    CoverageStatus::Dropped,
+                    format!(
+                        "Lossy conversion: Permissions '{}' to Gemini drops metadata",
+                        perms.metadata.name.as_deref().unwrap_or("(unnamed)")
+                    ),
+                ),
+                Entity::Agent(agent) => {
+                    // Mirrors the leftover-extra computation in emit()'s Agent
+                    // branch (same recognized-key list), without needing the
+                    // extracted values themselves -- capabilities() only
+                    // needs to know whether either condition is lossy.
+                    let mut extra = agent.metadata.extra.clone();
+                    extra.remove("kind");
+                    extra.remove("mcpServers");
+                    extra.remove("temperature");
+                    extra.remove("max_turns");
+                    extra.remove("timeout_mins");
+                    extra.retain(|k, _| !super::is_internal_extra_key(k));
+
+                    let mut reasons = Vec::new();
+                    if agent.metadata.tool_access.is_some() {
+                        reasons.push(format!(
+                            "Lossy conversion: Agent '{}' to Gemini drops tool_access metadata",
+                            agent.metadata.name
+                        ));
+                    }
+                    if !extra.is_empty() {
+                        reasons.push(format!(
+                            "Lossy conversion: Agent '{}' to Gemini drops extra metadata",
+                            agent.metadata.name
+                        ));
+                    }
+                    if reasons.is_empty() {
+                        CapabilityEntry::supported(entity)
+                    } else {
+                        CapabilityEntry::lossy_or_dropped(
+                            entity,
+                            CoverageStatus::Lossy,
+                            reasons.join(" "),
+                        )
+                    }
+                }
+                Entity::McpServer(mcp) => CapabilityEntry::lossy_or_dropped(
+                    entity,
+                    CoverageStatus::Dropped,
+                    format!(
+                        "Lossy conversion: McpServer '{}' to target format drops metadata",
+                        mcp.metadata.name
+                    ),
+                ),
+                Entity::Skill(skill) => CapabilityEntry::lossy_or_dropped(
+                    entity,
+                    CoverageStatus::Lossy,
+                    format!(
+                        "Lossy conversion: Skill '{}' to Gemini drops metadata",
+                        skill.metadata.name
+                    ),
+                ),
+                Entity::Rule(_) => CapabilityEntry::supported(entity),
+            })
+            .collect();
+        super::aggregate_capabilities(raw)
     }
 }
 

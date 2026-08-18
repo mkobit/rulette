@@ -48,6 +48,8 @@ Pretty-print the IR for debugging
 
   Possible values: `claude`, `cursor-mdc`, `cursor-mcp`, `codex`, `windsurf`, `copilot`, `gemini`, `agent-skills`, `ir-json`, `ir-toml`, `json-schema`
 
+* `--coverage` — Compute a Supported/Lossy/Dropped capability matrix across every registered target
+* `--json` — Render --coverage output as JSON instead of a table (requires --coverage)
 
 
 

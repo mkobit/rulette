@@ -1,4 +1,4 @@
-use super::Emitter;
+use super::{CapabilityEntry, CoverageStatus, Emitter};
 use crate::{Entity, RuletteDocument};
 use anyhow::{anyhow, Result};
 use std::collections::BTreeMap as HashMap;
@@ -115,5 +115,76 @@ impl Emitter for CodexEmitter {
             }
         }
         Ok(map)
+    }
+
+    fn capabilities(&self, doc: &RuletteDocument) -> Vec<CapabilityEntry> {
+        // directory_scope() validates rulette:directory-scope and can fail
+        // for a malformed value (absolute path, ".." traversal). emit()
+        // propagates that as a hard error via `?` regardless of `strict`;
+        // capabilities() has no error channel, so an invalid scope is
+        // reported as Dropped for that entity instead of aborting the whole
+        // coverage probe -- it plainly isn't representable at this target.
+        let raw: Vec<CapabilityEntry> = doc
+            .entities
+            .iter()
+            .map(|entity| match entity {
+                Entity::Rule(rule) => match directory_scope(&rule.metadata.extra) {
+                    Ok(_) => CapabilityEntry::supported(entity),
+                    Err(e) => CapabilityEntry::lossy_or_dropped(
+                        entity,
+                        CoverageStatus::Dropped,
+                        e.to_string(),
+                    ),
+                },
+                Entity::Skill(skill) => match directory_scope(&skill.metadata.extra) {
+                    Ok(_) => CapabilityEntry::lossy_or_dropped(
+                        entity,
+                        CoverageStatus::Lossy,
+                        format!(
+                            "Lossy conversion: Skill '{}' to Codex drops metadata",
+                            skill.metadata.name
+                        ),
+                    ),
+                    Err(e) => CapabilityEntry::lossy_or_dropped(
+                        entity,
+                        CoverageStatus::Dropped,
+                        e.to_string(),
+                    ),
+                },
+                Entity::Hook(hook) => CapabilityEntry::lossy_or_dropped(
+                    entity,
+                    CoverageStatus::Dropped,
+                    format!(
+                        "Lossy conversion: Hook '{}' to Codex drops metadata",
+                        hook.metadata.name
+                    ),
+                ),
+                Entity::Agent(agent) => CapabilityEntry::lossy_or_dropped(
+                    entity,
+                    CoverageStatus::Dropped,
+                    format!(
+                        "Lossy conversion: Agent '{}' to Codex drops metadata",
+                        agent.metadata.name
+                    ),
+                ),
+                Entity::Permissions(perms) => CapabilityEntry::lossy_or_dropped(
+                    entity,
+                    CoverageStatus::Dropped,
+                    format!(
+                        "Lossy conversion: Permissions '{}' to Codex drops metadata",
+                        perms.metadata.name.as_deref().unwrap_or("(unnamed)")
+                    ),
+                ),
+                Entity::McpServer(mcp) => CapabilityEntry::lossy_or_dropped(
+                    entity,
+                    CoverageStatus::Dropped,
+                    format!(
+                        "Lossy conversion: McpServer '{}' to target format drops metadata",
+                        mcp.metadata.name
+                    ),
+                ),
+            })
+            .collect();
+        super::aggregate_capabilities(raw)
     }
 }
