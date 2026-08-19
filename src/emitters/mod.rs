@@ -154,12 +154,15 @@ mod capabilities_parity_tests {
             Entity::Rule(Rule {
                 metadata: RuleMetadata {
                     description: Some("A test rule".to_string()),
-                    activation: Some(Activation {
-                        mode: vec![ActivationMode::Glob],
-                        globs: Some(vec!["**/*.rs".to_string()]),
-                        pattern: None,
-                        description: None,
-                    }),
+                    activation: Some(
+                        Activation {
+                            mode: vec![ActivationMode::Glob],
+                            globs: Some(vec!["**/*.rs".to_string()]),
+                            pattern: None,
+                            description: None,
+                        }
+                        .into(),
+                    ),
                     extra: HashMap::new(),
                 },
                 body: "Test rule body.".to_string(),

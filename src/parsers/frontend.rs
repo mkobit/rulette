@@ -341,7 +341,8 @@ fn parse_cursor_mdc(input: &str, filename: Option<&str>) -> Result<Rule> {
             metadata.activation = activation_from_cursor(
                 parsed_fm.always_apply,
                 parsed_fm.globs.map(GlobsValue::into_vec),
-            );
+            )
+            .map(crate::TargetOverrides::Bare);
         }
     }
     if !metadata.extra.contains_key("name") {
@@ -883,8 +884,9 @@ mod tests {
         let content = "---\ndescription: always on\nalwaysApply: true\n---\nBody.";
         let rule = parse_cursor_mdc(content, None).unwrap();
         let activation = rule.metadata.activation.expect("activation should be set");
-        assert_eq!(activation.mode, vec![crate::ActivationMode::Always]);
-        assert_eq!(activation.globs, None);
+        let resolved = activation.resolve("cursor-mdc");
+        assert_eq!(resolved.mode, vec![crate::ActivationMode::Always]);
+        assert_eq!(resolved.globs, None);
         assert!(!rule.metadata.extra.contains_key("alwaysApply"));
     }
 
@@ -893,9 +895,10 @@ mod tests {
         let content = "---\ndescription: ts only\nglobs: \"src/**/*.ts,src/**/*.tsx\"\nalwaysApply: false\n---\nBody.";
         let rule = parse_cursor_mdc(content, None).unwrap();
         let activation = rule.metadata.activation.expect("activation should be set");
-        assert_eq!(activation.mode, vec![crate::ActivationMode::Glob]);
+        let resolved = activation.resolve("cursor-mdc");
+        assert_eq!(resolved.mode, vec![crate::ActivationMode::Glob]);
         assert_eq!(
-            activation.globs,
+            resolved.globs,
             Some(vec!["src/**/*.ts".to_string(), "src/**/*.tsx".to_string()])
         );
         assert!(!rule.metadata.extra.contains_key("globs"));
@@ -907,7 +910,8 @@ mod tests {
         let content = "---\ndescription: manual only\nalwaysApply: false\n---\nBody.";
         let rule = parse_cursor_mdc(content, None).unwrap();
         let activation = rule.metadata.activation.expect("activation should be set");
-        assert_eq!(activation.mode, vec![crate::ActivationMode::Manual]);
+        let resolved = activation.resolve("cursor-mdc");
+        assert_eq!(resolved.mode, vec![crate::ActivationMode::Manual]);
     }
 
     #[test]

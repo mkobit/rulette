@@ -92,6 +92,7 @@ impl Emitter for CursorEmitter {
                         .metadata
                         .activation
                         .as_ref()
+                        .map(|a| a.resolve("cursor-mdc"))
                         .map(cursor_fields_from_activation)
                         .unwrap_or((None, None));
                     let meta = CursorRuleMeta {
@@ -228,7 +229,7 @@ mod tests {
         Entity::Rule(Rule {
             metadata: RuleMetadata {
                 description: Some("test rule".to_string()),
-                activation: Some(activation),
+                activation: Some(activation.into()),
                 extra: HashMap::new(),
             },
             body: "Body.".to_string(),

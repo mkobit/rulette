@@ -117,12 +117,61 @@ pub struct Rule {
     pub body: String,
 }
 
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema, Eq)]
+#[serde(untagged)]
+pub enum TargetOverrides<T> {
+    Wrapped {
+        default: T,
+        #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+        overrides: std::collections::BTreeMap<String, T>,
+    },
+    Bare(T),
+}
+
+impl<T> TargetOverrides<T> {
+    pub fn resolve(&self, target: &str) -> &T {
+        match self {
+            TargetOverrides::Bare(val) => val,
+            TargetOverrides::Wrapped { default, overrides } => {
+                let target_clean = target.trim().to_lowercase();
+
+                // 1. Exact match (case/whitespace normalized)
+                for (k, v) in overrides {
+                    if k.trim().to_lowercase() == target_clean {
+                        return v;
+                    }
+                }
+
+                // 2. Tool family alias/prefix match (e.g. "cursor" for "cursor-mdc")
+                if let Some(prefix) = target_clean.split(['-', '_']).next() {
+                    if prefix != target_clean {
+                        for (k, v) in overrides {
+                            if k.trim().to_lowercase() == prefix {
+                                return v;
+                            }
+                        }
+                    }
+                }
+
+                // 3. Fallback to default
+                default
+            }
+        }
+    }
+}
+
+impl<T> From<T> for TargetOverrides<T> {
+    fn from(val: T) -> Self {
+        TargetOverrides::Bare(val)
+    }
+}
+
 #[derive(PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
 pub struct RuleMetadata {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     #[serde(rename = "rulette:activation", skip_serializing_if = "Option::is_none")]
-    pub activation: Option<Activation>,
+    pub activation: Option<TargetOverrides<Activation>>,
 
     #[serde(flatten)]
     #[serde(skip_serializing_if = "HashMap::is_empty")]
@@ -195,9 +244,200 @@ pub struct PermissionsMetadata {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn test_target_overrides_deserialization_bare() {
+        let yaml_str = r#"
+mode:
+  - always
+"#;
+        let parsed: TargetOverrides<Activation> =
+            serde_yaml::from_str(yaml_str).expect("should parse bare activation");
+        match &parsed {
+            TargetOverrides::Bare(activation) => {
+                assert_eq!(activation.mode, vec![ActivationMode::Always]);
+                assert_eq!(activation.globs, None);
+            }
+            TargetOverrides::Wrapped { .. } => panic!("expected Bare variant"),
+        }
+        assert_eq!(
+            parsed.resolve("cursor-mdc").mode,
+            vec![ActivationMode::Always]
+        );
+    }
+
+    #[test]
+    fn test_target_overrides_deserialization_wrapped() {
+        let yaml_str = r#"
+default:
+  mode:
+    - manual
+overrides:
+  cursor-mdc:
+    mode:
+      - glob
+    globs:
+      - "**/*.rs"
+  antigravity:
+    mode:
+      - model
+    description: "activate for rust projects"
+"#;
+        let parsed: TargetOverrides<Activation> =
+            serde_yaml::from_str(yaml_str).expect("should parse wrapped activation");
+
+        match &parsed {
+            TargetOverrides::Wrapped { default, overrides } => {
+                assert_eq!(default.mode, vec![ActivationMode::Manual]);
+                assert_eq!(overrides.len(), 2);
+            }
+            TargetOverrides::Bare(_) => panic!("expected Wrapped variant"),
+        }
+
+        // Exact match
+        let cursor_res = parsed.resolve("cursor-mdc");
+        assert_eq!(cursor_res.mode, vec![ActivationMode::Glob]);
+        assert_eq!(cursor_res.globs, Some(vec!["**/*.rs".to_string()]));
+
+        // Exact match for antigravity
+        let agy_res = parsed.resolve("antigravity");
+        assert_eq!(agy_res.mode, vec![ActivationMode::Model]);
+        assert_eq!(
+            agy_res.description.as_deref(),
+            Some("activate for rust projects")
+        );
+
+        // Fallback to default
+        let claude_res = parsed.resolve("claude");
+        assert_eq!(claude_res.mode, vec![ActivationMode::Manual]);
+        assert_eq!(claude_res.globs, None);
+    }
+
+    #[test]
+    fn test_target_overrides_tool_alias_precedence() {
+        let mut overrides = std::collections::BTreeMap::new();
+        overrides.insert(
+            "cursor".to_string(),
+            Activation {
+                mode: vec![ActivationMode::Always],
+                globs: None,
+                pattern: None,
+                description: None,
+            },
+        );
+        overrides.insert(
+            "cursor-mdc".to_string(),
+            Activation {
+                mode: vec![ActivationMode::Glob],
+                globs: Some(vec!["src/**".to_string()]),
+                pattern: None,
+                description: None,
+            },
+        );
+
+        let wrapped = TargetOverrides::Wrapped {
+            default: Activation {
+                mode: vec![ActivationMode::Manual],
+                globs: None,
+                pattern: None,
+                description: None,
+            },
+            overrides,
+        };
+
+        // Exact match wins over tool alias
+        assert_eq!(
+            wrapped.resolve("cursor-mdc").mode,
+            vec![ActivationMode::Glob]
+        );
+
+        // Tool alias matches prefix for cursor-mcp
+        assert_eq!(
+            wrapped.resolve("cursor-mcp").mode,
+            vec![ActivationMode::Always]
+        );
+        assert_eq!(
+            wrapped.resolve("cursor_rules").mode,
+            vec![ActivationMode::Always]
+        );
+
+        // Unrelated target falls back to default
+        assert_eq!(wrapped.resolve("gemini").mode, vec![ActivationMode::Manual]);
+    }
+
+    #[test]
+    fn test_target_overrides_normalization() {
+        let mut overrides = std::collections::BTreeMap::new();
+        overrides.insert(
+            "  CURSOR-MDC  ".to_string(),
+            Activation {
+                mode: vec![ActivationMode::Always],
+                globs: None,
+                pattern: None,
+                description: None,
+            },
+        );
+
+        let wrapped = TargetOverrides::Wrapped {
+            default: Activation {
+                mode: vec![ActivationMode::Manual],
+                globs: None,
+                pattern: None,
+                description: None,
+            },
+            overrides,
+        };
+
+        assert_eq!(
+            wrapped.resolve("cursor-mdc").mode,
+            vec![ActivationMode::Always]
+        );
+        assert_eq!(
+            wrapped.resolve("  Cursor-Mdc  ").mode,
+            vec![ActivationMode::Always]
+        );
+    }
+
+    #[test]
+    fn test_target_overrides_serialization_bare() {
+        let activation = TargetOverrides::Bare(Activation {
+            mode: vec![ActivationMode::Always],
+            globs: None,
+            pattern: None,
+            description: None,
+        });
+
+        let json = serde_json::to_string(&activation).expect("serialize json");
+        assert_eq!(json, r#"{"mode":["always"]}"#);
+    }
+
+    #[test]
+    fn test_target_overrides_serialization_wrapped() {
+        let mut overrides = std::collections::BTreeMap::new();
+        overrides.insert(
+            "cursor-mdc".to_string(),
+            Activation {
+                mode: vec![ActivationMode::Glob],
+                globs: Some(vec!["*.md".to_string()]),
+                pattern: None,
+                description: None,
+            },
+        );
+
+        let activation = TargetOverrides::Wrapped {
+            default: Activation {
+                mode: vec![ActivationMode::Manual],
+                globs: None,
+                pattern: None,
+                description: None,
+            },
+            overrides,
+        };
+
+        let json = serde_json::to_string(&activation).expect("serialize json");
+        assert!(json.contains(r#""default":{"mode":["manual"]}"#));
+        assert!(json.contains(r#""cursor-mdc":{"mode":["glob"],"globs":["*.md"]}"#));
     }
 }
 
@@ -210,5 +450,6 @@ mod generated_schema_tests {
         let _ = schemars::schema_for!(Agent);
         let _ = schemars::schema_for!(Permissions);
         let _ = schemars::schema_for!(Activation);
+        let _ = schemars::schema_for!(TargetOverrides<Activation>);
     }
 }
