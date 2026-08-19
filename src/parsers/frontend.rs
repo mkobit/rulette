@@ -297,6 +297,10 @@ fn parse_agent_skills(input: &str, filename: Option<&str>) -> Result<Skill> {
     })
 }
 
+pub fn parse_rule_markdown(input: &str, filename: Option<&str>) -> Result<Rule> {
+    parse_cursor_mdc(input, filename)
+}
+
 fn parse_cursor_mdc(input: &str, filename: Option<&str>) -> Result<Rule> {
     if let Some(f) = filename {
         if f.to_lowercase().ends_with("readme.md") {
@@ -332,17 +336,23 @@ fn parse_cursor_mdc(input: &str, filename: Option<&str>) -> Result<Rule> {
             globs: Option<GlobsValue>,
             #[serde(rename = "alwaysApply")]
             always_apply: Option<bool>,
+            #[serde(rename = "rulette:activation")]
+            activation: Option<crate::TargetOverrides<Activation>>,
             #[serde(flatten)]
             extra: HashMap<String, serde_json::Value>,
         }
         if let Ok(parsed_fm) = serde_yaml::from_str::<FmParse>(fm) {
             metadata.description = parsed_fm.description;
             metadata.extra = parsed_fm.extra;
-            metadata.activation = activation_from_cursor(
-                parsed_fm.always_apply,
-                parsed_fm.globs.map(GlobsValue::into_vec),
-            )
-            .map(crate::TargetOverrides::Bare);
+            if let Some(activation) = parsed_fm.activation {
+                metadata.activation = Some(activation);
+            } else {
+                metadata.activation = activation_from_cursor(
+                    parsed_fm.always_apply,
+                    parsed_fm.globs.map(GlobsValue::into_vec),
+                )
+                .map(crate::TargetOverrides::Bare);
+            }
         }
     }
     if !metadata.extra.contains_key("name") {
@@ -986,5 +996,139 @@ mod tests {
     fn test_parse_claude_top_level_agents_md_has_no_directory_scope() {
         let rule = parse_claude("Top-level rules.", Some("AGENTS.md")).unwrap();
         assert!(!rule.metadata.extra.contains_key("rulette:directory-scope"));
+    }
+
+    #[test]
+    fn test_parse_rule_markdown_bare_activation() {
+        let content = r#"---
+description: Rule with bare activation
+rulette:activation:
+  mode:
+    - always
+---
+# Bare Rule Body
+"#;
+        let rule = parse_rule_markdown(content, Some("test_bare.mdc")).unwrap();
+        assert_eq!(
+            rule.metadata.description.as_deref(),
+            Some("Rule with bare activation")
+        );
+        let activation = rule.metadata.activation.expect("activation should be set");
+        match &activation {
+            crate::TargetOverrides::Bare(bare) => {
+                assert_eq!(bare.mode, vec![crate::ActivationMode::Always]);
+                assert_eq!(bare.globs, None);
+            }
+            crate::TargetOverrides::Wrapped { .. } => panic!("expected Bare variant"),
+        }
+        assert_eq!(
+            activation.resolve("cursor-mdc").mode,
+            vec![crate::ActivationMode::Always]
+        );
+        assert!(!rule.metadata.extra.contains_key("rulette:activation"));
+    }
+
+    #[test]
+    fn test_parse_rule_markdown_wrapped_activation_overrides() {
+        let content = r#"---
+description: Rule with wrapped activation overrides
+rulette:activation:
+  default:
+    mode:
+      - manual
+  overrides:
+    cursor-mdc:
+      mode:
+        - glob
+      globs:
+        - "**/*.rs"
+        - "**/*.toml"
+    antigravity:
+      mode:
+        - model
+      description: "activate when rust or toml is touched"
+---
+# Wrapped Rule Body
+"#;
+        let rule = parse_rule_markdown(content, Some("test_wrapped.mdc")).unwrap();
+        assert_eq!(
+            rule.metadata.description.as_deref(),
+            Some("Rule with wrapped activation overrides")
+        );
+        let activation = rule.metadata.activation.expect("activation should be set");
+        match &activation {
+            crate::TargetOverrides::Wrapped { default, overrides } => {
+                assert_eq!(default.mode, vec![crate::ActivationMode::Manual]);
+                assert_eq!(overrides.len(), 2);
+            }
+            crate::TargetOverrides::Bare(_) => panic!("expected Wrapped variant"),
+        }
+
+        // Exact match for cursor-mdc
+        let cursor_res = activation.resolve("cursor-mdc");
+        assert_eq!(cursor_res.mode, vec![crate::ActivationMode::Glob]);
+        assert_eq!(
+            cursor_res.globs,
+            Some(vec!["**/*.rs".to_string(), "**/*.toml".to_string()])
+        );
+
+        // Exact match for antigravity
+        let agy_res = activation.resolve("antigravity");
+        assert_eq!(agy_res.mode, vec![crate::ActivationMode::Model]);
+        assert_eq!(
+            agy_res.description.as_deref(),
+            Some("activate when rust or toml is touched")
+        );
+
+        // Fallback to default for other targets
+        let claude_res = activation.resolve("claude");
+        assert_eq!(claude_res.mode, vec![crate::ActivationMode::Manual]);
+        assert_eq!(claude_res.globs, None);
+
+        assert!(!rule.metadata.extra.contains_key("rulette:activation"));
+    }
+
+    #[test]
+    fn test_cursor_mdc_roundtrip_parsing() {
+        use crate::emitters::{CursorEmitter, Emitter};
+
+        // 1. Always apply roundtrip
+        let always_mdc =
+            "---\ndescription: always on rule\nalwaysApply: true\n---\n# Always Rule\n";
+        let rule1 = parse_rule_markdown(always_mdc, Some("always.mdc")).unwrap();
+        let doc1 = RuletteDocument {
+            ir_version: "0.1".to_string(),
+            entities: vec![Entity::Rule(rule1)],
+        };
+        let emitted1 = CursorEmitter.emit(&doc1, false).unwrap();
+        let emitted_content1 = emitted1.values().next().unwrap();
+        let reparsed1 = parse_rule_markdown(emitted_content1, Some("always.mdc")).unwrap();
+        let act1 = reparsed1
+            .metadata
+            .activation
+            .expect("activation should exist");
+        let resolved1 = act1.resolve("cursor-mdc");
+        assert_eq!(resolved1.mode, vec![crate::ActivationMode::Always]);
+
+        // 2. Globs roundtrip
+        let globs_mdc = "---\ndescription: ts only rule\nglobs: \"src/**/*.ts,src/**/*.tsx\"\nalwaysApply: false\n---\n# TS Rule\n";
+        let rule2 = parse_rule_markdown(globs_mdc, Some("ts.mdc")).unwrap();
+        let doc2 = RuletteDocument {
+            ir_version: "0.1".to_string(),
+            entities: vec![Entity::Rule(rule2)],
+        };
+        let emitted2 = CursorEmitter.emit(&doc2, false).unwrap();
+        let emitted_content2 = emitted2.values().next().unwrap();
+        let reparsed2 = parse_rule_markdown(emitted_content2, Some("ts.mdc")).unwrap();
+        let act2 = reparsed2
+            .metadata
+            .activation
+            .expect("activation should exist");
+        let resolved2 = act2.resolve("cursor-mdc");
+        assert_eq!(resolved2.mode, vec![crate::ActivationMode::Glob]);
+        assert_eq!(
+            resolved2.globs,
+            Some(vec!["src/**/*.ts".to_string(), "src/**/*.tsx".to_string()])
+        );
     }
 }
