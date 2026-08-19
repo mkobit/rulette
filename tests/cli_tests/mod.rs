@@ -4,4 +4,5 @@ pub mod emit_tests;
 pub mod parse_tests;
 pub mod pipeline_tests;
 pub mod strict_tests;
+pub mod transform_config_tests;
 pub mod transform_tests;

@@ -1,6 +1,6 @@
 use clap::ValueEnum;
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(
     Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug, Deserialize, JsonSchema,
@@ -24,7 +24,17 @@ pub enum InputFormat {
 }
 
 #[derive(
-    Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug, Deserialize, JsonSchema,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    ValueEnum,
+    Debug,
+    Deserialize,
+    Serialize,
+    JsonSchema,
 )]
 #[serde(rename_all = "kebab-case")]
 pub enum OutputFormat {
@@ -39,4 +49,8 @@ pub enum OutputFormat {
     IrJson,
     IrToml,
     JsonSchema,
+    /// Scaffold-only target: `transform` writes a transform-config manifest
+    /// instead of a real tool output; `inspect` rejects it (see
+    /// `src/cli/commands/inspect.rs`).
+    TransformConfig,
 }
