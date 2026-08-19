@@ -7,9 +7,9 @@
 
 ## 2. Parser integration
 
-- [ ] 2.1 Verify `parse_rule_markdown` in `src/parsers/frontend.rs` correctly parses both bare and wrapped `rulette:activation` YAML frontmatter blocks.
-- [ ] 2.2 Add unit tests for rule parsing with multi-target activation overrides.
-- [ ] 2.3 Verify round-trip parsing of Cursor MDC files into `TargetOverrides<Activation>`.
+- [x] 2.1 Verify `parse_rule_markdown` in `src/parsers/frontend.rs` correctly parses both bare and wrapped `rulette:activation` YAML frontmatter blocks.
+- [x] 2.2 Add unit tests for rule parsing with multi-target activation overrides.
+- [x] 2.3 Verify round-trip parsing of Cursor MDC files into `TargetOverrides<Activation>`.
 
 ## 3. Emitter resolution and capability updates
 

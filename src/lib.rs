@@ -15,4 +15,4 @@ pub use ir::{
     HookMetadata, McpServer, McpServerConfig, McpServerMetadata, Permissions, PermissionsMetadata,
     Rule, RuleMetadata, RuletteDocument, TargetOverrides, ToolAccessRule,
 };
-pub use parsers::parse;
+pub use parsers::{parse, parse_rule_markdown};

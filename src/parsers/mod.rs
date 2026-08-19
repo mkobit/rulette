@@ -4,4 +4,4 @@ pub mod cursor;
 pub mod frontend;
 pub mod gemini;
 
-pub use frontend::parse;
+pub use frontend::{parse, parse_rule_markdown};
