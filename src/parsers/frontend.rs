@@ -469,14 +469,17 @@ fn infer_codex_directory_scope(filename: Option<&str>) -> Option<String> {
         return None;
     }
     let parent = path.parent()?;
-    // `has_root()` catches POSIX-style `/`-rooted paths that `is_absolute()`
-    // misses on Windows (there `is_absolute()` also requires a drive
-    // prefix, so `/foo/bar` is rootless-but-relative there but absolute on
-    // Unix). Treating both as "needs relativizing to cwd" keeps this
-    // function's behavior platform-independent.
     let relative_parent: PathBuf = if parent.is_absolute() || parent.has_root() {
         let cwd = std::env::current_dir().ok()?;
-        parent.strip_prefix(&cwd).ok()?.to_path_buf()
+        if let Ok(rel) = parent.strip_prefix(&cwd) {
+            rel.to_path_buf()
+        } else if let (Ok(canon_parent), Ok(canon_cwd)) =
+            (std::fs::canonicalize(parent), std::fs::canonicalize(&cwd))
+        {
+            canon_parent.strip_prefix(&canon_cwd).ok()?.to_path_buf()
+        } else {
+            return None;
+        }
     } else {
         parent.to_path_buf()
     };
