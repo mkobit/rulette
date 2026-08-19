@@ -322,14 +322,26 @@ fn test_scaffold_dedups_nested_codex_agents_md_and_round_trips() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
-    assert!(stdout.contains("Unchanged AGENTS.md"));
-    assert!(stdout.contains(&format!(
-        "Unchanged {}",
+    assert!(
+        stdout.contains("Unchanged AGENTS.md"),
+        "stdout missing Unchanged AGENTS.md. Full stdout:\n{}",
+        stdout
+    );
+    assert!(
+        stdout.contains(&format!(
+            "Unchanged {}",
+            std::path::Path::new("src")
+                .join("backend")
+                .join("AGENTS.md")
+                .display()
+        )),
+        "stdout missing Unchanged src/backend/AGENTS.md. Expected 'Unchanged {}'. Full stdout:\n{}",
         std::path::Path::new("src")
             .join("backend")
             .join("AGENTS.md")
-            .display()
-    )));
+            .display(),
+        stdout
+    );
 }
 
 #[test]
