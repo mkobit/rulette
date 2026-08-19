@@ -118,6 +118,11 @@ impl InspectArgs {
                     );
                     map
                 }
+                OutputFormat::TransformConfig => {
+                    anyhow::bail!(
+                        "`transform-config` is only a valid target for the `transform` command, not `inspect`"
+                    );
+                }
             };
 
             if !quiet {

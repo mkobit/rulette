@@ -46,7 +46,20 @@ Pretty-print the IR for debugging
 
 * `-t`, `--to <TO>` — Target format to dry-run emission and show lossy conversion warnings
 
-  Possible values: `claude`, `cursor-mdc`, `cursor-mcp`, `codex`, `windsurf`, `copilot`, `gemini`, `agent-skills`, `ir-json`, `ir-toml`, `json-schema`
+  Possible values:
+  - `claude`
+  - `cursor-mdc`
+  - `cursor-mcp`
+  - `codex`
+  - `windsurf`
+  - `copilot`
+  - `gemini`
+  - `agent-skills`
+  - `ir-json`
+  - `ir-toml`
+  - `json-schema`
+  - `transform-config`:
+    Scaffold-only target: `transform` writes a transform-config manifest instead of a real tool output; `inspect` rejects it (see `src/cli/commands/inspect.rs`)
 
 * `--coverage` — Compute a Supported/Lossy/Dropped capability matrix across every registered target
 * `--json` — Render --coverage output as JSON instead of a table (requires --coverage)
@@ -76,9 +89,7 @@ Parse, transform, and emit rules across formats
 
 ###### **Arguments:**
 
-* `<INPUT>` — Input files or directories (or "-" for stdin)
-
-  Default value: `-`
+* `<INPUT>` — Input files or directories (or "-" for stdin). Defaults to stdin only when neither this nor --config's `inputs` is set
 
 ###### **Options:**
 
@@ -90,7 +101,20 @@ Parse, transform, and emit rules across formats
 
 * `--to <TO>` — Target output format
 
-  Possible values: `claude`, `cursor-mdc`, `cursor-mcp`, `codex`, `windsurf`, `copilot`, `gemini`, `agent-skills`, `ir-json`, `ir-toml`, `json-schema`
+  Possible values:
+  - `claude`
+  - `cursor-mdc`
+  - `cursor-mcp`
+  - `codex`
+  - `windsurf`
+  - `copilot`
+  - `gemini`
+  - `agent-skills`
+  - `ir-json`
+  - `ir-toml`
+  - `json-schema`
+  - `transform-config`:
+    Scaffold-only target: `transform` writes a transform-config manifest instead of a real tool output; `inspect` rejects it (see `src/cli/commands/inspect.rs`)
 
 * `-o`, `--out <OUT>` — Output path (file or directory) or multiple targets via format:path
 * `--name <NAME>` — Override name metadata for parsed entities
@@ -99,7 +123,7 @@ Parse, transform, and emit rules across formats
 * `--exclude <EXCLUDE>` — Remove rules matching expression
 * `--rename <RENAME>` — Rename a metadata field value (from=to)
 * `--set <SET>` — Set a metadata field (field=value)
-* `--config <CONFIG>` — Load transform pipeline from TOML file
+* `--config <CONFIG>` — Load a transform-config file (.toml/.json/.jsonc/.json5); composes with and can be overridden by other CLI flags
 * `--check` — Report drift without writing; exits non-zero if any target would be created or updated
 
 
