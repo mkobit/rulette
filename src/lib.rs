@@ -13,6 +13,6 @@ pub use emitters::{
 pub use ir::{
     Activation, ActivationMode, Agent, AgentMetadata, Entity, Hook, HookEvent, HookEventKind,
     HookMetadata, McpServer, McpServerConfig, McpServerMetadata, Permissions, PermissionsMetadata,
-    Rule, RuleMetadata, RuletteDocument, ToolAccessRule,
+    Rule, RuleMetadata, RuletteDocument, TargetOverrides, ToolAccessRule,
 };
 pub use parsers::parse;
