@@ -461,6 +461,55 @@ fn parse_claude_settings(input: &str, filename: Option<&str>) -> Result<Vec<Enti
 /// is made relative to the current directory first. Rulette has no
 /// independent notion of "repo root" beyond that; a path outside the current
 /// directory yields no inferred scope rather than an invalid absolute one.
+fn relativize_to_cwd(parent: &Path, cwd: &Path) -> Option<PathBuf> {
+    if let Ok(rel) = parent.strip_prefix(cwd) {
+        return Some(rel.to_path_buf());
+    }
+
+    let parent_comps: Vec<_> = parent.components().collect();
+    let cwd_comps: Vec<_> = cwd.components().collect();
+
+    if parent_comps.len() >= cwd_comps.len() {
+        let matches = parent_comps
+            .iter()
+            .zip(cwd_comps.iter())
+            .all(|(p, c)| match (p, c) {
+                (Component::Prefix(p_prefix), Component::Prefix(c_prefix)) => p_prefix
+                    .as_os_str()
+                    .to_string_lossy()
+                    .eq_ignore_ascii_case(&c_prefix.as_os_str().to_string_lossy()),
+                (Component::Normal(p_name), Component::Normal(c_name)) => {
+                    if cfg!(windows) {
+                        p_name
+                            .to_string_lossy()
+                            .eq_ignore_ascii_case(&c_name.to_string_lossy())
+                    } else {
+                        p_name == c_name
+                    }
+                }
+                _ => p == c,
+            });
+
+        if matches {
+            let rel: PathBuf = parent_comps[cwd_comps.len()..]
+                .iter()
+                .map(|c| c.as_os_str())
+                .collect();
+            return Some(rel);
+        }
+    }
+
+    if let (Ok(canon_parent), Ok(canon_cwd)) =
+        (std::fs::canonicalize(parent), std::fs::canonicalize(cwd))
+    {
+        if let Ok(rel) = canon_parent.strip_prefix(&canon_cwd) {
+            return Some(rel.to_path_buf());
+        }
+    }
+
+    None
+}
+
 fn infer_codex_directory_scope(filename: Option<&str>) -> Option<String> {
     let f = filename?;
     let path = Path::new(f);
@@ -469,14 +518,9 @@ fn infer_codex_directory_scope(filename: Option<&str>) -> Option<String> {
         return None;
     }
     let parent = path.parent()?;
-    // `has_root()` catches POSIX-style `/`-rooted paths that `is_absolute()`
-    // misses on Windows (there `is_absolute()` also requires a drive
-    // prefix, so `/foo/bar` is rootless-but-relative there but absolute on
-    // Unix). Treating both as "needs relativizing to cwd" keeps this
-    // function's behavior platform-independent.
     let relative_parent: PathBuf = if parent.is_absolute() || parent.has_root() {
         let cwd = std::env::current_dir().ok()?;
-        parent.strip_prefix(&cwd).ok()?.to_path_buf()
+        relativize_to_cwd(parent, &cwd)?
     } else {
         parent.to_path_buf()
     };

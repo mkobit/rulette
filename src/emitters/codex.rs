@@ -30,7 +30,13 @@ fn directory_scope(extra: &HashMap<String, serde_json::Value>) -> Result<Option<
 
 fn agents_md_path(scope: &Option<String>) -> PathBuf {
     match scope {
-        Some(scope) => Path::new(scope).join("AGENTS.md"),
+        Some(scope) => {
+            let mut path = PathBuf::new();
+            for part in scope.split('/') {
+                path.push(part);
+            }
+            path.join("AGENTS.md")
+        }
         None => PathBuf::from("AGENTS.md"),
     }
 }
