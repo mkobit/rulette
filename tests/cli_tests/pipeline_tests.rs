@@ -329,3 +329,157 @@ fn test_rule_to_skill_promotion_pipeline() {
     assert!(content.contains("description: Advanced refactoring skill"));
     assert!(content.contains("# Generic Rule\nThis is the rule body."));
 }
+
+#[test]
+fn test_multi_target_override_pipeline() {
+    let temp_dir = tempdir().unwrap();
+    let input_file = temp_dir.path().join("rule-with-overrides.md");
+    fs::write(
+        &input_file,
+        r#"---
+description: A rule with target-specific activation
+rulette:activation:
+  default:
+    mode: [always]
+  overrides:
+    cursor:
+      mode: [glob]
+      globs: ["src/**/*.rs"]
+---
+# Overridden Rule
+This is the rule body."#,
+    )
+    .unwrap();
+
+    let cargo_bin = assert_cmd::cargo::cargo_bin("rulette");
+
+    // 1. Transform to cursor-mdc stdout
+    let mut cmd = StdCommand::new(&cargo_bin);
+    let output = cmd
+        .arg("transform")
+        .arg(input_file.to_str().unwrap())
+        .arg("-o")
+        .arg("cursor-mdc:-")
+        .output()
+        .expect("Failed to execute rulette transform to cursor-mdc");
+    assert!(output.status.success());
+    let stdout = str::from_utf8(&output.stdout).unwrap();
+    assert!(stdout.contains("alwaysApply: false"));
+    assert!(stdout.contains("globs: src/**/*.rs"));
+    assert!(stdout.contains("# Overridden Rule"));
+
+    // 2. Transform to claude stdout
+    let mut cmd = StdCommand::new(&cargo_bin);
+    let output = cmd
+        .arg("transform")
+        .arg(input_file.to_str().unwrap())
+        .arg("-o")
+        .arg("claude:-")
+        .output()
+        .expect("Failed to execute rulette transform to claude");
+    assert!(output.status.success());
+    let stdout = str::from_utf8(&output.stdout).unwrap();
+    assert!(stdout.contains("# Overridden Rule"));
+
+    // 3. Transform to ir-json stdout and verify round-trip structure
+    let mut cmd = StdCommand::new(&cargo_bin);
+    let output = cmd
+        .arg("transform")
+        .arg(input_file.to_str().unwrap())
+        .arg("-o")
+        .arg("ir-json:-")
+        .output()
+        .expect("Failed to execute rulette transform to ir-json");
+    assert!(output.status.success());
+    let stdout = str::from_utf8(&output.stdout).unwrap();
+    let json: serde_json::Value = serde_json::from_str(stdout).unwrap();
+    let rule_entity = &json["entities"][0];
+    let activation = &rule_entity["metadata"]["rulette:activation"];
+    assert_eq!(
+        activation["default"]["mode"],
+        serde_json::json!(["always"])
+    );
+    assert_eq!(
+        activation["overrides"]["cursor"]["mode"],
+        serde_json::json!(["glob"])
+    );
+}
+
+#[test]
+fn test_antigravity_pipeline_transform_and_roundtrip() {
+    let temp_dir = tempdir().unwrap();
+    let input_file = temp_dir.path().join("rule_with_overrides.mdc");
+    fs::write(
+        &input_file,
+        r#"---
+description: Universal guideline
+rulette:activation:
+  default:
+    mode:
+      - glob
+    globs:
+      - "**/*.py"
+  overrides:
+    antigravity:
+      mode:
+        - model
+      description: "Apply when python code is modified"
+---
+# Python Rule
+Follow PEP 8."#,
+    )
+    .unwrap();
+
+    let cargo_bin = assert_cmd::cargo::cargo_bin("rulette");
+
+    // 1. Transform to antigravity stdout
+    let mut cmd = StdCommand::new(&cargo_bin);
+    let output = cmd
+        .arg("transform")
+        .arg(input_file.to_str().unwrap())
+        .arg("-o")
+        .arg("antigravity:-")
+        .output()
+        .expect("Failed to execute rulette transform to antigravity");
+    assert!(output.status.success());
+    let stdout = str::from_utf8(&output.stdout).unwrap();
+    assert!(stdout.contains("trigger: model_decision"));
+    assert!(stdout.contains("description: Universal guideline"));
+    assert!(stdout.contains("# Python Rule"));
+
+    // 2. Transform to an output directory and verify file structure
+    let out_dir = temp_dir.path().join("antigravity_out");
+    fs::create_dir_all(&out_dir).unwrap();
+
+    let mut cmd = StdCommand::new(&cargo_bin);
+    let output = cmd
+        .arg("transform")
+        .arg(input_file.to_str().unwrap())
+        .arg("-o")
+        .arg(format!("antigravity:{}", out_dir.to_str().unwrap()))
+        .output()
+        .expect("Failed to transform to antigravity directory");
+    assert!(output.status.success());
+
+    let rule_file = out_dir.join("rule_with_overrides.md");
+    assert!(rule_file.exists());
+    let emitted_rule = fs::read_to_string(&rule_file).unwrap();
+    assert!(emitted_rule.contains("trigger: model_decision"));
+
+    // 3. Re-parse emitted rule back through rulette
+    let mut reparse_cmd = StdCommand::new(&cargo_bin);
+    let reparse_out = reparse_cmd
+        .arg("transform")
+        .arg(rule_file.to_str().unwrap())
+        .output()
+        .expect("Failed to re-parse emitted antigravity rule");
+    assert!(reparse_out.status.success());
+    let reparse_json: serde_json::Value =
+        serde_json::from_str(str::from_utf8(&reparse_out.stdout).unwrap()).unwrap();
+    let re_entity = &reparse_json["entities"][0];
+    assert_eq!(
+        re_entity["metadata"]["rulette:activation"]["mode"],
+        serde_json::json!(["model"])
+    );
+}
+

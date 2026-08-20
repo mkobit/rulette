@@ -16,7 +16,7 @@ impl SchemaArgs {
     pub fn execute(&self) -> anyhow::Result<()> {
         if let Some(ext) = &self.extension {
             let schema = match ext.as_str() {
-                "rulette:activation" => schema_for!(crate::Activation),
+                "rulette:activation" => schema_for!(crate::TargetOverrides<crate::Activation>),
                 "rulette:hook-event" => schema_for!(crate::HookEvent),
                 "rulette:tool-access" => schema_for!(Vec<crate::ToolAccessRule>),
                 "rulette:agent-tools" => schema_for!(Vec<String>),

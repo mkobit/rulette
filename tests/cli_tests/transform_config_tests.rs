@@ -242,6 +242,26 @@ fn test_scaffold_bare_claude_md_file() {
 }
 
 #[test]
+fn test_scaffold_antigravity_directory() {
+    let input_dir = tempfile::tempdir().unwrap();
+    let agy_dir = input_dir.path().join(".antigravity");
+    fs::create_dir_all(&agy_dir).unwrap();
+    fs::write(agy_dir.join("rules.md"), "Antigravity rules.").unwrap();
+
+    let out_path = input_dir.path().join("rulette.transform.jsonc");
+    let manifest = scaffold(
+        input_dir.path(),
+        &[".antigravity/rules.md"],
+        &out_path,
+    );
+
+    let outputs = manifest.get("outputs").unwrap().as_array().unwrap();
+    assert_eq!(outputs.len(), 1);
+    assert_eq!(outputs[0]["target"].as_str().unwrap(), "antigravity");
+    assert_eq!(outputs[0]["path"].as_str().unwrap(), ".antigravity/");
+}
+
+#[test]
 fn test_scaffold_unmatched_path_preserved_with_warning() {
     let input_dir = tempfile::tempdir().unwrap();
     fs::write(

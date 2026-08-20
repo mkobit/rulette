@@ -1,8 +1,9 @@
 use crate::cli::formats::{InputFormat, OutputFormat};
 use crate::cli::io::read_inputs;
 use crate::emitters::{
-    self, AgentSkillsEmitter, CapabilityEntry, ClaudeEmitter, CodexEmitter, CopilotEmitter,
-    CoverageStatus, CursorEmitter, CursorMcpEmitter, Emitter, GeminiEmitter, WindsurfEmitter,
+    self, AgentSkillsEmitter, AntigravityEmitter, CapabilityEntry, ClaudeEmitter, CodexEmitter,
+    CopilotEmitter, CoverageStatus, CursorEmitter, CursorMcpEmitter, Emitter, GeminiEmitter,
+    WindsurfEmitter,
 };
 use crate::parsers::parse;
 use clap::Args;
@@ -40,6 +41,7 @@ fn coverage_targets() -> Vec<(&'static str, Box<dyn Emitter>)> {
         ("windsurf", Box::new(WindsurfEmitter)),
         ("copilot", Box::new(CopilotEmitter)),
         ("gemini", Box::new(GeminiEmitter)),
+        ("antigravity", Box::new(AntigravityEmitter)),
         ("agent-skills", Box::new(AgentSkillsEmitter)),
     ]
 }
@@ -95,6 +97,7 @@ impl InspectArgs {
                 OutputFormat::Copilot => CopilotEmitter.emit(&doc, strict)?,
                 OutputFormat::Windsurf => WindsurfEmitter.emit(&doc, strict)?,
                 OutputFormat::Gemini => GeminiEmitter.emit(&doc, strict)?,
+                OutputFormat::Antigravity => AntigravityEmitter.emit(&doc, strict)?,
                 OutputFormat::Codex => CodexEmitter.emit(&doc, strict)?,
                 OutputFormat::IrJson => {
                     let mut map = HashMap::new();

@@ -13,17 +13,17 @@
 
 ## 3. Emitter resolution and capability updates
 
-- [ ] 3.1 Update `src/emitters/cursor.rs` to resolve activation settings for `cursor-mdc` / `cursor`.
-- [ ] 3.2 Update remaining emitters (`claude.rs`, `codex.rs`, `copilot.rs`, `gemini.rs`, `windsurf.rs`, `cursor_mcp.rs`, `agent_skills.rs`) to consume target-resolved activation.
-- [ ] 3.3 Ensure emitter capability checks and lossy warnings inspect the resolved activation settings for their target format.
+- [x] 3.1 Update `src/emitters/cursor.rs` to resolve activation settings for `cursor-mdc` / `cursor`.
+- [x] 3.2 Update remaining emitters (`claude.rs`, `codex.rs`, `copilot.rs`, `gemini.rs`, `windsurf.rs`, `cursor_mcp.rs`, `agent_skills.rs`) to consume target-resolved activation.
+- [x] 3.3 Ensure emitter capability checks and lossy warnings inspect the resolved activation settings for their target format.
 
 ## 4. Schema generation
 
-- [ ] 4.1 Update `src/cli/commands/schema.rs` so `rulette schema rulette:activation` generates the schema for `TargetOverrides<Activation>`.
-- [ ] 4.2 Add a test verifying `rulette schema rulette:activation` outputs valid JSON Schema covering bare and wrapped variants.
+- [x] 4.1 Update `src/cli/commands/schema.rs` so `rulette schema rulette:activation` generates the schema for `TargetOverrides<Activation>`.
+- [x] 4.2 Add a test verifying `rulette schema rulette:activation` outputs valid JSON Schema covering bare and wrapped variants.
 
 ## 5. End-to-end validation
 
-- [ ] 5.1 Add integration tests transforming multi-target override rules into various target outputs.
-- [ ] 5.2 Verify backwards compatibility across existing test fixtures and commands.
-- [ ] 5.3 Run `mise run spec-validate` and full test suite (`cargo test`).
+- [x] 5.1 Add integration tests transforming multi-target override rules into various target outputs.
+- [x] 5.2 Verify backwards compatibility across existing test fixtures and commands.
+- [x] 5.3 Run `mise run spec-validate` and full test suite (`cargo test`).
