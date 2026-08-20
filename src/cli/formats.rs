@@ -19,6 +19,7 @@ pub enum InputFormat {
     Windsurf,
     Copilot,
     Gemini,
+    Antigravity,
     IrJson,
     IrToml,
 }
@@ -45,6 +46,7 @@ pub enum OutputFormat {
     Windsurf,
     Copilot,
     Gemini,
+    Antigravity,
     AgentSkills,
     IrJson,
     IrToml,

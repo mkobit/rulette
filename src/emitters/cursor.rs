@@ -288,4 +288,118 @@ mod tests {
         assert!(!content.contains("alwaysApply"));
         assert!(!content.contains("globs"));
     }
+
+    #[test]
+    fn resolves_exact_cursor_mdc_override() {
+        use crate::TargetOverrides;
+        let mut overrides = HashMap::new();
+        overrides.insert(
+            "cursor-mdc".to_string(),
+            Activation {
+                mode: vec![ActivationMode::Always],
+                globs: None,
+                pattern: None,
+                description: None,
+            },
+        );
+        let doc = RuletteDocument {
+            ir_version: "0.1".to_string(),
+            entities: vec![Entity::Rule(Rule {
+                metadata: RuleMetadata {
+                    description: Some("test rule".to_string()),
+                    activation: Some(TargetOverrides::Wrapped {
+                        default: Activation {
+                            mode: vec![ActivationMode::Glob],
+                            globs: Some(vec!["src/**/*.rs".to_string()]),
+                            pattern: None,
+                            description: None,
+                        },
+                        overrides,
+                    }),
+                    extra: HashMap::new(),
+                },
+                body: "Body.".to_string(),
+            })],
+        };
+        let output = CursorEmitter.emit(&doc, false).unwrap();
+        let content = output.values().next().unwrap();
+        assert!(content.contains("alwaysApply: true"));
+        assert!(!content.contains("globs:"));
+    }
+
+    #[test]
+    fn resolves_tool_family_cursor_override() {
+        use crate::TargetOverrides;
+        let mut overrides = HashMap::new();
+        overrides.insert(
+            "cursor".to_string(),
+            Activation {
+                mode: vec![ActivationMode::Glob],
+                globs: Some(vec!["src/**/*.ts".to_string()]),
+                pattern: None,
+                description: None,
+            },
+        );
+        let doc = RuletteDocument {
+            ir_version: "0.1".to_string(),
+            entities: vec![Entity::Rule(Rule {
+                metadata: RuleMetadata {
+                    description: Some("test rule".to_string()),
+                    activation: Some(TargetOverrides::Wrapped {
+                        default: Activation {
+                            mode: vec![ActivationMode::Always],
+                            globs: None,
+                            pattern: None,
+                            description: None,
+                        },
+                        overrides,
+                    }),
+                    extra: HashMap::new(),
+                },
+                body: "Body.".to_string(),
+            })],
+        };
+        let output = CursorEmitter.emit(&doc, false).unwrap();
+        let content = output.values().next().unwrap();
+        assert!(content.contains("alwaysApply: false"));
+        assert!(content.contains("src/**/*.ts"));
+    }
+
+    #[test]
+    fn resolves_default_when_target_not_in_overrides() {
+        use crate::TargetOverrides;
+        let mut overrides = HashMap::new();
+        overrides.insert(
+            "antigravity".to_string(),
+            Activation {
+                mode: vec![ActivationMode::Model],
+                globs: None,
+                pattern: None,
+                description: Some("run on error".to_string()),
+            },
+        );
+        let doc = RuletteDocument {
+            ir_version: "0.1".to_string(),
+            entities: vec![Entity::Rule(Rule {
+                metadata: RuleMetadata {
+                    description: Some("test rule".to_string()),
+                    activation: Some(TargetOverrides::Wrapped {
+                        default: Activation {
+                            mode: vec![ActivationMode::Always],
+                            globs: None,
+                            pattern: None,
+                            description: None,
+                        },
+                        overrides,
+                    }),
+                    extra: HashMap::new(),
+                },
+                body: "Body.".to_string(),
+            })],
+        };
+        let output = CursorEmitter.emit(&doc, false).unwrap();
+        let content = output.values().next().unwrap();
+        assert!(content.contains("alwaysApply: true"));
+        assert!(!content.contains("globs:"));
+    }
 }

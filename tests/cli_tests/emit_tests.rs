@@ -52,6 +52,11 @@ fn test_emit_gemini() {
 }
 
 #[test]
+fn test_emit_antigravity() {
+    assert_snapshot!(emit_to_format("antigravity"));
+}
+
+#[test]
 fn test_emit_cursor_mcp() {
     let ir = r#"{
       "entities": [

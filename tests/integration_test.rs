@@ -52,6 +52,25 @@ mod main_tests {
     }
 
     #[test]
+    fn test_main_schema_activation_covers_bare_and_wrapped() {
+        let mut cmd = Command::cargo_bin("rulette").unwrap();
+        cmd.arg("schema").arg("--extension").arg("rulette:activation");
+        let assert = cmd.assert().success();
+        let output = assert.get_output();
+        let json_str = String::from_utf8(output.stdout.clone()).unwrap();
+        let val: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+        // Verify JSON Schema structure
+        assert!(val.get("$schema").is_some());
+        assert_eq!(val.get("title").and_then(|v| v.as_str()), Some("TargetOverrides"));
+
+        // Verify anyOf contains wrapped object (default + overrides) and bare Activation ref
+        let any_of = val.get("anyOf").and_then(|v| v.as_array()).expect("expected anyOf array");
+        assert_eq!(any_of.len(), 2);
+        assert!(val.get("$defs").and_then(|d| d.get("Activation")).is_some());
+    }
+
+    #[test]
     fn test_main_inspect_command() {
         let mut cmd = Command::cargo_bin("rulette").unwrap();
         cmd.arg("inspect").arg("-");

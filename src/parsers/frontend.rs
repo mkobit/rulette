@@ -49,6 +49,14 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
                             Err(e) => return Err(e),
                         },
                     }
+                } else if input.contains("trigger:")
+                    || filename.map(|f| f.contains(".antigravity")).unwrap_or(false)
+                {
+                    match parse_antigravity(input, filename) {
+                        Ok(rule) => vec![Entity::Rule(rule)],
+                        Err(e) if e.to_string().contains("ignored") => vec![],
+                        Err(e) => return Err(e),
+                    }
                 } else {
                     match parse_cursor_mdc(input, filename) {
                         Ok(rule) => vec![Entity::Rule(rule)],
@@ -88,6 +96,11 @@ pub fn parse(input: &str, format: InputFormat, filename: Option<&str>) -> Result
                     vec![Entity::Skill(parse_agent_skills(input, filename)?)]
                 }
                 InputFormat::CursorMdc => match parse_cursor_mdc(input, filename) {
+                    Ok(rule) => vec![Entity::Rule(rule)],
+                    Err(e) if e.to_string().contains("ignored") => vec![],
+                    Err(e) => return Err(e),
+                },
+                InputFormat::Antigravity => match parse_antigravity(input, filename) {
                     Ok(rule) => vec![Entity::Rule(rule)],
                     Err(e) if e.to_string().contains("ignored") => vec![],
                     Err(e) => return Err(e),
@@ -410,6 +423,98 @@ fn activation_from_cursor(
         pattern: None,
         description: None,
     })
+}
+
+pub fn parse_antigravity(input: &str, filename: Option<&str>) -> Result<Rule> {
+    if let Some(f) = filename {
+        if f.to_lowercase().ends_with("readme.md") {
+            return Err(anyhow::anyhow!("README.md is ignored"));
+        }
+    }
+    let (frontmatter, body) = extract_frontmatter(input);
+    let mut metadata = RuleMetadata::default();
+
+    if let Some(fm) = frontmatter {
+        if let Ok(parsed_fm) = serde_yaml::from_str::<crate::parsers::antigravity::AntigravityRuleFrontmatter>(fm) {
+            metadata.description = parsed_fm.description;
+            metadata.extra = parsed_fm.extra;
+            if let Some(activation) = parsed_fm.activation {
+                metadata.activation = Some(activation);
+            } else if let Some(trigger) = parsed_fm.trigger {
+                let globs = parsed_fm.globs.map(|g| g.into_vec());
+                metadata.activation = Some(
+                    activation_from_antigravity(
+                        trigger,
+                        globs,
+                        metadata.description.clone(),
+                    )
+                    .into(),
+                );
+            } else if let Some(globs) = parsed_fm.globs.map(|g| g.into_vec()) {
+                metadata.activation = Some(
+                    Activation {
+                        mode: vec![ActivationMode::Glob],
+                        globs: Some(globs),
+                        pattern: None,
+                        description: None,
+                    }
+                    .into(),
+                );
+            }
+        }
+    }
+
+    if !metadata.extra.contains_key("name") {
+        if let Some(name) = extract_name_from_filename(filename) {
+            metadata
+                .extra
+                .insert("name".to_string(), serde_json::Value::String(name));
+        }
+    }
+    if metadata.description.is_none() {
+        if let Some(desc) = extract_description_from_body(body) {
+            metadata.description = Some(desc);
+        }
+    }
+
+    Ok(Rule {
+        metadata,
+        body: body.to_string(),
+    })
+}
+
+fn activation_from_antigravity(
+    trigger: crate::parsers::antigravity::AntigravityTrigger,
+    globs: Option<Vec<String>>,
+    description: Option<String>,
+) -> Activation {
+    use crate::parsers::antigravity::AntigravityTrigger;
+    match trigger {
+        AntigravityTrigger::AlwaysOn => Activation {
+            mode: vec![ActivationMode::Always],
+            globs: globs.filter(|g| !g.is_empty()),
+            pattern: None,
+            description: None,
+        },
+        AntigravityTrigger::Glob => Activation {
+            mode: vec![ActivationMode::Glob],
+            globs: globs.filter(|g| !g.is_empty()),
+            pattern: None,
+            description: None,
+        },
+        AntigravityTrigger::Manual => Activation {
+            mode: vec![ActivationMode::Manual],
+            globs: None,
+            pattern: None,
+            description: None,
+        },
+        AntigravityTrigger::ModelDecision => Activation {
+            mode: vec![ActivationMode::Model],
+            globs: None,
+            pattern: None,
+            description,
+        },
+    }
 }
 
 fn parse_claude_settings(input: &str, filename: Option<&str>) -> Result<Vec<Entity>> {

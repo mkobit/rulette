@@ -114,3 +114,60 @@ fn test_gemini_subagent_parsing() {
     let normalized_output = output.replace("\r\n", "\n").replace("\\r\\n", "\\n");
     assert_snapshot!(normalized_output);
 }
+
+#[test]
+fn test_antigravity_rule_parsing_and_auto_detection() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let agy_dir = temp_dir.path().join(".antigravity");
+    std::fs::create_dir_all(&agy_dir).unwrap();
+
+    let rule_path = agy_dir.join("rust-rules.md");
+    std::fs::write(
+        &rule_path,
+        r#"---
+description: Rust guidelines
+trigger: glob
+globs:
+  - "**/*.rs"
+  - "**/Cargo.toml"
+---
+Always write idiomatic Rust."#,
+    )
+    .unwrap();
+
+    // 1. Explicit --from antigravity
+    let mut explicit_cmd = Command::cargo_bin("rulette").unwrap();
+    let explicit = explicit_cmd
+        .arg("transform")
+        .arg(rule_path.to_str().unwrap())
+        .arg("--from")
+        .arg("antigravity")
+        .assert()
+        .success();
+    let explicit_output = str::from_utf8(&explicit.get_output().stdout).unwrap();
+    let json: serde_json::Value = serde_json::from_str(explicit_output).unwrap();
+    let entity = &json["entities"][0];
+    assert_eq!(entity["kind"].as_str().unwrap(), "rule");
+    assert_eq!(
+        entity["metadata"]["description"].as_str().unwrap(),
+        "Rust guidelines"
+    );
+    assert_eq!(
+        entity["metadata"]["rulette:activation"]["mode"],
+        serde_json::json!(["glob"])
+    );
+    assert_eq!(
+        entity["metadata"]["rulette:activation"]["globs"],
+        serde_json::json!(["**/*.rs", "**/Cargo.toml"])
+    );
+
+    // 2. Auto-detection without --from
+    let mut auto_cmd = Command::cargo_bin("rulette").unwrap();
+    let auto = auto_cmd
+        .arg("transform")
+        .arg(rule_path.to_str().unwrap())
+        .assert()
+        .success();
+    let auto_output = str::from_utf8(&auto.get_output().stdout).unwrap();
+    assert_eq!(auto_output, explicit_output);
+}

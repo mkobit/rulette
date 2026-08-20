@@ -7,8 +7,8 @@ pub mod pipeline;
 pub mod translate;
 
 pub use emitters::{
-    AgentSkillsEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter, CursorEmitter, Emitter,
-    GeminiEmitter, WindsurfEmitter,
+    AgentSkillsEmitter, AntigravityEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter,
+    CursorEmitter, Emitter, GeminiEmitter, WindsurfEmitter,
 };
 pub use ir::{
     Activation, ActivationMode, Agent, AgentMetadata, Entity, Hook, HookEvent, HookEventKind,

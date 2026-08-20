@@ -4,6 +4,7 @@ use std::collections::BTreeMap as HashMap;
 use std::path::PathBuf;
 
 pub mod agent_skills;
+pub mod antigravity;
 pub mod claude;
 pub mod codex;
 pub mod copilot;
@@ -126,6 +127,7 @@ pub fn is_internal_extra_key(key: &str) -> bool {
 }
 
 pub use agent_skills::AgentSkillsEmitter;
+pub use antigravity::AntigravityEmitter;
 pub use claude::ClaudeEmitter;
 pub use codex::CodexEmitter;
 pub use copilot::CopilotEmitter;
@@ -305,6 +307,11 @@ mod capabilities_parity_tests {
     #[test]
     fn windsurf_capabilities_agree_with_strict_emit() {
         assert_parity("windsurf", &WindsurfEmitter);
+    }
+
+    #[test]
+    fn antigravity_capabilities_agree_with_strict_emit() {
+        assert_parity("antigravity", &AntigravityEmitter);
     }
 
     #[test]

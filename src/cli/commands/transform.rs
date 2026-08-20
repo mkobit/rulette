@@ -1,8 +1,8 @@
 use crate::cli::formats::{InputFormat, OutputFormat};
 use crate::cli::io::read_inputs;
 use crate::emitters::{
-    entity_kind_kebab, AgentSkillsEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter,
-    CursorEmitter, CursorMcpEmitter, Emitter, GeminiEmitter, WindsurfEmitter,
+    entity_kind_kebab, AgentSkillsEmitter, AntigravityEmitter, ClaudeEmitter, CodexEmitter,
+    CopilotEmitter, CursorEmitter, CursorMcpEmitter, Emitter, GeminiEmitter, WindsurfEmitter,
 };
 use crate::parsers::parse;
 use crate::pipeline;
@@ -257,6 +257,7 @@ pub fn parse_targets(
                 "windsurf" => Some(OutputFormat::Windsurf),
                 "copilot" => Some(OutputFormat::Copilot),
                 "gemini" => Some(OutputFormat::Gemini),
+                "antigravity" => Some(OutputFormat::Antigravity),
                 "agent-skills" => Some(OutputFormat::AgentSkills),
                 "ir-json" => Some(OutputFormat::IrJson),
                 "ir-toml" => Some(OutputFormat::IrToml),
@@ -348,6 +349,11 @@ const TOOL_PATH_CONVENTIONS: &[ToolPathConvention] = &[
         |p| has_path_component(p, ".cursor"),
         OutputFormat::CursorMdc,
         ".cursor/rules/",
+    ),
+    (
+        |p| has_path_component(p, ".antigravity"),
+        OutputFormat::Antigravity,
+        ".antigravity/",
     ),
 ];
 
@@ -708,6 +714,9 @@ impl TransformArgs {
                 OutputFormat::Copilot => CopilotEmitter.emit(&target_doc, effective_strict)?,
                 OutputFormat::Windsurf => WindsurfEmitter.emit(&target_doc, effective_strict)?,
                 OutputFormat::Gemini => GeminiEmitter.emit(&target_doc, effective_strict)?,
+                OutputFormat::Antigravity => {
+                    AntigravityEmitter.emit(&target_doc, effective_strict)?
+                }
                 OutputFormat::Codex => CodexEmitter.emit(&target_doc, effective_strict)?,
                 OutputFormat::IrJson => {
                     let mut map = HashMap::new();
