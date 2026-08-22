@@ -6,12 +6,13 @@ use std::io::Write;
 fn explicit_selection_only_config_compiles_a_graph() {
     let temporary = tempfile::Builder::new().suffix(".toml").tempfile().unwrap();
     let fixture = std::fs::canonicalize("tests/fixtures/v0_1/codex").unwrap();
-    writeln!(
-        &mut temporary.reopen().unwrap(),
-        "inputs = [\"{}\"]\ntargets = [{{ target = \"codex\", scope = \"project\" }}]\nselect = []",
-        fixture.display()
-    )
+    let config = toml::to_string(&serde_json::json!({
+        "inputs": [fixture.to_str().unwrap()],
+        "targets": [{ "target": "codex", "scope": "project" }],
+        "select": []
+    }))
     .unwrap();
+    std::fs::write(temporary.path(), config).unwrap();
 
     let mut command = Command::cargo_bin("rulette").unwrap();
     command

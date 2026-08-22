@@ -141,5 +141,5 @@ fn root_opening_refuses_platforms_without_safe_descriptor_operations() {
         Err(error) => error,
     };
 
-    assert!(error.to_string().contains("unsupported platform"));
+    assert!(error.to_string().contains("unsupported on this platform"));
 }
