@@ -19,12 +19,11 @@ fn main() -> Result<()> {
     let args = Cli::parse();
 
     init_tracing(&args.globals.log_level);
-    let strict = args.globals.strict;
     let quiet = args.globals.quiet;
 
     match args.command {
-        Commands::Inspect(args) => args.execute(strict, quiet),
+        Commands::Inspect(args) => args.execute(quiet),
         Commands::Schema(args) => args.execute(),
-        Commands::Transform(args) => args.execute(strict, quiet),
+        Commands::Transform(args) => args.execute(quiet),
     }
 }

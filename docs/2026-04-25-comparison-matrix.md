@@ -1,53 +1,24 @@
-# Comparison and support matrix
+# Rulette 0.1 capability matrix
 
-Rulette is designed as a **hermetic, deterministic compiler** for AI configuration.
-This document tracks how Rulette compares to other tools in the ecosystem and the status of its target format support.
+## Core harness domains
 
-## Core philosophy comparison
+| Harness domain | Graph frontend | Graph lowering target | Portable package kinds | Native-only content |
+| --- | --- | --- | --- | --- |
+| Codex | Yes | Yes | Rules and skills | Configuration becomes unsupported content |
+| Claude | Yes | Yes | Rules and skills | Agents, settings, MCP, hooks, and permissions become unsupported content |
+| Cursor | Yes | Yes | Rules and skills | MCP, agents, and configuration become unsupported content |
+| OpenCode | Yes | Yes | Rules and skills | Agents, MCP, permissions, and configuration become unsupported content |
+| Antigravity | Yes | Yes | Rules and skills | Agents and configuration become unsupported content |
 
-| Feature | Rulette | Rulesync | Logic |
-| :--- | :--- | :--- | :--- |
-| **Runtime** | Static Binary (Rust) | Node.js (NPM) | Rulette is designed for Bazel, Buck, and air-gapped CI. |
-| **Initialization** | None (no `init`) | `rulesync init` | Rulette has no scaffolding or config-file step by design; write a rule file and run `transform`. |
-| **State** | Stateless (Compiler) | Stateful (Sync) | Rulette treats config as code to be compiled, not state to be synced. |
-| **Determinism** | Guaranteed | Best Effort | Same input always produces bit-identical output in Rulette. |
-| **Transformation** | Pipe-based (Unix) | Internal Plugin System | Rulette integrates with `jq`, `sed`, and custom scripts via IR. |
-| **Integrity** | Strict Collision Error | Automatic Merge | Rulette fails on name collisions; RuleSync merges files automatically. |
-| **Hermeticity** | Fully Hermetic | Requires Node/Registry | Rulette has zero runtime dependencies. |
+## Capability policy
 
-## Target support matrix
+The compiler preserves opaque resources with their owning package and provenance.
+Lowering reports whether each selected package and resource is supported, lossy, or dropped for the named target.
+Loss blocks staging by default and remains recorded when explicitly accepted.
 
-This matrix tracks the "Big 4" and other significant formats.
+## Operational boundary
 
-### Input formats (frontends)
+Rulette operates on explicit local inputs only.
+It does not fetch remote content, manage lockfiles, resolve package registries, install skills, execute agents, or write directly to arbitrary native destinations.
 
-| Format | Status | Entity support | Notes |
-| :--- | :--- | :--- | :--- |
-| **Claude Code** | ✅ | Rules, MCP, Hooks, Permissions | Full `settings.json` and `CLAUDE.md` support. |
-| **Gemini CLI** | ✅ | Rules, Subagents | Superior mapping for Gemini-specific metadata. |
-| **Cursor** | ✅ | Rules (.mdc), MCP | Supports both legacy `.cursorrules` and modern `.mdc`. |
-| **Codex** | ✅ | Rules, Agents | Supports `AGENTS.md`. |
-| **Agent Skills** | ✅ | Skills | Native support for the `SKILL.md` format. |
-| **Archives** | 🚧 | Mixed | `.tar` and `.tar.gz` support in progress. |
-| **Cline/Roo Code** | ❌ | - | Planned for v0.1.2. |
-| **Windsurf** | ✅ | Rules | Supports `.windsurfrules`. |
-
-### Output formats (backends)
-
-| Format | Status | Lossy? | Notes |
-| :--- | :--- | :--- | :--- |
-| **Claude Code** | ✅ | No | Reference implementation for IR. |
-| **Gemini CLI** | ✅ | No | Preserves subagent metadata. |
-| **Cursor** | ✅ | Yes | Rules go to `.mdc`, MCP servers go to a separate `cursor-mcp` target (`.cursor/mcp.json`); Hooks/Agents/Permissions are dropped. |
-| **Codex** | ✅ | Yes | Drops complex activation logic. |
-| **Agent Skills** | ✅ | No | Full fidelity. |
-| **IR (JSON/TOML)** | ✅ | No | The ultimate source of truth. |
-
-## Hermeticity and Build System Integration
-
-Rulette is optimized for use in restricted build environments:
-
-1. **Bazel/Buck**: The static binary can be checked into the repo or fetched via `http_archive` with SHA-256 verification.
-2. **Deterministic Outputs**: Ensuring that re-running the transformation on the same input produces the exact same files prevents unnecessary build invalidations or git churn.
-3. **Identity Integrity**: Rulette treats entity names as unique primary keys. It rejects any input set where the same entity name is defined in multiple locations, preventing accidental configuration overrides.
-4. **No Network by Default**: Unlike tools that might fetch "latest rules" or "registry updates," Rulette only interacts with the filesystem (or stdin/stdout) unless explicit flags like `--allow-mutable` are used (planned).
+The compilation graph, lowering plan, and staged publication plan are deterministic for the same inputs and options.

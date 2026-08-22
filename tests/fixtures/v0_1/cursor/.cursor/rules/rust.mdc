@@ -1,0 +1,5 @@
+---
+description: Rust conventions
+alwaysApply: true
+---
+Use rustfmt.

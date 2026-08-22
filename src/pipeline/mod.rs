@@ -1,101 +1,223 @@
-use crate::Entity;
-use anyhow::Result;
+use crate::{CompilationGraph, DiagnosticSeverity, PackageId};
+use anyhow::{bail, Result};
+use std::collections::{BTreeMap, BTreeSet};
 
-/// A parsed `<field> == "<value>"` filter/exclude expression.
+/// Selects an exact, deterministic union of graph packages without changing
+/// any package content.
 ///
-/// Matching is scoped strictly to the entity's `metadata` and
-/// `metadata.extra` fields -- it never falls back to scanning the entity's
-/// raw serialized JSON (including the body), which could otherwise produce
-/// a spurious match against unrelated text that happens to contain the
-/// expression as a substring.
-pub struct FilterExpr {
-    key: String,
-    value: String,
-}
-
-impl FilterExpr {
-    pub fn parse(expr: &str) -> Result<Self> {
-        let parts: Vec<&str> = expr.splitn(2, "==").collect();
-        let [field, value] = parts.as_slice() else {
-            anyhow::bail!(
-                "Invalid filter expression '{}': expected '<field> == \"<value>\"'",
-                expr
-            );
-        };
-        let key = field.trim().to_string();
-        if key.is_empty() {
-            anyhow::bail!("Invalid filter expression '{}': empty field name", expr);
-        }
-        let value = value
-            .trim()
-            .trim_matches(|c| c == '"' || c == '\'')
-            .to_string();
-        Ok(Self { key, value })
+/// An empty selector list retains the complete validated graph.
+/// Otherwise every requested ID must exist, repeated IDs are deduplicated,
+/// packages remain in their `BTreeMap` identifier order, and diagnostics are
+/// limited to selected package diagnostics plus package-independent warnings.
+pub fn select_packages(
+    graph: &CompilationGraph,
+    identifiers: &[PackageId],
+) -> Result<CompilationGraph> {
+    graph.validate()?;
+    if identifiers.is_empty() {
+        return Ok(graph.clone());
     }
 
-    pub fn matches(&self, entity: &Entity) -> bool {
-        let Ok(json_val) = serde_json::to_value(entity) else {
-            return false;
-        };
-
-        // "kind" is the entity's top-level discriminant (rule, skill,
-        // mcp-server, hook, agent, permissions), not a metadata field.
-        if self.key == "kind" {
-            return json_val.get("kind").and_then(|v| v.as_str()) == Some(self.value.as_str());
+    let mut selected_ids = BTreeSet::new();
+    for identifier in identifiers {
+        if !graph.packages.contains_key(identifier) {
+            bail!("unknown package ID `{}`", identifier.as_str());
         }
-
-        let Some(metadata) = json_val.get("metadata") else {
-            return false;
-        };
-        if let Some(field) = metadata.get(&self.key) {
-            if field.as_str() == Some(self.value.as_str()) {
-                return true;
-            }
-        }
-        if let Some(extra) = metadata.get("extra") {
-            if let Some(field) = extra.get(&self.key) {
-                if field.as_str() == Some(self.value.as_str()) {
-                    return true;
-                }
-            }
-        }
-        false
+        selected_ids.insert(identifier.clone());
     }
+
+    let packages: BTreeMap<_, _> = graph
+        .packages
+        .iter()
+        .filter(|(identifier, _)| selected_ids.contains(*identifier))
+        .map(|(identifier, package)| (identifier.clone(), package.clone()))
+        .collect();
+    let diagnostics = graph
+        .diagnostics
+        .iter()
+        .filter(|diagnostic| match &diagnostic.package_id {
+            Some(identifier) => selected_ids.contains(identifier),
+            None => diagnostic.severity == DiagnosticSeverity::Warning,
+        })
+        .cloned()
+        .collect();
+    let selected = CompilationGraph {
+        graph_version: graph.graph_version.clone(),
+        packages,
+        diagnostics,
+    };
+    selected.validate()?;
+    Ok(selected)
 }
 
-pub fn rename_field(entity: &mut Entity, from: &str, to: &str) {
-    match entity {
-        crate::Entity::Hook(_) | crate::Entity::Agent(_) | crate::Entity::Permissions(_) => {}
-        Entity::Rule(rule) => {
-            if let Some(val) = rule.metadata.extra.remove(from) {
-                rule.metadata.extra.insert(to.to_string(), val);
-            }
-        }
-        Entity::Skill(skill) => {
-            if let Some(val) = skill.metadata.extra.remove(from) {
-                skill.metadata.extra.insert(to.to_string(), val);
-            }
-        }
-        Entity::McpServer(mcp) => {
-            if let Some(val) = mcp.metadata.extra.remove(from) {
-                mcp.metadata.extra.insert(to.to_string(), val);
-            }
-        }
-    }
-}
+#[cfg(test)]
+mod tests {
+    use super::select_packages;
+    use crate::{
+        CompilationGraph, DiagnosticSeverity, GraphDiagnostic, Package, PackageKind, PackageRoot,
+        Resource, ResourceContent, ResourcePath, SemanticIdentity, SemanticItem, SourceProvenance,
+    };
+    use std::collections::{BTreeMap, BTreeSet};
 
-pub fn set_field(entity: &mut Entity, key: &str, value: &str) {
-    let json_val = serde_json::Value::String(value.to_string());
-    match entity {
-        crate::Entity::Hook(_) | crate::Entity::Agent(_) | crate::Entity::Permissions(_) => {}
-        Entity::Rule(rule) => {
-            rule.metadata.extra.insert(key.to_string(), json_val);
-        }
-        Entity::Skill(skill) => {
-            skill.metadata.extra.insert(key.to_string(), json_val);
-        }
-        Entity::McpServer(mcp) => {
-            mcp.metadata.extra.insert(key.to_string(), json_val);
-        }
+    fn rule(name: &str, body: &str) -> Package {
+        let primary_path = ResourcePath::parse("AGENTS.md").unwrap();
+        let opaque_path = ResourcePath::parse("scripts/check.sh").unwrap();
+        let mut resources = BTreeMap::new();
+        resources.insert(
+            primary_path.clone(),
+            Resource::primary_instruction(
+                primary_path.clone(),
+                ResourceContent::Text(body.to_owned()),
+                false,
+            ),
+        );
+        resources.insert(
+            opaque_path.clone(),
+            Resource::opaque(opaque_path, ResourceContent::Bytes(vec![0, 1, 2, 3]), true),
+        );
+        Package::new(
+            PackageKind::Rule,
+            SemanticIdentity::parse(format!("rule:{name}")).unwrap(),
+            SourceProvenance::new("codex", format!("fixtures/{name}/AGENTS.md")).unwrap(),
+            PackageRoot::parse(format!("fixtures/{name}")).unwrap(),
+            SemanticItem::Rule {
+                primary_instruction: primary_path,
+                description: None,
+                activation: None,
+                frontend_payload: None,
+            },
+            resources,
+            None,
+        )
+        .unwrap()
+    }
+
+    fn unsupported(name: &str) -> Package {
+        let resource_path = ResourcePath::parse("reviewer.md").unwrap();
+        let mut resources = BTreeMap::new();
+        resources.insert(
+            resource_path.clone(),
+            Resource::opaque(
+                resource_path,
+                ResourceContent::Bytes(b"native agent".to_vec()),
+                false,
+            ),
+        );
+        Package::new(
+            PackageKind::Unsupported,
+            SemanticIdentity::parse(format!("unsupported:agent/{name}")).unwrap(),
+            SourceProvenance::new("claude", format!("fixtures/{name}/reviewer.md")).unwrap(),
+            PackageRoot::parse(format!("fixtures/{name}")).unwrap(),
+            SemanticItem::Unsupported {
+                native_kind: "agent".to_owned(),
+            },
+            resources,
+            None,
+        )
+        .unwrap()
+    }
+
+    fn graph_with_diagnostics() -> (CompilationGraph, Package, Package) {
+        let first = rule("first", "first rule\n");
+        let second = unsupported("second");
+        let mut graph = CompilationGraph::new([first.clone(), second.clone()]).unwrap();
+        graph.diagnostics.insert(
+            0,
+            GraphDiagnostic {
+                severity: DiagnosticSeverity::Warning,
+                code: "a-global-warning".to_owned(),
+                message: "input contains an unrecognized file".to_owned(),
+                package_id: None,
+            },
+        );
+        graph.diagnostics.insert(
+            1,
+            GraphDiagnostic {
+                severity: DiagnosticSeverity::Warning,
+                code: "b-package-warning".to_owned(),
+                message: "selected rule has a source warning".to_owned(),
+                package_id: Some(first.id().clone()),
+            },
+        );
+        graph.validate().unwrap();
+        (graph, first, second)
+    }
+
+    #[test]
+    fn no_selectors_retain_the_validated_graph_byte_for_byte() {
+        let (graph, _, _) = graph_with_diagnostics();
+
+        let selected = select_packages(&graph, &[]).unwrap();
+
+        assert_eq!(selected, graph);
+        assert_eq!(
+            selected.to_canonical_json().unwrap(),
+            graph.to_canonical_json().unwrap()
+        );
+    }
+
+    #[test]
+    fn exact_selectors_form_a_deterministic_union_without_mutating_packages() {
+        let (graph, first, second) = graph_with_diagnostics();
+
+        let selected = select_packages(
+            &graph,
+            &[second.id().clone(), first.id().clone(), second.id().clone()],
+        )
+        .unwrap();
+
+        let expected_ids: BTreeSet<_> = [first.id().clone(), second.id().clone()]
+            .into_iter()
+            .collect();
+        let actual_ids: BTreeSet<_> = selected.packages.keys().cloned().collect();
+        assert_eq!(actual_ids, expected_ids);
+        assert_eq!(
+            selected.packages.get(first.id()),
+            graph.packages.get(first.id())
+        );
+        assert_eq!(
+            selected.packages.get(second.id()),
+            graph.packages.get(second.id())
+        );
+    }
+
+    #[test]
+    fn unknown_selector_fails_without_altering_the_input_graph() {
+        let (graph, _, _) = graph_with_diagnostics();
+        let unknown = rule("unknown", "unknown rule\n").id().clone();
+        let original = graph.clone();
+
+        let error = select_packages(&graph, std::slice::from_ref(&unknown)).unwrap_err();
+
+        assert!(error.to_string().contains(unknown.as_str()));
+        assert_eq!(graph, original);
+    }
+
+    #[test]
+    fn selection_retains_only_global_and_selected_package_diagnostics_in_stable_order() {
+        let (graph, first, second) = graph_with_diagnostics();
+
+        let selected = select_packages(&graph, &[first.id().clone()]).unwrap();
+
+        assert_eq!(selected.packages.len(), 1);
+        assert!(selected.packages.contains_key(first.id()));
+        assert!(!selected.packages.contains_key(second.id()));
+        assert_eq!(selected.diagnostics.len(), 2);
+        assert_eq!(selected.diagnostics[0], graph.diagnostics[0]);
+        assert_eq!(selected.diagnostics[1], graph.diagnostics[1]);
+        assert_eq!(
+            selected
+                .packages
+                .get(first.id())
+                .unwrap()
+                .resources
+                .get(&ResourcePath::parse("scripts/check.sh").unwrap()),
+            graph
+                .packages
+                .get(first.id())
+                .unwrap()
+                .resources
+                .get(&ResourcePath::parse("scripts/check.sh").unwrap())
+        );
     }
 }

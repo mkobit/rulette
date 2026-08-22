@@ -3,6 +3,6 @@ pub mod claude;
 pub mod codex;
 pub mod cursor;
 pub mod frontend;
-pub mod gemini;
+pub mod opencode;
 
-pub use frontend::{parse, parse_rule_markdown};
+pub use frontend::compile_graph;

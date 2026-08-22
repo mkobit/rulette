@@ -20,9 +20,12 @@ clap-markdown = "0.1.5"
 walkdir = "2.5.0"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
-ureq = "3.3.0"
 flate2 = "1.1.9"
 tar = "0.4.45"
+sha2 = "0.11"
+hex = "0.4"
+base64 = "0.22"
+rustix = { version = "1.1", features = ["fs"] }
 
 [lib]
 path = "src/lib.rs"
