@@ -472,7 +472,7 @@ mod tests {
         .unwrap()
     }
 
-    #[cfg(unix)]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     #[test]
     fn late_failure_restores_replacements_and_removes_created_files_and_directories() {
         let temporary = tempfile::tempdir().unwrap();

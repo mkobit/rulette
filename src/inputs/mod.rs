@@ -406,10 +406,21 @@ fn archive_member_path<R: Read>(entry: &tar::Entry<'_, R>) -> Result<ResourcePat
 }
 
 fn path_as_resource_path(path: &Path, context: &str) -> Result<ResourcePath> {
-    let path = path
-        .to_str()
-        .with_context(|| format!("{context} cannot be represented as UTF-8"))?;
-    ResourcePath::parse(path).with_context(|| format!("{context} must be a safe relative path"))
+    let mut components = Vec::new();
+    for component in path.components() {
+        match component {
+            Component::Normal(c) => {
+                let s = c
+                    .to_str()
+                    .with_context(|| format!("{context} cannot be represented as UTF-8"))?;
+                components.push(s);
+            }
+            Component::CurDir => {}
+            _ => bail!("{context} must be a safe relative path"),
+        }
+    }
+    let joined = components.join("/");
+    ResourcePath::parse(joined).with_context(|| format!("{context} must be a safe relative path"))
 }
 
 fn archive_origin(path: &Path) -> Result<Option<InputOrigin>> {
