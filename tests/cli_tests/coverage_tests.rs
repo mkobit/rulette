@@ -1,203 +1,70 @@
 use assert_cmd::Command;
+use predicates::prelude::*;
 
-fn coverage_json(ir: &str) -> serde_json::Value {
-    let mut cmd = Command::cargo_bin("rulette").unwrap();
-    let output = cmd
+const CODEX_FIXTURE: &str = "tests/fixtures/v0_1/codex";
+
+#[test]
+fn coverage_reports_core_target_package_kind_cells() {
+    let mut command = Command::cargo_bin("rulette").unwrap();
+    let output = command
         .arg("-q")
         .arg("inspect")
-        .arg("-")
+        .arg(CODEX_FIXTURE)
         .arg("--coverage")
         .arg("--json")
-        .write_stdin(ir)
         .assert()
         .success()
         .get_output()
         .stdout
         .clone();
-    serde_json::from_slice(&output).expect("--coverage --json output should be valid JSON")
+    let entries: Vec<serde_json::Value> = serde_json::from_slice(&output).unwrap();
+    assert!(entries.iter().any(|entry| {
+        entry["target"] == "cursor"
+            && entry["package_kind"] == "skill"
+            && entry["status"] == "dropped"
+    }));
+    assert!(entries.iter().all(|entry| {
+        ["codex", "opencode", "claude", "cursor", "antigravity"]
+            .contains(&entry["target"].as_str().unwrap())
+    }));
 }
 
 #[test]
-fn test_coverage_multiple_entities_same_kind_roll_up_to_worst_status() {
-    // Two mcp-server entities targeting cursor-mcp: one fully representable
-    // (no extra metadata), one only partially (populated extra). The
-    // aggregated cell must report the worst status seen, not the best.
-    let ir = r#"{
-      "entities": [
-        {
-          "kind": "mcp-server",
-          "metadata": { "name": "clean-server" },
-          "config": { "command": "echo", "args": [], "env": {} }
-        },
-        {
-          "kind": "mcp-server",
-          "metadata": { "name": "lossy-server", "some_extension_key": "value" },
-          "config": { "command": "echo", "args": [], "env": {} }
-        }
-      ]
-    }"#;
-
-    let entries = coverage_json(ir);
-    let cursor_mcp_entry = entries
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|e| e["target"] == "cursor-mcp" && e["entity_kind"] == "mcp-server")
-        .expect("expected a cursor-mcp/mcp-server entry");
-
-    assert_eq!(cursor_mcp_entry["status"], "lossy");
-}
-
-#[test]
-fn test_coverage_matrix_reflects_actual_input() {
-    // Only rule and skill entities in the input -- the matrix must not
-    // include rows for hook/agent/mcp-server/permissions.
-    let ir = r#"{
-      "entities": [
-        { "kind": "rule", "metadata": {}, "body": "A rule." },
-        { "kind": "skill", "metadata": { "name": "s", "description": "d" }, "body": "A skill." }
-      ]
-    }"#;
-
-    let entries = coverage_json(ir);
-    let kinds: std::collections::BTreeSet<String> = entries
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|e| e["entity_kind"].as_str().unwrap().to_string())
-        .collect();
-
-    assert_eq!(
-        kinds,
-        ["rule", "skill"].into_iter().map(String::from).collect()
-    );
-}
-
-#[test]
-fn test_coverage_and_to_are_mutually_exclusive() {
-    let mut cmd = Command::cargo_bin("rulette").unwrap();
-    cmd.arg("inspect")
-        .arg("-")
-        .arg("--coverage")
+fn inspect_target_lists_structured_findings_with_provenance() {
+    let mut command = Command::cargo_bin("rulette").unwrap();
+    command
+        .arg("inspect")
+        .arg(CODEX_FIXTURE)
         .arg("--to")
-        .arg("claude")
-        .write_stdin(r#"{"entities": []}"#)
-        .assert()
-        .failure()
-        .stderr(predicates::str::contains("cannot be used with"));
-}
-
-#[test]
-fn test_coverage_strict_exits_nonzero_when_lossy_or_dropped_present() {
-    let mut cmd = Command::cargo_bin("rulette").unwrap();
-    cmd.arg("-q")
-        .arg("inspect")
-        .arg("-")
-        .arg("--coverage")
-        .arg("--strict")
-        .write_stdin(r#"{"entities": [{"kind": "rule", "metadata": {}, "body": "A rule."}]}"#)
-        .assert()
-        .failure();
-}
-
-#[test]
-fn test_coverage_strict_exits_zero_when_matrix_is_empty() {
-    let mut cmd = Command::cargo_bin("rulette").unwrap();
-    cmd.arg("-q")
-        .arg("inspect")
-        .arg("-")
-        .arg("--coverage")
-        .arg("--strict")
-        .write_stdin(r#"{"entities": []}"#)
-        .assert()
-        .success();
-}
-
-#[test]
-fn test_coverage_without_strict_always_exits_zero() {
-    let mut cmd = Command::cargo_bin("rulette").unwrap();
-    cmd.arg("-q")
-        .arg("inspect")
-        .arg("-")
-        .arg("--coverage")
-        .write_stdin(r#"{"entities": [{"kind": "rule", "metadata": {}, "body": "A rule."}]}"#)
-        .assert()
-        .success();
-}
-
-#[test]
-fn test_coverage_json_shape_matches_spec() {
-    let ir = r#"{
-      "entities": [
-        { "kind": "rule", "metadata": {}, "body": "A rule." }
-      ]
-    }"#;
-
-    let entries = coverage_json(ir);
-    let entries = entries.as_array().unwrap();
-    assert!(!entries.is_empty());
-
-    for entry in entries {
-        let obj = entry.as_object().unwrap();
-        assert!(obj.contains_key("target"));
-        assert!(obj.contains_key("entity_kind"));
-        assert!(obj.contains_key("status"));
-        let status = obj["status"].as_str().unwrap();
-        assert!(["supported", "lossy", "dropped"].contains(&status));
-
-        if status == "supported" {
-            assert!(
-                !obj.contains_key("reason"),
-                "supported entries should omit reason, got: {entry}"
-            );
-        } else {
-            assert!(
-                obj["reason"].is_string() && !obj["reason"].as_str().unwrap().is_empty(),
-                "lossy/dropped entries must carry a non-null reason, got: {entry}"
-            );
-        }
-    }
-
-    // Rule -> Cursor MCP is a known Dropped case; assert it directly.
-    let cursor_mcp_rule = entries
-        .iter()
-        .find(|e| e["target"] == "cursor-mcp" && e["entity_kind"] == "rule")
-        .unwrap();
-    assert_eq!(cursor_mcp_rule["status"], "dropped");
-    assert!(cursor_mcp_rule["reason"].as_str().unwrap().contains("Rule"));
-}
-
-#[test]
-fn test_inspect_to_strict_warning_text_unchanged_by_coverage_change() {
-    // Regression guard: the pre-existing single-target `inspect --to
-    // <format> --strict` behavior (exact warning wording, exit code) must
-    // be byte-identical to before the coverage-reporting refactor.
-    let mut cmd = Command::cargo_bin("rulette").unwrap();
-    cmd.arg("-q")
-        .arg("--strict")
-        .arg("inspect")
-        .arg("-")
-        .arg("--to")
-        .arg("cursor-mdc")
-        .write_stdin(r#"{"entities": [{"kind": "hook", "metadata": {"name": "PreToolUse"}}]}"#)
-        .assert()
-        .failure()
-        .stderr(predicates::str::contains(
-            "Lossy conversion: Hook to Cursor MDC drops metadata",
-        ));
-
-    // Non-strict: the exact named warning text must still appear, and the
-    // command must still succeed (existing behavior, unchanged).
-    let mut cmd = Command::cargo_bin("rulette").unwrap();
-    cmd.arg("-q")
-        .arg("inspect")
-        .arg("-")
-        .arg("--to")
-        .arg("cursor-mdc")
-        .write_stdin(r#"{"entities": [{"kind": "hook", "metadata": {"name": "PreToolUse"}}]}"#)
+        .arg("cursor")
         .assert()
         .success()
-        .stderr(predicates::str::contains(
-            "Warning: Lossy conversion: Hook 'PreToolUse' to Cursor MDC drops metadata",
-        ));
+        .stdout(predicate::str::contains("skill-lowered-as-rule"))
+        .stdout(predicate::str::contains("provenance"));
+}
+
+#[test]
+fn coverage_strict_is_scoped_to_inspect_and_fails_on_loss() {
+    let mut command = Command::cargo_bin("rulette").unwrap();
+    command
+        .arg("-q")
+        .arg("inspect")
+        .arg(CODEX_FIXTURE)
+        .arg("--coverage")
+        .arg("--strict")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Coverage check failed"));
+}
+
+#[test]
+fn global_strict_is_a_usage_error() {
+    let mut command = Command::cargo_bin("rulette").unwrap();
+    command
+        .arg("--strict")
+        .arg("inspect")
+        .arg(CODEX_FIXTURE)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("unexpected argument '--strict'"));
 }

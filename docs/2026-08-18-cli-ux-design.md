@@ -2,6 +2,11 @@
 
 2026-08-18
 
+> **Superseded for v0.1.**
+> This exploratory proposal predates the package-aware compilation graph and staged-publication design.
+> The current contract is the [compilation graph kernel](../openspec/changes/compilation-graph-kernel/design.md) and [staged publication](../openspec/changes/staged-publication/design.md) OpenSpec changes.
+> Exact command syntax and generated CLI reference are owned by the staged-publication CLI work.
+
 ## Framing: one mental model, four new dimensions
 
 The whole tool is one sentence:

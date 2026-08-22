@@ -1,7 +1,6 @@
 pub mod commands;
 pub mod formats;
 pub mod globals;
-pub mod io;
 
 use clap::{Parser, Subcommand};
 use globals::GlobalFlags;

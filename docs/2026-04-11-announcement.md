@@ -1,57 +1,21 @@
-# Rulette announcement: the hermetic AI rule compiler
+# Rulette 0.1 compiler model
 
-## The problem: configuration drift
+Rulette is moving from a text-and-entity converter to a package-aware compiler for local agent guidance.
 
-AI coding assistants are only as good as the context they have. Today, that context is scattered across `.cursorrules`, `CLAUDE.md`, `.windsurfrules`, and custom MCP server configurations.
+The v0.1 core recognizes Codex, Claude, Cursor, OpenCode, and Antigravity layouts.
+It represents their supported rules and skills as deterministic graph packages.
+Each retained package keeps its source provenance, normalized root, primary instruction, opaque resources, and executable metadata.
 
-As teams adopt multiple tools, they face a new challenge: **configuration drift**. A rule added to Cursor isn't available in Claude Code. An MCP server configured in one editor must be manually recreated in another.
+This model makes a skill directory a real compilation unit instead of reducing it to one body string.
+It also makes nonportable semantics explicit.
+Agents, hooks, MCP settings, permissions, and native configuration are retained as opaque unsupported packages with diagnostics instead of being silently flattened into portable instructions.
 
-## The solution: Rulette
+The compiler has one safe path.
+It compiles explicit local inputs, selects exact package identifiers, lowers target-relative artifacts, reports loss, and stages the result for review.
+It does not fetch content, execute plugins, discover configuration, retain state, or publish directly to arbitrary native paths.
 
-Rulette is a **stateless, deterministic compiler** for AI coding assistant configuration.
+The public library centers on `CompilationGraph`, exact selection, capability analysis, lowering plans, and staged publication.
+The CLI remains an adapter over those contracts.
 
-It normalizes diverse rules, skills, and tool configurations into a single, typed Intermediate Representation (IR) and emits them to any target format.
-
-### Key features
-
-- **Universal translation**: Convert between Cursor MDC, Claude Code, Agent Skills, Codex, and more.
-- **Hermetic & deterministic**: Built in Rust as a static binary with zero runtime dependencies. Perfect for Bazel/Buck build systems and air-gapped CI.
-- **Unix philosophy**: Designed for pipelines. Pipe IR through `jq` or `markdownlint` before emitting.
-- **Strict integrity**: Fails fast on identity collisions. Ensures that your rule set is unambiguous and reproducible.
-
-### Quick start
-
-```sh
-# Convert rules to Claude skills
-rulette transform ./rules/ --to claude --out .claude/skills/
-
-# Convert rules to Cursor MDC
-rulette transform ./rules/ --to cursor-mdc --out .cursor/rules/
-```
-
-## Why Rulette?
-
-Unlike existing sync-based tools, Rulette treats AI configuration as **code to be compiled**.
-
-It doesn't just copy files; it parses them into a semantic model. This allows for powerful transformations:
-
-- **Filter**: Only emit "stable" rules to production.
-- **Promote**: Promote a generic rule to a first-class Agent Skill.
-- **Merge**: Safely combine rules from multiple sources with strict collision detection.
-
-## v0.1: foundational targets
-
-The initial release focuses on the most critical formats:
-
-- **Claude Code**: Full support for rules, hooks, and MCP servers.
-- **Cursor**: Support for modern `.mdc` rules and MCP.
-- **Agent Skills**: Native support for the `SKILL.md` standard.
-- **Codex**: Support for `AGENTS.md`.
-- **Gemini CLI**: Mapping for rules and subagents.
-
-## Roadmap
-
-- **v0.1.1**: Advanced transform pipelines, MCP normalization, and hook taxonomy.
-- **v0.2**: Semantic diffing and coverage reporting.
-
-Rulette is open source and available today.
+This release boundary deliberately excludes text rewriting, metadata mutation, agent portability, hook portability, MCP portability, package registries, and runtime execution.
+Those behaviors need explicit semantics and validation before they can join the compiler.

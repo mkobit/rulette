@@ -1,18 +1,20 @@
-pub mod agent_skills;
 pub mod cli;
 pub mod emitters;
+pub mod inputs;
 pub mod ir;
 pub mod parsers;
 pub mod pipeline;
-pub mod translate;
+pub mod publication;
 
-pub use emitters::{
-    AgentSkillsEmitter, AntigravityEmitter, ClaudeEmitter, CodexEmitter, CopilotEmitter,
-    CursorEmitter, Emitter, GeminiEmitter, WindsurfEmitter,
+pub use emitters::lowering::{
+    lower, CapabilityFinding, CapabilityReasonCode, CapabilitySeverity, LoweringOptions,
+    LoweringPlan, NativeArtifact, NativeArtifactClass, NativeTarget,
 };
-pub use ir::{
-    Activation, ActivationMode, Agent, AgentMetadata, Entity, Hook, HookEvent, HookEventKind,
-    HookMetadata, McpServer, McpServerConfig, McpServerMetadata, Permissions, PermissionsMetadata,
-    Rule, RuleMetadata, RuletteDocument, TargetOverrides, ToolAccessRule,
+pub use ir::graph::{
+    CompilationGraph, DiagnosticSeverity, FrontendPayload, GraphDiagnostic, Package, PackageId,
+    PackageKind, PackageRoot, PortableActivation, Resource, ResourceContent, ResourcePath,
+    ResourceRole, SemanticIdentity, SemanticItem, SourceProvenance, TargetActivation,
+    TargetActivationOverrides, GRAPH_VERSION,
 };
-pub use parsers::{parse, parse_rule_markdown};
+pub use ir::ActivationMode;
+pub use parsers::compile_graph;

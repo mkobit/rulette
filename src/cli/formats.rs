@@ -1,6 +1,6 @@
 use clap::ValueEnum;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 #[derive(
     Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug, Deserialize, JsonSchema,
@@ -8,51 +8,51 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "kebab-case")]
 pub enum InputFormat {
     Auto,
-    SkillMd,
-    AgentSkills,
     Claude,
-    ClaudeSettings,
     CursorMdc,
-    CursorLegacy,
-    CursorMcp,
     Codex,
-    Windsurf,
-    Copilot,
-    Gemini,
     Antigravity,
-    IrJson,
-    IrToml,
+    Opencode,
+    GraphJson,
+    GraphToml,
 }
 
-#[derive(
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    ValueEnum,
-    Debug,
-    Deserialize,
-    Serialize,
-    JsonSchema,
-)]
-#[serde(rename_all = "kebab-case")]
-pub enum OutputFormat {
-    Claude,
-    CursorMdc,
-    CursorMcp,
-    Codex,
-    Windsurf,
-    Copilot,
-    Gemini,
-    Antigravity,
-    AgentSkills,
-    IrJson,
-    IrToml,
-    JsonSchema,
-    /// Scaffold-only target: `transform` writes a transform-config manifest
-    /// instead of a real tool output; `inspect` rejects it (see
-    /// `src/cli/commands/inspect.rs`).
-    TransformConfig,
+#[cfg(test)]
+mod tests {
+    use super::InputFormat;
+
+    #[test]
+    fn accepts_only_core_graph_frontends() {
+        for format in [
+            "auto",
+            "codex",
+            "claude",
+            "cursor-mdc",
+            "opencode",
+            "antigravity",
+            "graph-json",
+            "graph-toml",
+        ] {
+            serde_json::from_str::<InputFormat>(&format!("\"{format}\""))
+                .expect("core frontend remains selectable");
+        }
+
+        for format in [
+            "skill-md",
+            "agent-skills",
+            "claude-settings",
+            "cursor-legacy",
+            "cursor-mcp",
+            "windsurf",
+            "copilot",
+            "gemini",
+            "ir-json",
+            "ir-toml",
+        ] {
+            assert!(
+                serde_json::from_str::<InputFormat>(&format!("\"{format}\"")).is_err(),
+                "legacy frontend `{format}` must not remain selectable"
+            );
+        }
+    }
 }
