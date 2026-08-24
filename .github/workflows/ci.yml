@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  MISE_VERSION: "v2026.8.6"
+  MISE_VERSION: "v2026.8.11"
   CARGO_TERM_COLOR: always
 
   RUST_BACKTRACE: 1
@@ -31,7 +31,7 @@ jobs:
           MISE_USE_VERSIONS_HOST: 1
           MISE_RUST_DOWNLOAD: 1
       - name: Run markdown lint
-        run: markdownlint-cli2
+        run: bun x markdownlint-cli2
 
   check:
     name: Check

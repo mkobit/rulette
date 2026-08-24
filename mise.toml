@@ -1,10 +1,7 @@
 [tools]
-bun = "1.3.14"
-node = "22"
-"npm:markdownlint-cli2" = "0.17.1"
-"npm:@fission-ai/openspec" = "1.8.0"
+bun = "1.4.0"
 "github:gastownhall/beads" = "1.2.2"
-rust = { version = "1.94.1", components = ["rustfmt", "clippy", "llvm-tools-preview"] }
+rust = { version = "1.98.0", components = ["rustfmt", "clippy", "llvm-tools-preview"] }
 
 [settings]
 locked = true
@@ -32,7 +29,7 @@ run = "cargo clippy -- -D warnings"
 description = "Lint Rust code with clippy"
 
 [tasks."lint:md"]
-run = "markdownlint-cli2"
+run = "bun x markdownlint-cli2"
 description = "Lint markdown files"
 
 [tasks.test]
@@ -41,7 +38,7 @@ description = "Run all tests"
 
 [tasks.check]
 depends = ["spec-validate"]
-run = "markdownlint-cli2 && cargo fmt --check && cargo clippy -- -D warnings && cargo test"
+run = "bun x markdownlint-cli2 && cargo fmt --check && cargo clippy -- -D warnings && cargo test"
 description = "Run quality gates in CI order (spec-validate -> lint:md -> fmt -> lint:rust -> test)"
 
 [tasks.bd-push]
@@ -57,9 +54,9 @@ run = "bd ready && bd lint"
 description = "Show unblocked work and validate the beads database"
 
 [tasks.spec-list]
-run = "openspec list"
+run = "bun x @fission-ai/openspec list"
 description = "List OpenSpec changes"
 
 [tasks.spec-validate]
-run = "openspec validate --strict --all"
+run = "bun x @fission-ai/openspec validate --strict --all"
 description = "Validate OpenSpec changes strictly"

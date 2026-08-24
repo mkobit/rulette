@@ -5,6 +5,9 @@ on:
     - cron: '0 12 * * 3'
   workflow_dispatch: {}
 
+env:
+  MISE_VERSION: "v2026.8.11"
+
 concurrency:
   group: beads-validation
   cancel-in-progress: false
@@ -25,7 +28,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@v4
         with:
-          version: v2026.8.6
+          version: ${{ env.MISE_VERSION }}
           install: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
         env:
