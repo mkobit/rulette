@@ -8,9 +8,7 @@ locked = true
 http_timeout = "300s"
 http_retries = 15
 
-# Thin wrappers over existing commands so common flows run via one pre-approved
-# `mise run <task>` entrypoint instead of prompting per command.
-# Not a build system: single commands or simple && chains only, no deps/conditionals.
+# Declarative task definitions utilizing Mise DAG execution engine for parallel execution and clear status reporting.
 
 [tasks.build]
 run = "cargo build"
@@ -37,10 +35,8 @@ run = "cargo test"
 description = "Run all tests"
 
 [tasks.check]
-depends = ["spec-validate"]
-run = "bun x markdownlint-cli2 && cargo fmt --check && cargo clippy -- -D warnings && cargo test"
-description = "Run quality gates in CI order (spec-validate -> lint:md -> fmt -> lint:rust -> test)"
-
+depends = ["spec-validate", "lint:md", "fmt", "lint", "test"]
+description = "Run quality gates in parallel using Mise DAG dependencies"
 [tasks.bd-push]
 run = "bd dolt push"
 description = "Push the beads Dolt database to its remote"
