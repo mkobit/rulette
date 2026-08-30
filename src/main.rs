@@ -1,6 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
-use rulette::cli::{Cli, Commands};
+use rulette::cli::{commands::transform::DestinationDrift, Cli, Commands};
+use std::process::ExitCode;
 
 use tracing_subscriber::EnvFilter;
 
@@ -15,7 +16,7 @@ fn init_tracing(log_level: &Option<String>) {
         .init();
 }
 
-fn main() -> Result<()> {
+fn run() -> Result<()> {
     let args = Cli::parse();
 
     init_tracing(&args.globals.log_level);
@@ -25,5 +26,16 @@ fn main() -> Result<()> {
         Commands::Inspect(args) => args.execute(quiet),
         Commands::Schema(args) => args.execute(),
         Commands::Transform(args) => args.execute(quiet),
+    }
+}
+
+fn main() -> ExitCode {
+    match run() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) if error.downcast_ref::<DestinationDrift>().is_some() => ExitCode::FAILURE,
+        Err(error) => {
+            eprintln!("Error: {error:#}");
+            ExitCode::FAILURE
+        }
     }
 }

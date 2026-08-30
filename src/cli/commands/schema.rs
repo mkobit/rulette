@@ -3,7 +3,7 @@ use schemars::schema_for;
 
 #[derive(Args, Debug)]
 pub struct SchemaArgs {
-    /// Schema contract to output.
+    /// Schema contract to output (only `graph` is supported).
     #[arg(short, long, default_value = "graph")]
     pub to: String,
 }
