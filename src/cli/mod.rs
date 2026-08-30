@@ -25,9 +25,9 @@ pub enum Commands {
     /// Pretty-print the IR for debugging
     Inspect(commands::inspect::InspectArgs),
 
-    /// Output JSON Schema for the IR or a specific target format
+    /// Output the JSON Schema for the compilation graph
     Schema(commands::schema::SchemaArgs),
 
-    /// Parse, transform, and emit rules across formats
+    /// Compile graphs and stage or apply native publication plans
     Transform(Box<commands::transform::TransformArgs>),
 }

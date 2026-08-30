@@ -5,6 +5,9 @@ use std::io::Write;
 #[test]
 fn explicit_selection_only_config_compiles_a_graph() {
     let temporary = tempfile::Builder::new().suffix(".toml").tempfile().unwrap();
+    let publication = tempfile::tempdir().unwrap();
+    let project_root = publication.path().join("project");
+    std::fs::create_dir(&project_root).unwrap();
     let fixture = std::fs::canonicalize("tests/fixtures/v0_1/codex").unwrap();
     let config = toml::to_string(&serde_json::json!({
         "inputs": [fixture.to_str().unwrap()],
@@ -19,6 +22,10 @@ fn explicit_selection_only_config_compiles_a_graph() {
         .arg("transform")
         .arg("--config")
         .arg(temporary.path())
+        .arg("--project-root")
+        .arg(project_root)
+        .arg("--stage")
+        .arg(publication.path().join("stage"))
         .assert()
         .success();
 }

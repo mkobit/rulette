@@ -3,41 +3,93 @@ use crate::emitters::lowering::{
     lower, CapabilityFinding, CapabilitySeverity, LoweringOptions, NativeTarget,
 };
 use crate::inputs::{observe_path, observe_stdin, ArtifactObservation};
-use crate::publication::{mapping_for, PublicationScope};
+use crate::publication::{
+    apply_plan, check_plan, check_sources, mapping_for, parse_plan_with_expected_digest, stage,
+    ApplyOptions, AuthorizedRoot, DestinationState, PlanDigest, PlanOperationRequest,
+    PublicationScope, ScopedAcceptedLoss, ScopedLowering, SourceCheckRequest, StageRequest,
+    StageRoot,
+};
 use crate::{compile_graph, pipeline, CompilationGraph, PackageId};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::Args;
 use serde::{Deserialize, Serialize};
 use std::io;
 use std::path::{Path, PathBuf};
+
+#[derive(Debug)]
+pub struct DestinationDrift;
+
+impl std::fmt::Display for DestinationDrift {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("destination check found drift")
+    }
+}
+
+impl std::error::Error for DestinationDrift {}
 
 #[derive(Args, Debug)]
 pub struct TransformArgs {
     /// Native input files or directories, or `-` for standard input.
     ///
     /// Stdin is used when neither these inputs nor config inputs are supplied.
+    #[arg(conflicts_with = "apply")]
     pub input: Vec<String>,
 
     /// Source frontend, auto-detected when omitted.
-    #[arg(long, value_enum, default_value_t = InputFormat::Auto)]
+    #[arg(long, value_enum, default_value_t = InputFormat::Auto, conflicts_with = "apply")]
     pub from: InputFormat,
 
     /// Select one package by its exact graph package ID.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "apply")]
     pub select: Vec<String>,
 
-    /// Analyze and lower a native target as `format` or `format@scope`.
+    /// Stage a native target as `format@scope`.
     ///
-    /// Project is the default scope.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "apply")]
     pub target: Vec<String>,
 
     /// Accept reported representational loss for requested native targets.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "apply")]
     pub allow_lossy: bool,
 
-    /// Load one explicit, selection-only transform configuration file.
+    /// Write a self-contained publication plan to this new directory.
+    #[arg(long, conflicts_with = "apply")]
+    pub stage: Option<PathBuf>,
+
+    /// Explicitly authorize the live project root for all project targets.
+    #[arg(long, conflicts_with = "apply")]
+    pub project_root: Option<PathBuf>,
+
+    /// Explicitly authorize one user target root as `target=path`.
+    #[arg(long, conflicts_with = "apply")]
+    pub user_root: Vec<String>,
+
+    /// Check destinations without creating a stage or applying a plan.
     #[arg(long)]
+    pub check: bool,
+
+    /// Apply the plan at `stage-dir/rulette.plan.json`.
+    #[arg(long, value_name = "STAGE_DIR/rulette.plan.json")]
+    pub apply: Option<PathBuf>,
+
+    /// Require this SHA-256 digest before checking or applying a staged plan.
+    #[arg(long, requires = "apply")]
+    pub expect_plan_sha256: Option<String>,
+
+    /// Explicitly authorize the live project root for plan operations.
+    #[arg(long, requires = "apply")]
+    pub allow_project_root: Option<PathBuf>,
+
+    /// Explicitly authorize one plan user target root as `target=path`.
+    #[arg(long, requires = "apply")]
+    pub allow_user_root: Vec<String>,
+
+    /// Allow an apply operation to replace conflicting destinations.
+    #[arg(long, requires = "apply", conflicts_with = "check")]
+    pub replace: bool,
+
+    /// Load one explicit selection-and-target-only transform configuration file.
+    #[arg(long, conflicts_with = "apply")]
     pub config: Option<PathBuf>,
 }
 
@@ -92,6 +144,9 @@ impl TransformConfigFile {
 
 impl TransformArgs {
     pub fn execute(&self, quiet: bool) -> Result<()> {
+        if self.apply.is_some() {
+            return self.execute_plan_mode();
+        }
         let config = self
             .config
             .as_deref()
@@ -101,6 +156,7 @@ impl TransformArgs {
         let inputs = resolve_inputs(&self.input, &config.inputs)?;
         let selector_strings = resolve_selectors(&self.select, &config.select)?;
         let targets = resolve_targets(&self.target, &config.targets)?;
+        validate_source_mode(self, &targets)?;
         if self.allow_lossy && targets.is_empty() {
             anyhow::bail!("--allow-lossy requires at least one --target");
         }
@@ -109,19 +165,53 @@ impl TransformArgs {
         let selectors = resolve_package_ids(&graph, &selector_strings)?;
         let selected_graph = pipeline::select_packages(&graph, &selectors)?;
 
-        for target in targets {
-            let plan = lower(
-                &selected_graph,
-                target.target,
-                if self.allow_lossy {
-                    LoweringOptions::allow_lossy()
-                } else {
-                    LoweringOptions::strict()
-                },
-            )?;
-            if self.allow_lossy {
-                render_accepted_losses(&plan.findings)?;
+        let lowerings = targets
+            .iter()
+            .map(|target| {
+                lower(
+                    &selected_graph,
+                    target.target,
+                    if self.allow_lossy {
+                        LoweringOptions::allow_lossy()
+                    } else {
+                        LoweringOptions::strict()
+                    },
+                )
+                .map(|plan| (target, plan))
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        if self.check {
+            let report = check_sources(SourceCheckRequest {
+                graph: &selected_graph,
+                lowerings: scoped_lowerings(&lowerings),
+                roots: source_roots(self, &targets)?,
+                accepted_losses: accepted_losses(&lowerings, self.allow_lossy),
+            })?;
+            render_check_report(&report.entries)?;
+            if !quiet {
+                print!("{}", selected_graph.to_canonical_json()?);
             }
+            if report.is_clean() {
+                return Ok(());
+            }
+            return Err(DestinationDrift.into());
+        }
+
+        if let Some(stage_dir) = &self.stage {
+            let staged = stage(StageRequest {
+                graph: &selected_graph,
+                lowerings: scoped_lowerings(&lowerings),
+                roots: stage_roots(self, &targets)?,
+                accepted_losses: accepted_losses(&lowerings, self.allow_lossy),
+                stage_dir,
+            })?;
+            if self.allow_lossy {
+                for (_, plan) in &lowerings {
+                    render_accepted_losses(&plan.findings)?;
+                }
+            }
+            eprintln!("plan digest: {}", staged.plan_digest.as_str());
         }
 
         if !quiet {
@@ -129,6 +219,302 @@ impl TransformArgs {
         }
         Ok(())
     }
+
+    fn execute_plan_mode(&self) -> Result<()> {
+        validate_plan_mode(self)?;
+        let expected_plan_digest = PlanDigest::parse(
+            self.expect_plan_sha256
+                .as_deref()
+                .context("--expect-plan-sha256 is required with --apply")?,
+        )?;
+        let plan_path = self.apply.as_deref().expect("plan mode requires --apply");
+        if plan_path.file_name().and_then(|name| name.to_str()) != Some("rulette.plan.json") {
+            anyhow::bail!("--apply must name stage-dir/rulette.plan.json");
+        }
+        let stage_dir = plan_path.parent().unwrap_or_else(|| Path::new("."));
+        let request = PlanOperationRequest {
+            stage_dir,
+            roots: plan_roots(self, stage_dir, &expected_plan_digest)?,
+            expected_plan_digest,
+        };
+        if self.check {
+            let report = check_plan(request)?;
+            render_check_report(&report.entries)?;
+            if report.is_clean() {
+                return Ok(());
+            }
+            return Err(DestinationDrift.into());
+        }
+        let report = apply_plan(
+            request,
+            ApplyOptions {
+                replace: self.replace,
+            },
+        )?;
+        let mut entries = report
+            .created
+            .into_iter()
+            .map(|entry| (entry, "created"))
+            .chain(report.replaced.into_iter().map(|entry| (entry, "replaced")))
+            .chain(
+                report
+                    .unchanged
+                    .into_iter()
+                    .map(|entry| (entry, "unchanged")),
+            )
+            .collect::<Vec<_>>();
+        entries.sort_by(|left, right| left.0.cmp(&right.0));
+        for (entry, state) in entries {
+            eprintln!("{state} {entry}");
+        }
+        Ok(())
+    }
+}
+
+fn validate_source_mode(args: &TransformArgs, targets: &[TargetRequest]) -> Result<()> {
+    if args.check && targets.is_empty() {
+        anyhow::bail!("source --check requires at least one --target");
+    }
+    if args.stage.is_some() && targets.is_empty() {
+        anyhow::bail!("--stage requires at least one --target");
+    }
+    if !targets.is_empty() && args.stage.is_none() && !args.check {
+        anyhow::bail!("--target requires --stage unless --check is used");
+    }
+    if args.check && args.stage.is_some() {
+        anyhow::bail!("--check may not be combined with --stage");
+    }
+    if args.check && args.allow_lossy {
+        anyhow::bail!("--allow-lossy may not be combined with --check");
+    }
+    if targets
+        .iter()
+        .any(|target| target.scope == PublicationScope::Project)
+        && args.project_root.is_none()
+    {
+        anyhow::bail!("--project-root is required for project targets");
+    }
+    if !args.user_root.is_empty() {
+        let roots = parse_target_roots(&args.user_root, "--user-root")?;
+        for target in roots.keys() {
+            if !targets
+                .iter()
+                .any(|request| request.target == *target && request.scope == PublicationScope::User)
+            {
+                anyhow::bail!(
+                    "--user-root authorizes an unrequested user target `{}`",
+                    target.as_str()
+                );
+            }
+        }
+    }
+    for target in targets
+        .iter()
+        .filter(|target| target.scope == PublicationScope::User)
+    {
+        if !parse_target_roots(&args.user_root, "--user-root")?.contains_key(&target.target) {
+            anyhow::bail!(
+                "--user-root {}=PATH is required for user targets",
+                target.target.as_str()
+            );
+        }
+    }
+    Ok(())
+}
+
+fn validate_plan_mode(args: &TransformArgs) -> Result<()> {
+    if !args.input.is_empty()
+        || args.from != InputFormat::Auto
+        || !args.select.is_empty()
+        || !args.target.is_empty()
+        || args.stage.is_some()
+        || args.config.is_some()
+        || args.allow_lossy
+    {
+        anyhow::bail!(
+            "--apply may not be combined with source inputs or source compilation options"
+        );
+    }
+    if args.replace && args.check {
+        anyhow::bail!("--replace may not be combined with --check");
+    }
+    Ok(())
+}
+
+fn parse_target_roots(
+    values: &[String],
+    flag: &str,
+) -> Result<std::collections::BTreeMap<NativeTarget, PathBuf>> {
+    let mut roots = std::collections::BTreeMap::new();
+    for value in values {
+        let (target, path) = value
+            .split_once('=')
+            .context(format!("{flag} must use target=path"))?;
+        let target = parse_native_target(target)?;
+        if path.is_empty() || roots.insert(target, PathBuf::from(path)).is_some() {
+            anyhow::bail!("{flag} must name each target exactly once");
+        }
+    }
+    Ok(roots)
+}
+
+fn source_roots<'a>(
+    args: &'a TransformArgs,
+    targets: &[TargetRequest],
+) -> Result<Vec<AuthorizedRoot<'a>>> {
+    targets
+        .iter()
+        .map(|target| match target.scope {
+            PublicationScope::Project => Ok(AuthorizedRoot {
+                target: target.target,
+                scope: target.scope,
+                path: args
+                    .project_root
+                    .as_deref()
+                    .expect("validated project root"),
+            }),
+            PublicationScope::User => Ok(AuthorizedRoot {
+                target: target.target,
+                scope: target.scope,
+                path: find_user_root(&args.user_root, "--user-root", target.target)?
+                    .expect("validated user root"),
+            }),
+        })
+        .collect()
+}
+
+fn stage_roots<'a>(
+    args: &'a TransformArgs,
+    targets: &[TargetRequest],
+) -> Result<Vec<StageRoot<'a>>> {
+    targets
+        .iter()
+        .map(|target| match target.scope {
+            PublicationScope::Project => Ok(StageRoot {
+                target: target.target,
+                scope: target.scope,
+                path: args
+                    .project_root
+                    .as_deref()
+                    .expect("validated project root"),
+            }),
+            PublicationScope::User => Ok(StageRoot {
+                target: target.target,
+                scope: target.scope,
+                path: find_user_root(&args.user_root, "--user-root", target.target)?
+                    .expect("validated user root"),
+            }),
+        })
+        .collect()
+}
+
+fn plan_roots<'a>(
+    args: &'a TransformArgs,
+    stage_dir: &Path,
+    expected_plan_digest: &PlanDigest,
+) -> Result<Vec<AuthorizedRoot<'a>>> {
+    let plan_bytes = std::fs::read(stage_dir.join("rulette.plan.json"))?;
+    let plan = parse_plan_with_expected_digest(&plan_bytes, expected_plan_digest)?;
+    let has_project_target = plan
+        .mappings
+        .keys()
+        .any(|(_, scope)| *scope == PublicationScope::Project);
+    if args.allow_project_root.is_some() && !has_project_target {
+        anyhow::bail!("--allow-project-root authorizes no project target in the plan");
+    }
+    let mut roots = args
+        .allow_user_root
+        .iter()
+        .map(|value| {
+            let (target, path) = value
+                .split_once('=')
+                .context("--allow-user-root must use target=path")?;
+            if path.is_empty() {
+                anyhow::bail!("authority root path may not be empty");
+            }
+            Ok(AuthorizedRoot {
+                target: parse_native_target(target)?,
+                scope: PublicationScope::User,
+                path: Path::new(path),
+            })
+        })
+        .collect::<Result<Vec<_>>>()?;
+    if let Some(path) = args.allow_project_root.as_deref() {
+        for &(target, scope) in plan.mappings.keys() {
+            if scope != PublicationScope::Project {
+                continue;
+            }
+            roots.push(AuthorizedRoot {
+                target,
+                scope: PublicationScope::Project,
+                path,
+            });
+        }
+    }
+    Ok(roots)
+}
+
+fn find_user_root<'a>(
+    values: &'a [String],
+    flag: &str,
+    target: NativeTarget,
+) -> Result<Option<&'a Path>> {
+    for value in values {
+        let (candidate, path) = value
+            .split_once('=')
+            .context(format!("{flag} must use target=path"))?;
+        if parse_native_target(candidate)? == target {
+            return Ok(Some(Path::new(path)));
+        }
+    }
+    Ok(None)
+}
+
+fn scoped_lowerings<'a>(
+    lowerings: &'a [(&'a TargetRequest, crate::emitters::lowering::LoweringPlan)],
+) -> Vec<ScopedLowering<'a>> {
+    lowerings
+        .iter()
+        .map(|(target, plan)| ScopedLowering {
+            scope: target.scope,
+            lowering: plan,
+        })
+        .collect()
+}
+
+fn accepted_losses<'a>(
+    lowerings: &'a [(&'a TargetRequest, crate::emitters::lowering::LoweringPlan)],
+    allow_lossy: bool,
+) -> Vec<ScopedAcceptedLoss<'a>> {
+    if !allow_lossy {
+        return Vec::new();
+    }
+    lowerings
+        .iter()
+        .flat_map(|(target, plan)| {
+            plan.findings
+                .iter()
+                .filter(move |finding| finding.severity != CapabilitySeverity::Supported)
+                .map(move |finding| ScopedAcceptedLoss {
+                    scope: target.scope,
+                    finding,
+                })
+        })
+        .collect()
+}
+
+fn render_check_report(entries: &[crate::publication::DestinationCheck]) -> Result<()> {
+    let mut entries = entries.to_vec();
+    entries.sort_by(|left, right| left.entry_id.cmp(&right.entry_id));
+    for entry in entries {
+        let state = match entry.state {
+            DestinationState::Absent => "absent",
+            DestinationState::Unchanged => "unchanged",
+            DestinationState::Conflict => "conflict",
+        };
+        eprintln!("{} {state}", entry.entry_id);
+    }
+    Ok(())
 }
 
 fn resolve_inputs(cli_inputs: &[String], config_inputs: &[String]) -> Result<Vec<String>> {
@@ -182,7 +568,7 @@ fn parse_target_request(value: &str) -> Result<TargetRequest> {
     let (target, scope) = match value.split_once('@') {
         Some((target, scope)) if !scope.contains('@') => (target, scope),
         Some(_) => anyhow::bail!("target `{value}` must use at most one `@` scope separator"),
-        None => (value, "project"),
+        None => anyhow::bail!("target `{value}` must use the form format@scope"),
     };
     let target = parse_native_target(target)?;
     let scope = match scope {
@@ -283,9 +669,12 @@ mod tests {
     use crate::publication::PublicationScope;
 
     #[test]
-    fn target_defaults_to_project_scope() {
-        let target = parse_target_request("codex").unwrap();
-        assert_eq!(target.scope, PublicationScope::Project);
+    fn target_requires_an_explicit_scope() {
+        assert!(parse_target_request("codex").is_err());
+        assert_eq!(
+            parse_target_request("codex@project").unwrap().scope,
+            PublicationScope::Project
+        );
     }
 
     #[test]

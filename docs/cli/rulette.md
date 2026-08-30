@@ -18,13 +18,12 @@ Stateless CLI tool for transforming AI rules and skills across systems
 ###### **Subcommands:**
 
 * `inspect` — Pretty-print the IR for debugging
-* `schema` — Output JSON Schema for the IR or a specific target format
-* `transform` — Parse, transform, and emit rules across formats
+* `schema` — Output the JSON Schema for the compilation graph
+* `transform` — Compile graphs and stage or apply native publication plans
 
 ###### **Options:**
 
 * `-q`, `--quiet` — Suppress non-error output
-* `--strict` — Fail on warnings (including lossy conversion warnings)
 * `--no-color` — Disable colored output
 * `--log-level <LOG_LEVEL>` — Log verbosity (error, warn, info, debug, trace)
 
@@ -38,93 +37,72 @@ Pretty-print the IR for debugging
 
 ###### **Arguments:**
 
-* `<INPUT>` — Input files or directories (or "-" for stdin)
+* `<INPUT>` — Native input files or directories, or `-` for standard input
 
   Default value: `-`
 
 ###### **Options:**
 
-* `-t`, `--to <TO>` — Target format to dry-run emission and show lossy conversion warnings
+* `--from <FROM>` — Source frontend, auto-detected when omitted
 
-  Possible values:
-  - `claude`
-  - `cursor-mdc`
-  - `cursor-mcp`
-  - `codex`
-  - `windsurf`
-  - `copilot`
-  - `gemini`
-  - `agent-skills`
-  - `ir-json`
-  - `ir-toml`
-  - `json-schema`
-  - `transform-config`:
-    Scaffold-only target: `transform` writes a transform-config manifest instead of a real tool output; `inspect` rejects it (see `src/cli/commands/inspect.rs`)
+  Default value: `auto`
 
-* `--coverage` — Compute a Supported/Lossy/Dropped capability matrix across every registered target
-* `--json` — Render --coverage output as JSON instead of a table (requires --coverage)
+  Possible values: `auto`, `claude`, `cursor-mdc`, `codex`, `antigravity`, `opencode`, `graph-json`, `graph-toml`
+
+* `-t`, `--to <TO>` — Analyze one core target without publishing native artifacts
+* `--coverage` — Compute the core-target capability matrix for observed package kinds
+* `--json` — Render coverage as JSON
+* `--strict` — Fail coverage when any observed package kind is lossy or dropped
 
 
 
 ## `rulette schema`
 
-Output JSON Schema for the IR or a specific target format
+Output the JSON Schema for the compilation graph
 
 **Usage:** `rulette schema [OPTIONS]`
 
 ###### **Options:**
 
-* `-t`, `--to <TO>` — Format to output schema for (ir, claude, cursor-mdc, etc.)
+* `-t`, `--to <TO>` — Schema contract to output (only `graph` is supported)
 
-  Default value: `ir`
-* `--extension <EXTENSION>` — Extension key to output schema for (e.g., rulette:activation)
+  Default value: `graph`
 
 
 
 ## `rulette transform`
 
-Parse, transform, and emit rules across formats
+Compile graphs and stage or apply native publication plans
 
 **Usage:** `rulette transform [OPTIONS] [INPUT]...`
 
 ###### **Arguments:**
 
-* `<INPUT>` — Input files or directories (or "-" for stdin). Defaults to stdin only when neither this nor --config's `inputs` is set
+* `<INPUT>` — Native input files or directories, or `-` for standard input.
+
+   Stdin is used when neither these inputs nor config inputs are supplied.
 
 ###### **Options:**
 
-* `--from <FROM>` — Source format (auto-detected if omitted)
+* `--from <FROM>` — Source frontend, auto-detected when omitted
 
   Default value: `auto`
 
-  Possible values: `auto`, `skill-md`, `agent-skills`, `claude`, `claude-settings`, `cursor-mdc`, `cursor-legacy`, `cursor-mcp`, `codex`, `windsurf`, `copilot`, `gemini`, `ir-json`, `ir-toml`
+  Possible values: `auto`, `claude`, `cursor-mdc`, `codex`, `antigravity`, `opencode`, `graph-json`, `graph-toml`
 
-* `--to <TO>` — Target output format
-
-  Possible values:
-  - `claude`
-  - `cursor-mdc`
-  - `cursor-mcp`
-  - `codex`
-  - `windsurf`
-  - `copilot`
-  - `gemini`
-  - `agent-skills`
-  - `ir-json`
-  - `ir-toml`
-  - `json-schema`
-  - `transform-config`:
-    Scaffold-only target: `transform` writes a transform-config manifest instead of a real tool output; `inspect` rejects it (see `src/cli/commands/inspect.rs`)
-
-* `-o`, `--out <OUT>` — Output path (file or directory) or multiple targets via format:path
-* `--name <NAME>` — Override name metadata for parsed entities
-* `--description <DESCRIPTION>` — Override description metadata for parsed entities
-* `--filter <FILTER>` — Keep only rules matching expression (e.g., 'license == "MIT"')
-* `--exclude <EXCLUDE>` — Remove rules matching expression
-* `--rename <RENAME>` — Rename a metadata field value (from=to)
-* `--set <SET>` — Set a metadata field (field=value)
-* `--config <CONFIG>` — Load a transform-config file (.toml/.json/.jsonc/.json5); composes with and can be overridden by other CLI flags
-* `--check` — Report drift without writing; exits non-zero if any target would be created or updated
+* `--select <SELECT>` — Select one package by its exact graph package ID
+* `--target <TARGET>` — Stage a native target as `format@scope`
+* `--allow-lossy` — Accept reported representational loss for requested native targets
+* `--stage <STAGE>` — Write a self-contained publication plan to this new directory
+* `--project-root <PROJECT_ROOT>` — Explicitly authorize the live project root for all project targets
+* `--user-root <USER_ROOT>` — Explicitly authorize one user target root as `target=path`
+* `--check` — Check destinations without creating a stage or applying a plan
+* `--apply <STAGE_DIR/rulette.plan.json>` — Apply the plan at `stage-dir/rulette.plan.json`
+* `--expect-plan-sha256 <EXPECT_PLAN_SHA256>` — Require this SHA-256 digest before checking or applying a staged plan
+* `--allow-project-root <ALLOW_PROJECT_ROOT>` — Explicitly authorize the live project root for plan operations
+* `--allow-user-root <ALLOW_USER_ROOT>` — Explicitly authorize one plan user target root as `target=path`
+* `--replace` — Allow an apply operation to replace conflicting destinations
+* `--config <CONFIG>` — Load one explicit selection-and-target-only transform configuration file
 
 
 
