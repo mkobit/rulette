@@ -24,6 +24,7 @@ fn native_lowering_rejects_loss_by_default() {
 }
 
 #[test]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 fn allow_lossy_keeps_structured_findings_without_writing_native_output() {
     let temporary = tempfile::tempdir().unwrap();
     let project_root = temporary.path().join("project");

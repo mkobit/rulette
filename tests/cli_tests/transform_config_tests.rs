@@ -3,6 +3,7 @@ use predicates::prelude::*;
 use std::io::Write;
 
 #[test]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 fn explicit_selection_only_config_compiles_a_graph() {
     let temporary = tempfile::Builder::new().suffix(".toml").tempfile().unwrap();
     let publication = tempfile::tempdir().unwrap();

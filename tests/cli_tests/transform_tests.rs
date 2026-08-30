@@ -142,6 +142,7 @@ fn native_targets_require_a_stage_and_explicit_scope_roots() {
 }
 
 #[test]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 fn source_stage_writes_a_plan_and_keeps_graph_on_stdout() {
     let temporary = tempfile::tempdir().unwrap();
     let project_root = temporary.path().join("project");
@@ -168,6 +169,7 @@ fn source_stage_writes_a_plan_and_keeps_graph_on_stdout() {
 }
 
 #[test]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 fn source_check_reports_sorted_statuses_without_creating_a_stage() {
     let temporary = tempfile::tempdir().unwrap();
     let project_root = temporary.path().join("project");
@@ -193,6 +195,7 @@ fn source_check_reports_sorted_statuses_without_creating_a_stage() {
 }
 
 #[test]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 fn apply_requires_a_plan_digest_and_explicit_authority() {
     let temporary = tempfile::tempdir().unwrap();
     let project_root = temporary.path().join("project");
@@ -224,6 +227,7 @@ fn apply_requires_a_plan_digest_and_explicit_authority() {
 }
 
 #[test]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 fn plan_apply_uses_the_expected_digest_and_reports_created_entries() {
     let temporary = tempfile::tempdir().unwrap();
     let project_root = temporary.path().join("project");
@@ -268,6 +272,7 @@ fn plan_apply_uses_the_expected_digest_and_reports_created_entries() {
 }
 
 #[test]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 fn empty_authority_paths_are_rejected() {
     let temporary = tempfile::tempdir().unwrap();
     let stage = temporary.path().join("stage");
