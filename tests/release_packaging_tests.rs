@@ -115,6 +115,8 @@ chmod 0644 target/x86_64-unknown-linux-musl/release/rulette
     let tar_path = tools.join("tar");
     std::fs::write(&tar_path, "#!/usr/bin/env bash\nexit 1\n").unwrap();
     std::fs::set_permissions(&tar_path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    std::fs::write(&archive, "stale archive").unwrap();
+    std::fs::write(&checksum, "stale checksum\n").unwrap();
     let output = Command::new(&script_path)
         .current_dir(&caller)
         .env("PATH", &path)
@@ -122,6 +124,8 @@ chmod 0644 target/x86_64-unknown-linux-musl/release/rulette
         .output()
         .unwrap();
     assert!(!output.status.success());
+    assert!(!archive.exists());
+    assert!(!checksum.exists());
     assert!(std::fs::read_dir(archive.parent().unwrap()).unwrap().all(|entry| {
         !entry
             .unwrap()
