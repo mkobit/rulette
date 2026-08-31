@@ -13,6 +13,34 @@ fn release_packaging_tasks_keep_the_static_linux_artifact_contract() {
 }
 
 #[test]
+fn release_workflow_smokes_the_exact_verified_artifact_before_creating_a_release() {
+    let workflow = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
+    for required in [
+        "tags: ['v*']",
+        "permissions:\n  contents: write",
+        "musl-tools binutils file",
+        "rustup target add x86_64-unknown-linux-musl",
+        "mise run check",
+        "mise run spec-validate",
+        "cargo llvm-cov",
+        "cargo audit",
+        "mise run release:package",
+        "mise run release:smoke",
+        "gh release create",
+        "${GITHUB_REF_NAME}",
+        "dist/rulette-${GITHUB_REF_NAME}-x86_64-unknown-linux-musl.tar.gz",
+        "dist/rulette-${GITHUB_REF_NAME}-x86_64-unknown-linux-musl.tar.gz.sha256",
+        "v${package_version}",
+    ] {
+        assert!(workflow.contains(required), "missing {required}");
+    }
+    assert!(
+        !workflow.contains("dist/*.tar.gz"),
+        "release upload must name the verified archive exactly"
+    );
+}
+
+#[test]
 fn package_script_builds_locked_musl_and_writes_archive_checksum() {
     let script = std::fs::read_to_string("scripts/package-static-release.sh").unwrap();
     for required in [
@@ -34,6 +62,7 @@ fn smoke_script_requires_checksum_static_linkage_and_runtime_commands() {
         "snapshot_archive",
         "snapshot_checksum",
         "cp --",
+        "cmp --silent",
         "sha256sum --check",
         "tar -tzf",
         "file --brief",
@@ -69,13 +98,11 @@ fn write_checksum(archive: &std::path::Path, archive_name: &str) {
 fn assert_verifier_rejects(archive: &std::path::Path) {
     use std::process::Command;
 
-    assert!(
-        !Command::new(verifier_script())
-            .arg(archive)
-            .status()
-            .unwrap()
-            .success()
-    );
+    assert!(!Command::new(verifier_script())
+        .arg(archive)
+        .status()
+        .unwrap()
+        .success());
 }
 
 #[cfg(unix)]
@@ -84,7 +111,11 @@ fn smoke_script_rejects_checksum_mismatch() {
     let temporary = tempfile::tempdir().unwrap();
     let archive = temporary.path().join("rulette.tar.gz");
     std::fs::write(&archive, "not an archive").unwrap();
-    std::fs::write(format!("{}.sha256", archive.display()), "0  rulette.tar.gz\n").unwrap();
+    std::fs::write(
+        format!("{}.sha256", archive.display()),
+        "0  rulette.tar.gz\n",
+    )
+    .unwrap();
 
     assert_verifier_rejects(&archive);
 }
@@ -120,15 +151,13 @@ fn smoke_script_rejects_an_extra_archive_member() {
     let archive = temporary.path().join("rulette.tar.gz");
     std::fs::write(temporary.path().join("rulette"), "binary").unwrap();
     std::fs::write(temporary.path().join("extra"), "extra").unwrap();
-    assert!(
-        Command::new("tar")
-            .args(["-C", temporary.path().to_str().unwrap(), "-czf"])
-            .arg(&archive)
-            .args(["rulette", "extra"])
-            .status()
-            .unwrap()
-            .success()
-    );
+    assert!(Command::new("tar")
+        .args(["-C", temporary.path().to_str().unwrap(), "-czf"])
+        .arg(&archive)
+        .args(["rulette", "extra"])
+        .status()
+        .unwrap()
+        .success());
     write_checksum(&archive, "rulette.tar.gz");
 
     assert_verifier_rejects(&archive);
@@ -142,20 +171,18 @@ fn smoke_script_rejects_a_traversal_archive_member() {
     let temporary = tempfile::tempdir().unwrap();
     let archive = temporary.path().join("rulette.tar.gz");
     std::fs::write(temporary.path().join("rulette"), "binary").unwrap();
-    assert!(
-        Command::new("tar")
-            .args([
-                "-C",
-                temporary.path().to_str().unwrap(),
-                "--transform=s#rulette#../rulette#",
-                "-czf",
-            ])
-            .arg(&archive)
-            .arg("rulette")
-            .status()
-            .unwrap()
-            .success()
-    );
+    assert!(Command::new("tar")
+        .args([
+            "-C",
+            temporary.path().to_str().unwrap(),
+            "--transform=s#rulette#../rulette#",
+            "-czf",
+        ])
+        .arg(&archive)
+        .arg("rulette")
+        .status()
+        .unwrap()
+        .success());
     write_checksum(&archive, "rulette.tar.gz");
 
     assert_verifier_rejects(&archive);
@@ -171,15 +198,13 @@ fn smoke_script_rejects_a_symlink_archive_member() {
     let archive = temporary.path().join("rulette.tar.gz");
     std::fs::write(temporary.path().join("target"), "binary").unwrap();
     symlink("target", temporary.path().join("rulette")).unwrap();
-    assert!(
-        Command::new("tar")
-            .args(["-C", temporary.path().to_str().unwrap(), "-czf"])
-            .arg(&archive)
-            .arg("rulette")
-            .status()
-            .unwrap()
-            .success()
-    );
+    assert!(Command::new("tar")
+        .args(["-C", temporary.path().to_str().unwrap(), "-czf"])
+        .arg(&archive)
+        .arg("rulette")
+        .status()
+        .unwrap()
+        .success());
     write_checksum(&archive, "rulette.tar.gz");
 
     assert_verifier_rejects(&archive);
@@ -197,26 +222,25 @@ fn smoke_script_rejects_a_dynamic_elf_archive() {
         .unwrap()
         .join("scripts/verify-static-release.sh");
 
-    assert!(
-        Command::new("tar")
-            .args(["-C", binary.parent().unwrap().to_str().unwrap(), "-czf"])
-            .arg(&archive)
-            .arg(binary.file_name().unwrap())
-            .status()
-            .unwrap()
-            .success()
-    );
-    let checksum = Command::new("sha256sum")
+    assert!(Command::new("tar")
+        .args(["-C", binary.parent().unwrap().to_str().unwrap(), "-czf"])
         .arg(&archive)
-        .output()
-        .unwrap();
+        .arg(binary.file_name().unwrap())
+        .status()
+        .unwrap()
+        .success());
+    let checksum = Command::new("sha256sum").arg(&archive).output().unwrap();
     assert!(checksum.status.success());
     let checksum = String::from_utf8(checksum.stdout)
         .unwrap()
         .replace(archive.to_str().unwrap(), "rulette.tar.gz");
     std::fs::write(format!("{}.sha256", archive.display()), checksum).unwrap();
 
-    assert!(!Command::new(script).arg(archive).status().unwrap().success());
+    assert!(!Command::new(script)
+        .arg(archive)
+        .status()
+        .unwrap()
+        .success());
 }
 
 #[cfg(unix)]
@@ -273,15 +297,13 @@ chmod 0644 target/x86_64-unknown-linux-musl/release/rulette
     let checksum = repository.join("dist/rulette-v0.1.0-x86_64-unknown-linux-musl.tar.gz.sha256");
     assert!(archive.is_file());
     assert!(checksum.is_file());
-    assert!(
-        Command::new("sha256sum")
-            .arg("-c")
-            .arg(checksum.file_name().unwrap())
-            .current_dir(archive.parent().unwrap())
-            .status()
-            .unwrap()
-            .success()
-    );
+    assert!(Command::new("sha256sum")
+        .arg("-c")
+        .arg(checksum.file_name().unwrap())
+        .current_dir(archive.parent().unwrap())
+        .status()
+        .unwrap()
+        .success());
     assert!(
         Command::new("tar")
             .args(["-tzf", archive.to_str().unwrap()])
@@ -296,13 +318,15 @@ chmod 0644 target/x86_64-unknown-linux-musl/release/rulette
         .unwrap();
     assert!(mode.status.success());
     assert!(String::from_utf8_lossy(&mode.stdout).starts_with("-rwxr-xr-x"));
-    assert!(std::fs::read_dir(archive.parent().unwrap()).unwrap().all(|entry| {
-        !entry
-            .unwrap()
-            .file_name()
-            .to_string_lossy()
-            .starts_with("package-root")
-    }));
+    assert!(std::fs::read_dir(archive.parent().unwrap())
+        .unwrap()
+        .all(|entry| {
+            !entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .starts_with("package-root")
+        }));
 
     let tar_path = tools.join("tar");
     std::fs::write(&tar_path, "#!/usr/bin/env bash\nexit 1\n").unwrap();
@@ -318,11 +342,13 @@ chmod 0644 target/x86_64-unknown-linux-musl/release/rulette
     assert!(!output.status.success());
     assert!(!archive.exists());
     assert!(!checksum.exists());
-    assert!(std::fs::read_dir(archive.parent().unwrap()).unwrap().all(|entry| {
-        !entry
-            .unwrap()
-            .file_name()
-            .to_string_lossy()
-            .starts_with("package-root")
-    }));
+    assert!(std::fs::read_dir(archive.parent().unwrap())
+        .unwrap()
+        .all(|entry| {
+            !entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .starts_with("package-root")
+        }));
 }

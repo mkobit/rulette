@@ -14,6 +14,8 @@ test -f "${archive_path}"
 test -f "${checksum_path}"
 cp -- "${archive_path}" "${snapshot_archive}"
 cp -- "${checksum_path}" "${snapshot_checksum}"
+cmp --silent -- "${archive_path}" "${snapshot_archive}"
+cmp --silent -- "${checksum_path}" "${snapshot_checksum}"
 
 readonly checksum_hash="$(sha256sum -- "${snapshot_archive}" | awk '{print $1}')"
 test "$(<"${snapshot_checksum}")" = "${checksum_hash}  ${archive_basename}"

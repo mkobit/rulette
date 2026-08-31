@@ -1,0 +1,87 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+env:
+  MISE_VERSION: "v2026.8.11"
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  static-linux:
+    name: Publish static Linux release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: jdx/mise-action@v4
+        with:
+          version: ${{ env.MISE_VERSION }}
+          install: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          MISE_USE_VERSIONS_HOST: 1
+          MISE_RUST_DOWNLOAD: 1
+
+      - name: Install static-linking tools
+        run: sudo apt-get update && sudo apt-get install --yes musl-tools binutils file
+
+      - name: Install static Rust target
+        run: rustup target add x86_64-unknown-linux-musl
+
+      - name: Validate release tag
+        run: |
+          set -euo pipefail
+          readonly package_version="$(cargo pkgid | sed -E 's/.*@//')"
+          readonly expected_tag="v${package_version}"
+          if [[ "${GITHUB_REF_NAME}" != "${expected_tag}" ]]; then
+            printf 'release tag %s does not match Cargo package version %s\n' "${GITHUB_REF_NAME}" "${expected_tag}" >&2
+            exit 1
+          fi
+
+      - name: Run quality gates
+        run: mise run check
+
+      - name: Validate OpenSpec changes
+        run: mise run spec-validate
+
+      - name: Install coverage tool
+        run: cargo install cargo-llvm-cov --locked
+
+      - name: Run coverage gate
+        run: cargo llvm-cov
+
+      - name: Install security audit tool
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+
+      - name: Run security audit
+        run: cargo audit
+
+      - name: Package static release
+        run: mise run release:package
+
+      - name: Smoke-test exact release artifact
+        run: |
+          set -euo pipefail
+          readonly archive="dist/rulette-${GITHUB_REF_NAME}-x86_64-unknown-linux-musl.tar.gz"
+          readonly checksum="dist/rulette-${GITHUB_REF_NAME}-x86_64-unknown-linux-musl.tar.gz.sha256"
+          test -f "${archive}"
+          test -f "${checksum}"
+          RELEASE_ARCHIVE="${archive}" mise run release:smoke
+
+      - name: Create GitHub release
+        run: |
+          set -euo pipefail
+          gh release create "${GITHUB_REF_NAME}" \
+            "dist/rulette-${GITHUB_REF_NAME}-x86_64-unknown-linux-musl.tar.gz" \
+            "dist/rulette-${GITHUB_REF_NAME}-x86_64-unknown-linux-musl.tar.gz.sha256" \
+            --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
