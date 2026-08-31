@@ -60,3 +60,15 @@ description = "List OpenSpec changes"
 [tasks.spec-validate]
 run = "bun x @fission-ai/openspec validate --strict --all"
 description = "Validate OpenSpec changes strictly"
+
+[tasks."release:package"]
+run = "scripts/package-static-release.sh"
+description = "Build the static Linux release archive and checksum"
+
+[tasks."release:smoke"]
+run = "scripts/verify-static-release.sh ${RELEASE_ARCHIVE:?set RELEASE_ARCHIVE to the release tarball}"
+description = "Verify one static release archive"
+
+[tasks."release:verify"]
+run = "mise run release:package && RELEASE_ARCHIVE=dist/rulette-v$(cargo pkgid | sed -E 's/.*@//')-x86_64-unknown-linux-musl.tar.gz mise run release:smoke"
+description = "Package and smoke-test the static release artifact"
