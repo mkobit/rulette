@@ -26,3 +26,107 @@ fn package_script_builds_locked_musl_and_writes_archive_checksum() {
         assert!(script.contains(required), "missing {required}");
     }
 }
+
+#[cfg(unix)]
+#[test]
+fn package_script_writes_a_verified_executable_archive_and_cleans_staging() {
+    use std::os::unix::fs::PermissionsExt;
+    use std::process::Command;
+
+    let temporary = tempfile::tempdir().unwrap();
+    let repository = temporary.path().join("repository");
+    let scripts = repository.join("scripts");
+    let tools = temporary.path().join("tools");
+    let caller = temporary.path().join("caller");
+    std::fs::create_dir_all(&scripts).unwrap();
+    std::fs::create_dir_all(&tools).unwrap();
+    std::fs::create_dir_all(&caller).unwrap();
+
+    let script_path = scripts.join("package-static-release.sh");
+    std::fs::copy("scripts/package-static-release.sh", &script_path).unwrap();
+    std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+    let cargo_path = tools.join("cargo");
+    std::fs::write(
+        &cargo_path,
+        r#"#!/usr/bin/env bash
+set -euo pipefail
+[[ "$PWD" == "$EXPECTED_REPOSITORY" ]]
+if [[ "$1" == "pkgid" ]]; then
+    printf '%s\n' 'rulette@0.1.0'
+    exit 0
+fi
+mkdir -p target/x86_64-unknown-linux-musl/release
+printf '%s\n' 'fixture binary' > target/x86_64-unknown-linux-musl/release/rulette
+chmod 0644 target/x86_64-unknown-linux-musl/release/rulette
+"#,
+    )
+    .unwrap();
+    std::fs::set_permissions(&cargo_path, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+    let path = format!("{}:{}", tools.display(), std::env::var("PATH").unwrap());
+    let output = Command::new(&script_path)
+        .current_dir(&caller)
+        .env("PATH", &path)
+        .env("EXPECTED_REPOSITORY", &repository)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let archive = repository.join("dist/rulette-v0.1.0-x86_64-unknown-linux-musl.tar.gz");
+    let checksum = repository.join("dist/rulette-v0.1.0-x86_64-unknown-linux-musl.tar.gz.sha256");
+    assert!(archive.is_file());
+    assert!(checksum.is_file());
+    assert!(
+        Command::new("sha256sum")
+            .arg("-c")
+            .arg(checksum.file_name().unwrap())
+            .current_dir(archive.parent().unwrap())
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert!(
+        Command::new("tar")
+            .args(["-tzf", archive.to_str().unwrap()])
+            .output()
+            .unwrap()
+            .stdout
+            == b"rulette\n"
+    );
+    let mode = Command::new("tar")
+        .args(["-tvzf", archive.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(mode.status.success());
+    assert!(String::from_utf8_lossy(&mode.stdout).starts_with("-rwxr-xr-x"));
+    assert!(std::fs::read_dir(archive.parent().unwrap()).unwrap().all(|entry| {
+        !entry
+            .unwrap()
+            .file_name()
+            .to_string_lossy()
+            .starts_with("package-root")
+    }));
+
+    let tar_path = tools.join("tar");
+    std::fs::write(&tar_path, "#!/usr/bin/env bash\nexit 1\n").unwrap();
+    std::fs::set_permissions(&tar_path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let output = Command::new(&script_path)
+        .current_dir(&caller)
+        .env("PATH", &path)
+        .env("EXPECTED_REPOSITORY", &repository)
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(std::fs::read_dir(archive.parent().unwrap()).unwrap().all(|entry| {
+        !entry
+            .unwrap()
+            .file_name()
+            .to_string_lossy()
+            .starts_with("package-root")
+    }));
+}
