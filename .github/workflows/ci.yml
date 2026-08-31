@@ -21,7 +21,7 @@ jobs:
     name: Lint markdown
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v4
         with:
           version: ${{ env.MISE_VERSION }}
@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - uses: jdx/mise-action@v4
         with:
@@ -59,7 +59,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Cache fixtures
-        uses: actions/cache@v5.0.5
+        uses: actions/cache@v6.1.0
         with:
           path: target/fixtures
           key: fixtures-${{ runner.os }}-${{ hashFiles('build.rs') }}
@@ -84,7 +84,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - uses: jdx/mise-action@v4
         with:
@@ -105,7 +105,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Cache fixtures
-        uses: actions/cache@v5.0.5
+        uses: actions/cache@v6.1.0
         with:
           path: target/fixtures
           key: fixtures-${{ runner.os }}-${{ hashFiles('build.rs') }}
@@ -133,7 +133,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - uses: jdx/mise-action@v4
         with:
