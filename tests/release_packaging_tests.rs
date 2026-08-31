@@ -27,6 +27,56 @@ fn package_script_builds_locked_musl_and_writes_archive_checksum() {
     }
 }
 
+#[test]
+fn smoke_script_requires_checksum_static_linkage_and_runtime_commands() {
+    let script = std::fs::read_to_string("scripts/verify-static-release.sh").unwrap();
+    for required in [
+        "sha256sum --check",
+        "tar -tzf",
+        "file --brief",
+        "readelf --dynamic",
+        "ldd",
+        "--version",
+        "schema --to graph",
+    ] {
+        assert!(script.contains(required), "missing {required}");
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn smoke_script_rejects_a_dynamic_elf_archive() {
+    use std::process::Command;
+
+    let temporary = tempfile::tempdir().unwrap();
+    let archive = temporary.path().join("rulette.tar.gz");
+    let binary = std::path::Path::new(env!("CARGO_BIN_EXE_rulette"));
+    let script = std::env::current_dir()
+        .unwrap()
+        .join("scripts/verify-static-release.sh");
+
+    assert!(
+        Command::new("tar")
+            .args(["-C", binary.parent().unwrap().to_str().unwrap(), "-czf"])
+            .arg(&archive)
+            .arg(binary.file_name().unwrap())
+            .status()
+            .unwrap()
+            .success()
+    );
+    let checksum = Command::new("sha256sum")
+        .arg(&archive)
+        .output()
+        .unwrap();
+    assert!(checksum.status.success());
+    let checksum = String::from_utf8(checksum.stdout)
+        .unwrap()
+        .replace(archive.to_str().unwrap(), "rulette.tar.gz");
+    std::fs::write(format!("{}.sha256", archive.display()), checksum).unwrap();
+
+    assert!(!Command::new(script).arg(archive).status().unwrap().success());
+}
+
 #[cfg(unix)]
 #[test]
 fn package_script_writes_a_verified_executable_archive_and_cleans_staging() {
