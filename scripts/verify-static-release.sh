@@ -2,23 +2,26 @@
 set -euo pipefail
 
 readonly archive_path="${1:?usage: verify-static-release.sh ARCHIVE}"
-readonly archive_directory="$(dirname -- "${archive_path}")"
 readonly archive_basename="$(basename -- "${archive_path}")"
 readonly checksum_path="${archive_path}.sha256"
-readonly checksum_basename="$(basename -- "${checksum_path}")"
 readonly temp_dir="$(mktemp -d)"
 trap 'rm -rf "${temp_dir}"' EXIT
+readonly snapshot_archive="${temp_dir}/${archive_basename}"
+readonly snapshot_checksum="${snapshot_archive}.sha256"
+readonly snapshot_checksum_basename="$(basename -- "${snapshot_checksum}")"
 
 test -f "${archive_path}"
 test -f "${checksum_path}"
+cp -- "${archive_path}" "${snapshot_archive}"
+cp -- "${checksum_path}" "${snapshot_checksum}"
 
-readonly checksum_line="$(sha256sum -- "${archive_path}")"
-test "$(<"${checksum_path}")" = "${checksum_line/"${archive_path}"/"${archive_basename}"}"
-(cd "${archive_directory}" && sha256sum --check "${checksum_basename}")
+readonly checksum_hash="$(sha256sum -- "${snapshot_archive}" | awk '{print $1}')"
+test "$(<"${snapshot_checksum}")" = "${checksum_hash}  ${archive_basename}"
+(cd "${temp_dir}" && sha256sum --check -- "${snapshot_checksum_basename}")
 
-test "$(tar -tzf "${archive_path}")" = 'rulette'
-test "$(tar -tvzf "${archive_path}")" = "$(tar -tvzf "${archive_path}" | grep -E '^-.* rulette$')"
-tar -xzf "${archive_path}" -C "${temp_dir}" --no-same-owner --no-same-permissions
+test "$(tar -tzf "${snapshot_archive}")" = 'rulette'
+test "$(tar -tvzf "${snapshot_archive}")" = "$(tar -tvzf "${snapshot_archive}" | grep -E '^-.* rulette$')"
+tar -xzf "${snapshot_archive}" -C "${temp_dir}" --no-same-owner --no-same-permissions
 
 readonly binary_path="${temp_dir}/rulette"
 test -f "${binary_path}"

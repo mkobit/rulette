@@ -31,6 +31,9 @@ fn package_script_builds_locked_musl_and_writes_archive_checksum() {
 fn smoke_script_requires_checksum_static_linkage_and_runtime_commands() {
     let script = std::fs::read_to_string("scripts/verify-static-release.sh").unwrap();
     for required in [
+        "snapshot_archive",
+        "snapshot_checksum",
+        "cp --",
         "sha256sum --check",
         "tar -tzf",
         "file --brief",
@@ -41,6 +44,145 @@ fn smoke_script_requires_checksum_static_linkage_and_runtime_commands() {
     ] {
         assert!(script.contains(required), "missing {required}");
     }
+}
+
+#[cfg(unix)]
+fn verifier_script() -> std::path::PathBuf {
+    std::env::current_dir()
+        .unwrap()
+        .join("scripts/verify-static-release.sh")
+}
+
+#[cfg(unix)]
+fn write_checksum(archive: &std::path::Path, archive_name: &str) {
+    use std::process::Command;
+
+    let checksum = Command::new("sha256sum").arg(archive).output().unwrap();
+    assert!(checksum.status.success());
+    let checksum = String::from_utf8(checksum.stdout)
+        .unwrap()
+        .replace(archive.to_str().unwrap(), archive_name);
+    std::fs::write(format!("{}.sha256", archive.display()), checksum).unwrap();
+}
+
+#[cfg(unix)]
+fn assert_verifier_rejects(archive: &std::path::Path) {
+    use std::process::Command;
+
+    assert!(
+        !Command::new(verifier_script())
+            .arg(archive)
+            .status()
+            .unwrap()
+            .success()
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn smoke_script_rejects_checksum_mismatch() {
+    let temporary = tempfile::tempdir().unwrap();
+    let archive = temporary.path().join("rulette.tar.gz");
+    std::fs::write(&archive, "not an archive").unwrap();
+    std::fs::write(format!("{}.sha256", archive.display()), "0  rulette.tar.gz\n").unwrap();
+
+    assert_verifier_rejects(&archive);
+}
+
+#[cfg(unix)]
+#[test]
+fn smoke_script_rejects_a_foreign_checksum_sidecar() {
+    let temporary = tempfile::tempdir().unwrap();
+    let archive = temporary.path().join("rulette.tar.gz");
+    std::fs::write(&archive, "not an archive").unwrap();
+    write_checksum(&archive, "different.tar.gz");
+
+    assert_verifier_rejects(&archive);
+}
+
+#[cfg(unix)]
+#[test]
+fn smoke_script_rejects_a_malformed_checksum_sidecar() {
+    let temporary = tempfile::tempdir().unwrap();
+    let archive = temporary.path().join("rulette.tar.gz");
+    std::fs::write(&archive, "not an archive").unwrap();
+    std::fs::write(format!("{}.sha256", archive.display()), "not a checksum\n").unwrap();
+
+    assert_verifier_rejects(&archive);
+}
+
+#[cfg(unix)]
+#[test]
+fn smoke_script_rejects_an_extra_archive_member() {
+    use std::process::Command;
+
+    let temporary = tempfile::tempdir().unwrap();
+    let archive = temporary.path().join("rulette.tar.gz");
+    std::fs::write(temporary.path().join("rulette"), "binary").unwrap();
+    std::fs::write(temporary.path().join("extra"), "extra").unwrap();
+    assert!(
+        Command::new("tar")
+            .args(["-C", temporary.path().to_str().unwrap(), "-czf"])
+            .arg(&archive)
+            .args(["rulette", "extra"])
+            .status()
+            .unwrap()
+            .success()
+    );
+    write_checksum(&archive, "rulette.tar.gz");
+
+    assert_verifier_rejects(&archive);
+}
+
+#[cfg(unix)]
+#[test]
+fn smoke_script_rejects_a_traversal_archive_member() {
+    use std::process::Command;
+
+    let temporary = tempfile::tempdir().unwrap();
+    let archive = temporary.path().join("rulette.tar.gz");
+    std::fs::write(temporary.path().join("rulette"), "binary").unwrap();
+    assert!(
+        Command::new("tar")
+            .args([
+                "-C",
+                temporary.path().to_str().unwrap(),
+                "--transform=s#rulette#../rulette#",
+                "-czf",
+            ])
+            .arg(&archive)
+            .arg("rulette")
+            .status()
+            .unwrap()
+            .success()
+    );
+    write_checksum(&archive, "rulette.tar.gz");
+
+    assert_verifier_rejects(&archive);
+}
+
+#[cfg(unix)]
+#[test]
+fn smoke_script_rejects_a_symlink_archive_member() {
+    use std::os::unix::fs::symlink;
+    use std::process::Command;
+
+    let temporary = tempfile::tempdir().unwrap();
+    let archive = temporary.path().join("rulette.tar.gz");
+    std::fs::write(temporary.path().join("target"), "binary").unwrap();
+    symlink("target", temporary.path().join("rulette")).unwrap();
+    assert!(
+        Command::new("tar")
+            .args(["-C", temporary.path().to_str().unwrap(), "-czf"])
+            .arg(&archive)
+            .arg("rulette")
+            .status()
+            .unwrap()
+            .success()
+    );
+    write_checksum(&archive, "rulette.tar.gz");
+
+    assert_verifier_rejects(&archive);
 }
 
 #[cfg(unix)]
