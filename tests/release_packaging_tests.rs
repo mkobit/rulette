@@ -30,6 +30,44 @@ fn release_notes_document_static_portability_and_explicit_publication_safety() {
     ] {
         assert!(notes.contains(required), "missing {required}");
     }
+
+    assert!(
+        !notes.contains("SHA256"),
+        "digest example must not be a placeholder"
+    );
+    assert!(
+        !notes.contains("..."),
+        "digest example must not contain an ellipsis"
+    );
+    assert!(
+        notes.contains("Copy the actual digest from the staging output."),
+        "missing staging digest guidance"
+    );
+    let digest = notes
+        .lines()
+        .find_map(|line| {
+            line.split_whitespace()
+                .collect::<Vec<_>>()
+                .windows(2)
+                .find(|arguments| arguments[0] == "--expect-plan-sha256")
+                .map(|arguments| arguments[1])
+        })
+        .expect("missing --expect-plan-sha256 value");
+    assert!(
+        digest.starts_with("sha256_"),
+        "digest must have sha256_ prefix"
+    );
+    assert_eq!(
+        digest.len(),
+        71,
+        "digest must contain 64 hexadecimal digits"
+    );
+    assert!(
+        digest["sha256_".len()..]
+            .chars()
+            .all(|character| character.is_ascii_hexdigit()),
+        "digest must contain only hexadecimal digits after sha256_"
+    );
 }
 
 #[test]
