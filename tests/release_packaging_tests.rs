@@ -240,6 +240,7 @@ fn smoke_script_requires_checksum_static_linkage_and_runtime_commands() {
         "sha256sum --check",
         "tar -tzf",
         "file --brief",
+        "readelf -l",
         "readelf --dynamic",
         "ldd",
         "--version",
@@ -344,6 +345,72 @@ fn smoke_script_exports_the_verified_snapshot_even_if_the_source_changes_after_s
         std::fs::read(verified.join("rulette.tar.gz.sha256")).unwrap(),
         original_checksum
     );
+}
+
+#[cfg(unix)]
+#[test]
+fn smoke_script_accepts_static_pie_and_rejects_an_elf_interpreter() {
+    use std::os::unix::fs::PermissionsExt;
+    use std::process::Command;
+
+    for (program_headers, expected_success) in [
+        ("Elf file type is DYN\n", true),
+        ("Elf file type is DYN\n  INTERP         0x000000\n", false),
+    ] {
+        let temporary = tempfile::tempdir().unwrap();
+        let archive = temporary.path().join("rulette.tar.gz");
+        let staging = temporary.path().join("staging");
+        let tools = temporary.path().join("tools");
+        std::fs::create_dir_all(&staging).unwrap();
+        std::fs::create_dir_all(&tools).unwrap();
+        std::fs::write(staging.join("rulette"), "#!/usr/bin/env bash\nexit 0\n").unwrap();
+        std::fs::set_permissions(
+            staging.join("rulette"),
+            std::fs::Permissions::from_mode(0o755),
+        )
+        .unwrap();
+        assert!(Command::new("tar")
+            .args(["-C", staging.to_str().unwrap(), "-czf"])
+            .arg(&archive)
+            .arg("rulette")
+            .status()
+            .unwrap()
+            .success());
+        write_checksum(&archive, "rulette.tar.gz");
+
+        for (name, body) in [
+            (
+                "file",
+                "#!/usr/bin/env bash\nprintf 'ELF 64-bit LSB pie executable, static-pie linked\\n'\n"
+                    .to_owned(),
+            ),
+            (
+                "readelf",
+                format!(
+                    "#!/usr/bin/env bash\nif [[ \"$1\" == \"-l\" ]]; then\n    printf '%s' '{}'\nelse\n    printf 'Dynamic section at offset 0x0\\n'\nfi\n",
+                    program_headers
+                ),
+            ),
+            ("ldd", "#!/usr/bin/env bash\nprintf 'statically linked\\n'\n".to_owned()),
+        ] {
+            let tool = tools.join(name);
+            std::fs::write(tool, body).unwrap();
+            std::fs::set_permissions(tools.join(name), std::fs::Permissions::from_mode(0o755))
+                .unwrap();
+        }
+
+        let path = format!("{}:{}", tools.display(), std::env::var("PATH").unwrap());
+        let output = Command::new(verifier_script())
+            .arg(&archive)
+            .env("PATH", path)
+            .output()
+            .unwrap();
+        assert_eq!(
+            output.status.success(),
+            expected_success,
+            "{program_headers}"
+        );
+    }
 }
 
 #[cfg(unix)]

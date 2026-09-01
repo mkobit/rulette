@@ -29,9 +29,13 @@ readonly binary_path="${temp_dir}/rulette"
 test -f "${binary_path}"
 test ! -L "${binary_path}"
 test -x "${binary_path}"
-file --brief "${binary_path}" | grep -Eq '^ELF .*statically linked'
+file --brief "${binary_path}" | grep -Eq '^ELF '
+readonly program_headers="$(readelf -l "${binary_path}")"
+if grep -Eq '(^|[[:space:]])INTERP([[:space:]]|$)' <<<"${program_headers}"; then
+    exit 1
+fi
 readonly dynamic_output="$(readelf --dynamic "${binary_path}")"
-if grep -q 'NEEDED' <<<"${dynamic_output}"; then
+if grep -q '(NEEDED)' <<<"${dynamic_output}"; then
     exit 1
 fi
 readonly ldd_output="$(ldd "${binary_path}" 2>&1 || true)"
