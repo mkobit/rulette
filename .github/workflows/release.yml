@@ -38,7 +38,7 @@ jobs:
       - name: Validate release tag
         run: |
           set -euo pipefail
-          readonly package_version="$(cargo pkgid | sed -E 's/.*#//')"
+          readonly package_version="$(scripts/cargo-package-version.sh)"
           readonly expected_tag="v${package_version}"
           if [[ "${GITHUB_REF_NAME}" != "${expected_tag}" ]]; then
             printf 'release tag %s does not match Cargo package version %s\n' "${GITHUB_REF_NAME}" "${expected_tag}" >&2

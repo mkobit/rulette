@@ -193,6 +193,7 @@ fn package_script_builds_locked_musl_and_writes_archive_checksum() {
         "gzip -n",
         "sha256sum",
         "rulette-v${release_version}-x86_64-unknown-linux-musl.tar.gz",
+        "cargo-package-version.sh",
     ] {
         assert!(script.contains(required), "missing {required}");
     }
@@ -200,16 +201,20 @@ fn package_script_builds_locked_musl_and_writes_archive_checksum() {
 
 #[test]
 fn release_entrypoints_extract_versions_from_modern_cargo_package_identifiers() {
-    for path in ["mise.toml", ".github/workflows/release.yml"] {
+    for path in [
+        "scripts/package-static-release.sh",
+        "mise.toml",
+        ".github/workflows/release.yml",
+    ] {
         let entrypoint = std::fs::read_to_string(path).unwrap();
 
         assert!(
-            entrypoint.contains("sed -E 's/.*#//'"),
-            "{path} must extract the final # version component from cargo pkgid"
+            entrypoint.contains("cargo-package-version.sh"),
+            "{path} must use the shared checked version extractor"
         );
         assert!(
-            !entrypoint.contains("sed -E 's/.*@//'"),
-            "{path} must not use the obsolete cargo pkgid @ version delimiter"
+            !entrypoint.contains("cargo pkgid"),
+            "{path} must not independently parse cargo pkgid"
         );
     }
 }
@@ -500,7 +505,10 @@ fn package_script_writes_a_verified_executable_archive_and_cleans_staging() {
 
     let script_path = scripts.join("package-static-release.sh");
     std::fs::copy("scripts/package-static-release.sh", &script_path).unwrap();
+    let version_script_path = scripts.join("cargo-package-version.sh");
+    std::fs::copy("scripts/cargo-package-version.sh", &version_script_path).unwrap();
     std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    std::fs::set_permissions(&version_script_path, std::fs::Permissions::from_mode(0o755)).unwrap();
 
     let cargo_path = tools.join("cargo");
     std::fs::write(
@@ -619,7 +627,10 @@ fn package_script_rejects_a_malformed_cargo_package_identifier() {
 
     let script_path = scripts.join("package-static-release.sh");
     std::fs::copy("scripts/package-static-release.sh", &script_path).unwrap();
+    let version_script_path = scripts.join("cargo-package-version.sh");
+    std::fs::copy("scripts/cargo-package-version.sh", &version_script_path).unwrap();
     std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    std::fs::set_permissions(&version_script_path, std::fs::Permissions::from_mode(0o755)).unwrap();
 
     let cargo_path = tools.join("cargo");
     std::fs::write(
@@ -642,4 +653,72 @@ fn package_script_rejects_a_malformed_cargo_package_identifier() {
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(!repository.join("dist").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn package_script_accepts_only_cargo_compatible_semver_package_identifiers() {
+    use std::os::unix::fs::PermissionsExt;
+    use std::process::Command;
+
+    for (version, valid) in [
+        ("1.2.3..", false),
+        ("1.2.3.foo", false),
+        ("1.2.3-.alpha", false),
+        ("1.2.3-alpha..1", false),
+        ("1.2.3-.alpha", false),
+        ("1.2.3-alpha.", false),
+        ("01.2.3", false),
+        ("1.02.3", false),
+        ("1.2.03", false),
+        ("1.2.3-alpha_1", false),
+        ("0.1.0", true),
+        ("1.2.3-alpha.1+build.7", true),
+    ] {
+        let temporary = tempfile::tempdir().unwrap();
+        let repository = temporary.path().join("repository");
+        let scripts = repository.join("scripts");
+        let tools = temporary.path().join("tools");
+        std::fs::create_dir_all(&scripts).unwrap();
+        std::fs::create_dir_all(&tools).unwrap();
+
+        let script_path = scripts.join("package-static-release.sh");
+        std::fs::copy("scripts/package-static-release.sh", &script_path).unwrap();
+        let version_script_path = scripts.join("cargo-package-version.sh");
+        std::fs::copy("scripts/cargo-package-version.sh", &version_script_path).unwrap();
+        std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        std::fs::set_permissions(&version_script_path, std::fs::Permissions::from_mode(0o755))
+            .unwrap();
+        let cargo_path = tools.join("cargo");
+        std::fs::write(
+            &cargo_path,
+            "#!/usr/bin/env bash\nset -euo pipefail\nif [[ \"$1\" == \"pkgid\" ]]; then\n    printf 'path+file:///repository#%s\\n' \"$PACKAGE_VERSION\"\n    exit 0\nfi\nmkdir -p target/x86_64-unknown-linux-musl/release\nprintf binary > target/x86_64-unknown-linux-musl/release/rulette\n",
+        )
+        .unwrap();
+        std::fs::set_permissions(&cargo_path, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        let path = format!("{}:{}", tools.display(), std::env::var("PATH").unwrap());
+        let output = Command::new(&script_path)
+            .env("PACKAGE_VERSION", version)
+            .env("PATH", path)
+            .output()
+            .unwrap();
+
+        assert_eq!(output.status.success(), valid, "{version}");
+        if valid {
+            assert!(repository
+                .join(format!(
+                    "dist/rulette-v{version}-x86_64-unknown-linux-musl.tar.gz"
+                ))
+                .is_file());
+        } else {
+            assert!(
+                String::from_utf8_lossy(&output.stderr)
+                    .contains("could not determine package version"),
+                "{version}: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(!repository.join("dist").exists(), "{version}");
+        }
+    }
 }
