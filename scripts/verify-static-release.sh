@@ -44,12 +44,15 @@ grep -Eq 'not a dynamic executable|statically linked' <<<"${ldd_output}"
 (cd "${temp_dir}" && env -i PATH="${PATH}" ./rulette schema --to graph >/dev/null)
 
 if [[ -n "${VERIFIED_RELEASE_DIR:-}" ]]; then
-    readonly verified_parent="$(dirname -- "${VERIFIED_RELEASE_DIR}")"
+    verified_parent="$(dirname "${VERIFIED_RELEASE_DIR}")"
     readonly verified_basename="$(basename -- "${VERIFIED_RELEASE_DIR}")"
     mkdir -p -- "${verified_parent}"
+    verified_parent="$(cd "${verified_parent}" && pwd)"
+    readonly verified_parent
+    readonly verified_target="${verified_parent}/${verified_basename}"
     readonly verified_staging="$(mktemp -d "${verified_parent}/.${verified_basename}.tmp.XXXXXX")"
-    test ! -e "${VERIFIED_RELEASE_DIR}"
+    test ! -e "${verified_target}"
     cp -- "${snapshot_archive}" "${verified_staging}/${archive_basename}"
     cp -- "${snapshot_checksum}" "${verified_staging}/${archive_basename}.sha256"
-    mv --no-target-directory "${verified_staging}" "${VERIFIED_RELEASE_DIR}"
+    mv "${verified_staging}" "${verified_target}"
 fi

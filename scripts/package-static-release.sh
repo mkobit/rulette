@@ -29,6 +29,10 @@ cleanup() {
 
 trap cleanup EXIT
 rm -f -- "${archive_path}" "${checksum_path}"
+if ! tar --version 2>/dev/null | grep -q 'GNU tar'; then
+    printf 'release packaging requires GNU tar\n' >&2
+    exit 1
+fi
 cargo build --locked --release --target x86_64-unknown-linux-musl
 install -m 0755 "target/${target_triple}/release/${binary_name}" "${staging_dir}/${binary_name}"
 tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C "${staging_dir}" -cf - "${binary_name}" | gzip -n > "${archive_temporary}"

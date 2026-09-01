@@ -15,12 +15,18 @@ validate_identifiers() {
     local identifier
     local -a identifiers
 
-    [[ -n "${value}" && "${value}" != .* && "${value}" != *. && "${value}" != *..* ]] || return 1
+    case "${value}" in
+        '' | .* | *. | *..*) return 1 ;;
+    esac
     IFS='.' read -r -a identifiers <<< "${value}"
     for identifier in "${identifiers[@]}"; do
-        [[ "${identifier}" =~ ^[0-9A-Za-z-]+$ ]] || return 1
-        if [[ "${reject_numeric_leading_zero}" == true && "${identifier}" =~ ^0[0-9]+$ ]]; then
-            return 1
+        case "${identifier}" in
+            *[!0-9A-Za-z-]*) return 1 ;;
+        esac
+        if [[ "${reject_numeric_leading_zero}" == true ]]; then
+            case "${identifier}" in
+                0[0-9]*) return 1 ;;
+            esac
         fi
     done
 }
@@ -44,11 +50,15 @@ if [[ "${base_and_prerelease}" == *-* ]]; then
     validate_identifiers "${prerelease}" true || invalid_package_version
 fi
 
-[[ -n "${core}" && "${core}" != .* && "${core}" != *. && "${core}" != *..* ]] || invalid_package_version
+case "${core}" in
+    '' | .* | *. | *..*) invalid_package_version ;;
+esac
 IFS='.' read -r -a core_identifiers <<< "${core}"
 [[ "${#core_identifiers[@]}" -eq 3 ]] || invalid_package_version
 for identifier in "${core_identifiers[@]}"; do
-    [[ "${identifier}" =~ ^[0-9]+$ && ! ( "${identifier}" =~ ^0[0-9]+$ ) ]] || invalid_package_version
+    case "${identifier}" in
+        '' | *[!0-9]* | 0[0-9]*) invalid_package_version ;;
+    esac
 done
 
 printf '%s\n' "${package_version}"

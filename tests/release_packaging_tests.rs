@@ -190,6 +190,7 @@ fn package_script_builds_locked_musl_and_writes_archive_checksum() {
         "set -euo pipefail",
         "cargo build --locked --release --target x86_64-unknown-linux-musl",
         "tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner",
+        "GNU tar",
         "gzip -n",
         "sha256sum",
         "rulette-v${release_version}-x86_64-unknown-linux-musl.tar.gz",
@@ -267,6 +268,38 @@ fn write_checksum(archive: &std::path::Path, archive_name: &str) {
         .unwrap()
         .replace(archive.to_str().unwrap(), archive_name);
     std::fs::write(format!("{}.sha256", archive.display()), checksum).unwrap();
+}
+
+#[cfg(unix)]
+fn write_hostile_archive(
+    archive: &std::path::Path,
+    member_path: &str,
+    entry_type: tar::EntryType,
+    link_name: Option<&str>,
+) {
+    use std::fs::File;
+    use std::io::Cursor;
+
+    let encoder = flate2::write::GzEncoder::new(
+        File::create(archive).unwrap(),
+        flate2::Compression::default(),
+    );
+    let mut builder = tar::Builder::new(encoder);
+    let mut header = tar::Header::new_gnu();
+    header.set_entry_type(entry_type);
+    header.set_mode(0o755);
+    if let Some(link_name) = link_name {
+        header.set_size(0);
+        builder
+            .append_link(&mut header, member_path, link_name)
+            .unwrap();
+    } else {
+        header.set_size(b"binary".len() as u64);
+        header.as_mut_bytes()[..member_path.len()].copy_from_slice(member_path.as_bytes());
+        header.set_cksum();
+        builder.append(&header, Cursor::new(b"binary")).unwrap();
+    }
+    builder.into_inner().unwrap().finish().unwrap();
 }
 
 #[cfg(unix)]
@@ -483,23 +516,9 @@ fn smoke_script_rejects_an_extra_archive_member() {
 #[cfg(unix)]
 #[test]
 fn smoke_script_rejects_a_traversal_archive_member() {
-    use std::process::Command;
-
     let temporary = tempfile::tempdir().unwrap();
     let archive = temporary.path().join("rulette.tar.gz");
-    std::fs::write(temporary.path().join("rulette"), "binary").unwrap();
-    assert!(Command::new("tar")
-        .args([
-            "-C",
-            temporary.path().to_str().unwrap(),
-            "--transform=s#rulette#../rulette#",
-            "-czf",
-        ])
-        .arg(&archive)
-        .arg("rulette")
-        .status()
-        .unwrap()
-        .success());
+    write_hostile_archive(&archive, "../rulette", tar::EntryType::Regular, None);
     write_checksum(&archive, "rulette.tar.gz");
 
     assert_verifier_rejects(&archive);
@@ -508,20 +527,9 @@ fn smoke_script_rejects_a_traversal_archive_member() {
 #[cfg(unix)]
 #[test]
 fn smoke_script_rejects_a_symlink_archive_member() {
-    use std::os::unix::fs::symlink;
-    use std::process::Command;
-
     let temporary = tempfile::tempdir().unwrap();
     let archive = temporary.path().join("rulette.tar.gz");
-    std::fs::write(temporary.path().join("target"), "binary").unwrap();
-    symlink("target", temporary.path().join("rulette")).unwrap();
-    assert!(Command::new("tar")
-        .args(["-C", temporary.path().to_str().unwrap(), "-czf"])
-        .arg(&archive)
-        .arg("rulette")
-        .status()
-        .unwrap()
-        .success());
+    write_hostile_archive(&archive, "rulette", tar::EntryType::Symlink, Some("target"));
     write_checksum(&archive, "rulette.tar.gz");
 
     assert_verifier_rejects(&archive);
@@ -560,7 +568,7 @@ fn smoke_script_rejects_a_dynamic_elf_archive() {
         .success());
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 #[test]
 fn package_script_writes_a_verified_executable_archive_and_cleans_staging() {
     use std::os::unix::fs::PermissionsExt;
@@ -688,7 +696,7 @@ chmod 0644 target/x86_64-unknown-linux-musl/release/rulette
         }));
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 #[test]
 fn package_script_rejects_a_malformed_cargo_package_identifier() {
     use std::os::unix::fs::PermissionsExt;
@@ -733,7 +741,7 @@ fn package_script_rejects_a_malformed_cargo_package_identifier() {
 
 #[cfg(unix)]
 #[test]
-fn package_script_accepts_only_cargo_compatible_semver_package_identifiers() {
+fn cargo_package_version_script_accepts_only_cargo_compatible_semver_identifiers() {
     use std::os::unix::fs::PermissionsExt;
     use std::process::Command;
 
@@ -763,23 +771,16 @@ fn package_script_accepts_only_cargo_compatible_semver_package_identifiers() {
         ("1.2.3-alpha+build-01", true),
     ] {
         let temporary = tempfile::tempdir().unwrap();
-        let repository = temporary.path().join("repository");
-        let scripts = repository.join("scripts");
         let tools = temporary.path().join("tools");
-        std::fs::create_dir_all(&scripts).unwrap();
         std::fs::create_dir_all(&tools).unwrap();
 
-        let script_path = scripts.join("package-static-release.sh");
-        std::fs::copy("scripts/package-static-release.sh", &script_path).unwrap();
-        let version_script_path = scripts.join("cargo-package-version.sh");
-        std::fs::copy("scripts/cargo-package-version.sh", &version_script_path).unwrap();
+        let script_path = temporary.path().join("cargo-package-version.sh");
+        std::fs::copy("scripts/cargo-package-version.sh", &script_path).unwrap();
         std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755)).unwrap();
-        std::fs::set_permissions(&version_script_path, std::fs::Permissions::from_mode(0o755))
-            .unwrap();
         let cargo_path = tools.join("cargo");
         std::fs::write(
             &cargo_path,
-            "#!/usr/bin/env bash\nset -euo pipefail\nif [[ \"$1\" == \"pkgid\" ]]; then\n    printf 'path+file:///repository#%s\\n' \"$PACKAGE_VERSION\"\n    exit 0\nfi\nmkdir -p target/x86_64-unknown-linux-musl/release\nprintf binary > target/x86_64-unknown-linux-musl/release/rulette\n",
+            "#!/usr/bin/env bash\nset -euo pipefail\nif [[ \"$1\" == \"pkgid\" ]]; then\n    printf 'path+file:///repository#%s\\n' \"$PACKAGE_VERSION\"\n    exit 0\nfi\nexit 1\n",
         )
         .unwrap();
         std::fs::set_permissions(&cargo_path, std::fs::Permissions::from_mode(0o755)).unwrap();
@@ -793,11 +794,10 @@ fn package_script_accepts_only_cargo_compatible_semver_package_identifiers() {
 
         assert_eq!(output.status.success(), valid, "{version}");
         if valid {
-            assert!(repository
-                .join(format!(
-                    "dist/rulette-v{version}-x86_64-unknown-linux-musl.tar.gz"
-                ))
-                .is_file());
+            assert_eq!(
+                String::from_utf8_lossy(&output.stdout),
+                format!("{version}\n")
+            );
         } else {
             assert!(
                 String::from_utf8_lossy(&output.stderr)
@@ -805,7 +805,6 @@ fn package_script_accepts_only_cargo_compatible_semver_package_identifiers() {
                 "{version}: {}",
                 String::from_utf8_lossy(&output.stderr)
             );
-            assert!(!repository.join("dist").exists(), "{version}");
         }
     }
 }
