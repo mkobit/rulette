@@ -41,6 +41,66 @@ fn release_workflow_smokes_the_exact_verified_artifact_before_creating_a_release
 }
 
 #[test]
+fn release_workflow_orders_validation_packaging_smoke_and_publication() {
+    let workflow = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
+    let positions = workflow_step_positions(&workflow);
+
+    for step in [
+        "Validate release tag",
+        "mise run check",
+        "mise run spec-validate",
+        "cargo llvm-cov",
+        "cargo audit",
+        "mise run release:package",
+    ] {
+        assert!(
+            positions[step] < positions["mise run release:smoke"],
+            "{step} must run before the smoke test"
+        );
+    }
+    assert!(
+        positions["mise run release:smoke"] < positions["actions/upload-artifact"],
+        "the smoke test must run before the verified artifact upload"
+    );
+    assert!(
+        positions["actions/upload-artifact"] < positions["publish:"],
+        "the upload must precede the dependent publish job"
+    );
+    assert!(
+        positions["publish:"] < positions["actions/download-artifact"],
+        "the publish job must download the verified artifact"
+    );
+    assert!(
+        positions["actions/download-artifact"] < positions["gh release create"],
+        "the download must precede release creation"
+    );
+}
+
+fn workflow_step_positions(workflow: &str) -> std::collections::BTreeMap<&'static str, usize> {
+    [
+        ("Validate release tag", "Validate release tag"),
+        ("mise run check", "mise run check"),
+        ("mise run spec-validate", "mise run spec-validate"),
+        ("cargo llvm-cov", "cargo llvm-cov"),
+        ("cargo audit", "run: cargo audit"),
+        ("mise run release:package", "mise run release:package"),
+        ("mise run release:smoke", "mise run release:smoke"),
+        ("actions/upload-artifact", "actions/upload-artifact"),
+        ("publish:", "publish:"),
+        ("actions/download-artifact", "actions/download-artifact"),
+        ("gh release create", "gh release create"),
+    ]
+    .into_iter()
+    .map(|(name, step)| {
+        let position = workflow
+            .find(step)
+            .unwrap_or_else(|| panic!("missing workflow step {step}"));
+        (name, position)
+    })
+    .collect()
+}
+
+#[test]
 fn release_workflow_transfers_only_verified_artifacts_to_a_dependent_publish_job() {
     let workflow = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
     let validate_job = workflow.find("  validate-package:").unwrap();
