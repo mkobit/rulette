@@ -70,5 +70,5 @@ run = "scripts/verify-static-release.sh ${RELEASE_ARCHIVE:?set RELEASE_ARCHIVE t
 description = "Verify one static release archive"
 
 [tasks."release:verify"]
-run = "mise run release:package && RELEASE_ARCHIVE=dist/rulette-v$(cargo pkgid | sed -E 's/.*@//')-x86_64-unknown-linux-musl.tar.gz mise run release:smoke"
+run = "mise run release:package && RELEASE_ARCHIVE=dist/rulette-v$(cargo pkgid | sed -E 's/.*#//')-x86_64-unknown-linux-musl.tar.gz mise run release:smoke"
 description = "Package and smoke-test the static release artifact"

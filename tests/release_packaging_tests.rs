@@ -199,6 +199,32 @@ fn package_script_builds_locked_musl_and_writes_archive_checksum() {
 }
 
 #[test]
+fn release_entrypoints_extract_versions_from_modern_cargo_package_identifiers() {
+    for path in ["mise.toml", ".github/workflows/release.yml"] {
+        let entrypoint = std::fs::read_to_string(path).unwrap();
+
+        assert!(
+            entrypoint.contains("sed -E 's/.*#//'"),
+            "{path} must extract the final # version component from cargo pkgid"
+        );
+        assert!(
+            !entrypoint.contains("sed -E 's/.*@//'"),
+            "{path} must not use the obsolete cargo pkgid @ version delimiter"
+        );
+    }
+}
+
+#[test]
+fn markdown_lint_excludes_superpowers_scratch_directory() {
+    let configuration = std::fs::read_to_string(".markdownlint-cli2.jsonc").unwrap();
+
+    assert!(
+        configuration.contains("!.superpowers"),
+        "markdown lint must exclude the .superpowers scratch directory"
+    );
+}
+
+#[test]
 fn smoke_script_requires_checksum_static_linkage_and_runtime_commands() {
     let script = std::fs::read_to_string("scripts/verify-static-release.sh").unwrap();
     for required in [
@@ -467,6 +493,10 @@ fn package_script_writes_a_verified_executable_archive_and_cleans_staging() {
     std::fs::create_dir_all(&scripts).unwrap();
     std::fs::create_dir_all(&tools).unwrap();
     std::fs::create_dir_all(&caller).unwrap();
+    assert!(
+        !repository.join("dist").exists(),
+        "the package script must create an absent dist directory"
+    );
 
     let script_path = scripts.join("package-static-release.sh");
     std::fs::copy("scripts/package-static-release.sh", &script_path).unwrap();
@@ -479,7 +509,7 @@ fn package_script_writes_a_verified_executable_archive_and_cleans_staging() {
 set -euo pipefail
 [[ "$PWD" == "$EXPECTED_REPOSITORY" ]]
 if [[ "$1" == "pkgid" ]]; then
-    printf '%s\n' 'rulette@0.1.0'
+    printf '%s\n' 'path+file:///repository#0.1.0'
     exit 0
 fi
 mkdir -p target/x86_64-unknown-linux-musl/release
@@ -507,6 +537,17 @@ chmod 0644 target/x86_64-unknown-linux-musl/release/rulette
     let checksum = repository.join("dist/rulette-v0.1.0-x86_64-unknown-linux-musl.tar.gz.sha256");
     assert!(archive.is_file());
     assert!(checksum.is_file());
+    let published_names = std::fs::read_dir(archive.parent().unwrap())
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(
+        published_names,
+        std::collections::BTreeSet::from([
+            "rulette-v0.1.0-x86_64-unknown-linux-musl.tar.gz".to_owned(),
+            "rulette-v0.1.0-x86_64-unknown-linux-musl.tar.gz.sha256".to_owned(),
+        ])
+    );
     assert!(Command::new("sha256sum")
         .arg("-c")
         .arg(checksum.file_name().unwrap())
@@ -561,4 +602,44 @@ chmod 0644 target/x86_64-unknown-linux-musl/release/rulette
                 .to_string_lossy()
                 .starts_with("package-root")
         }));
+}
+
+#[cfg(unix)]
+#[test]
+fn package_script_rejects_a_malformed_cargo_package_identifier() {
+    use std::os::unix::fs::PermissionsExt;
+    use std::process::Command;
+
+    let temporary = tempfile::tempdir().unwrap();
+    let repository = temporary.path().join("repository");
+    let scripts = repository.join("scripts");
+    let tools = temporary.path().join("tools");
+    std::fs::create_dir_all(&scripts).unwrap();
+    std::fs::create_dir_all(&tools).unwrap();
+
+    let script_path = scripts.join("package-static-release.sh");
+    std::fs::copy("scripts/package-static-release.sh", &script_path).unwrap();
+    std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+    let cargo_path = tools.join("cargo");
+    std::fs::write(
+        &cargo_path,
+        "#!/usr/bin/env bash\nset -euo pipefail\nif [[ \"$1\" == \"pkgid\" ]]; then\n    printf '%s\\n' 'malformed-package-id'\n    exit 0\nfi\nexit 1\n",
+    )
+    .unwrap();
+    std::fs::set_permissions(&cargo_path, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+    let path = format!("{}:{}", tools.display(), std::env::var("PATH").unwrap());
+    let output = Command::new(&script_path)
+        .env("PATH", path)
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("could not determine package version"),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(!repository.join("dist").exists());
 }

@@ -8,7 +8,12 @@ readonly script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly repository_root="$(cd "${script_dir}/.." && pwd)"
 
 cd "${repository_root}"
-readonly release_version="$(cargo pkgid | sed -E 's/.*@//')"
+readonly package_id="$(cargo pkgid)"
+readonly release_version="${package_id##*#}"
+if [[ "${package_id}" == "${release_version}" ]] || [[ ! "${release_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+    printf 'could not determine package version from cargo pkgid: %s\n' "${package_id}" >&2
+    exit 1
+fi
 readonly archive_name="rulette-v${release_version}-x86_64-unknown-linux-musl.tar.gz"
 readonly archive_path="${dist_dir}/${archive_name}"
 readonly checksum_path="${archive_path}.sha256"
