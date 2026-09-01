@@ -666,13 +666,16 @@ fn package_script_accepts_only_cargo_compatible_semver_package_identifiers() {
         ("1.2.3.foo", false),
         ("1.2.3-.alpha", false),
         ("1.2.3-alpha..1", false),
-        ("1.2.3-.alpha", false),
         ("1.2.3-alpha.", false),
+        ("1.2.3-01", false),
+        ("1.2.3-01.2", false),
         ("01.2.3", false),
         ("1.02.3", false),
         ("1.2.03", false),
         ("1.2.3-alpha_1", false),
         ("0.1.0", true),
+        ("1.2.3-0", true),
+        ("1.2.3-1.2", true),
         ("1.2.3-alpha.1+build.7", true),
     ] {
         let temporary = tempfile::tempdir().unwrap();
