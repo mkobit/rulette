@@ -4,8 +4,7 @@ on:
   push:
     tags: ['v*']
 
-permissions:
-  contents: write
+permissions: {}
 
 env:
   MISE_VERSION: "v2026.8.11"
@@ -13,9 +12,11 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  static-linux:
-    name: Publish static Linux release
+  validate-package:
+    name: Validate and package static Linux release
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v6
 
@@ -74,14 +75,36 @@ jobs:
           readonly checksum="dist/rulette-${GITHUB_REF_NAME}-x86_64-unknown-linux-musl.tar.gz.sha256"
           test -f "${archive}"
           test -f "${checksum}"
-          RELEASE_ARCHIVE="${archive}" mise run release:smoke
+          RELEASE_ARCHIVE="${archive}" VERIFIED_RELEASE_DIR=verified-release mise run release:smoke
+
+      - name: Upload verified release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-static-release
+          path: |
+            verified-release/rulette-${GITHUB_REF_NAME}-x86_64-unknown-linux-musl.tar.gz
+            verified-release/rulette-${GITHUB_REF_NAME}-x86_64-unknown-linux-musl.tar.gz.sha256
+          if-no-files-found: error
+
+  publish:
+    name: Publish verified static Linux release
+    needs: validate-package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download verified release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: verified-static-release
+          path: verified-release
 
       - name: Create GitHub release
         run: |
           set -euo pipefail
           gh release create "${GITHUB_REF_NAME}" \
-            "dist/rulette-${GITHUB_REF_NAME}-x86_64-unknown-linux-musl.tar.gz" \
-            "dist/rulette-${GITHUB_REF_NAME}-x86_64-unknown-linux-musl.tar.gz.sha256" \
+            "verified-release/rulette-${GITHUB_REF_NAME}-x86_64-unknown-linux-musl.tar.gz" \
+            "verified-release/rulette-${GITHUB_REF_NAME}-x86_64-unknown-linux-musl.tar.gz.sha256" \
             --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}

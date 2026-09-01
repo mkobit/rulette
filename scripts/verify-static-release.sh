@@ -38,3 +38,14 @@ readonly ldd_output="$(ldd "${binary_path}" 2>&1 || true)"
 grep -Eq 'not a dynamic executable|statically linked' <<<"${ldd_output}"
 (cd "${temp_dir}" && env -i PATH="${PATH}" ./rulette --version)
 (cd "${temp_dir}" && env -i PATH="${PATH}" ./rulette schema --to graph >/dev/null)
+
+if [[ -n "${VERIFIED_RELEASE_DIR:-}" ]]; then
+    readonly verified_parent="$(dirname -- "${VERIFIED_RELEASE_DIR}")"
+    readonly verified_basename="$(basename -- "${VERIFIED_RELEASE_DIR}")"
+    mkdir -p -- "${verified_parent}"
+    readonly verified_staging="$(mktemp -d "${verified_parent}/.${verified_basename}.tmp.XXXXXX")"
+    test ! -e "${VERIFIED_RELEASE_DIR}"
+    cp -- "${snapshot_archive}" "${verified_staging}/${archive_basename}"
+    cp -- "${snapshot_checksum}" "${verified_staging}/${archive_basename}.sha256"
+    mv --no-target-directory "${verified_staging}" "${VERIFIED_RELEASE_DIR}"
+fi

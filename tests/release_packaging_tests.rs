@@ -17,7 +17,7 @@ fn release_workflow_smokes_the_exact_verified_artifact_before_creating_a_release
     let workflow = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
     for required in [
         "tags: ['v*']",
-        "permissions:\n  contents: write",
+        "permissions: {}",
         "musl-tools binutils file",
         "rustup target add x86_64-unknown-linux-musl",
         "mise run check",
@@ -38,6 +38,31 @@ fn release_workflow_smokes_the_exact_verified_artifact_before_creating_a_release
         !workflow.contains("dist/*.tar.gz"),
         "release upload must name the verified archive exactly"
     );
+}
+
+#[test]
+fn release_workflow_transfers_only_verified_artifacts_to_a_dependent_publish_job() {
+    let workflow = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
+    let validate_job = workflow.find("  validate-package:").unwrap();
+    let publish_job = workflow.find("  publish:").unwrap();
+    let smoke = workflow
+        .find("VERIFIED_RELEASE_DIR=verified-release")
+        .unwrap();
+    let upload = workflow.find("actions/upload-artifact").unwrap();
+    let download = workflow.find("actions/download-artifact").unwrap();
+    let release = workflow.find("gh release create").unwrap();
+
+    assert!(validate_job < smoke);
+    assert!(smoke < upload);
+    assert!(upload < publish_job);
+    assert!(publish_job < download);
+    assert!(download < release);
+    assert!(workflow[validate_job..publish_job].contains("contents: read"));
+    assert!(workflow[publish_job..].contains("needs: validate-package"));
+    assert!(workflow[publish_job..].contains("contents: write"));
+    assert!(workflow[validate_job..publish_job].contains("verified-release/"));
+    assert!(workflow[publish_job..].contains("verified-release/"));
+    assert!(!workflow[publish_job..].contains("dist/"));
 }
 
 #[test]
@@ -103,6 +128,73 @@ fn assert_verifier_rejects(archive: &std::path::Path) {
         .status()
         .unwrap()
         .success());
+}
+
+#[cfg(unix)]
+#[test]
+fn smoke_script_exports_the_verified_snapshot_even_if_the_source_changes_after_snapshot() {
+    use std::os::unix::fs::PermissionsExt;
+    use std::process::Command;
+
+    let temporary = tempfile::tempdir().unwrap();
+    let source = temporary.path().join("rulette.tar.gz");
+    let staging = temporary.path().join("staging");
+    let tools = temporary.path().join("tools");
+    let verified = temporary.path().join("verified-release");
+    std::fs::create_dir_all(&staging).unwrap();
+    std::fs::create_dir_all(&tools).unwrap();
+    std::fs::write(staging.join("rulette"), "#!/usr/bin/env bash\nexit 0\n").unwrap();
+    std::fs::set_permissions(
+        staging.join("rulette"),
+        std::fs::Permissions::from_mode(0o755),
+    )
+    .unwrap();
+    assert!(Command::new("tar")
+        .args(["-C", staging.to_str().unwrap(), "-czf"])
+        .arg(&source)
+        .arg("rulette")
+        .status()
+        .unwrap()
+        .success());
+    write_checksum(&source, "rulette.tar.gz");
+    let original_archive = std::fs::read(&source).unwrap();
+    let original_checksum = std::fs::read(format!("{}.sha256", source.display())).unwrap();
+
+    for (name, body) in [
+        (
+            "file",
+            "#!/usr/bin/env bash\nprintf tampered > \"$TAMPER_ARCHIVE\"\nprintf 'tampered\\n' > \"$TAMPER_ARCHIVE.sha256\"\nprintf 'ELF 64-bit LSB executable, statically linked\\n'\n",
+        ),
+        ("readelf", "#!/usr/bin/env bash\nexit 0\n"),
+        ("ldd", "#!/usr/bin/env bash\nprintf 'not a dynamic executable\\n'\n"),
+    ] {
+        let tool = tools.join(name);
+        std::fs::write(&tool, body).unwrap();
+        std::fs::set_permissions(tool, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+
+    let path = format!("{}:{}", tools.display(), std::env::var("PATH").unwrap());
+    let output = Command::new(verifier_script())
+        .arg(&source)
+        .env("PATH", path)
+        .env("TAMPER_ARCHIVE", &source)
+        .env("VERIFIED_RELEASE_DIR", &verified)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_ne!(std::fs::read(&source).unwrap(), original_archive);
+    assert_eq!(
+        std::fs::read(verified.join("rulette.tar.gz")).unwrap(),
+        original_archive
+    );
+    assert_eq!(
+        std::fs::read(verified.join("rulette.tar.gz.sha256")).unwrap(),
+        original_checksum
+    );
 }
 
 #[cfg(unix)]
