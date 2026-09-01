@@ -353,9 +353,18 @@ fn smoke_script_accepts_static_pie_and_rejects_an_elf_interpreter() {
     use std::os::unix::fs::PermissionsExt;
     use std::process::Command;
 
-    for (program_headers, expected_success) in [
-        ("Elf file type is DYN\n", true),
-        ("Elf file type is DYN\n  INTERP         0x000000\n", false),
+    for (program_headers, dynamic_section, expected_success) in [
+        ("Elf file type is DYN\n", "Dynamic section at offset 0x0\n", true),
+        (
+            "Elf file type is DYN\n  INTERP         0x000000\n",
+            "Dynamic section at offset 0x0\n",
+            false,
+        ),
+        (
+            "Elf file type is DYN\n",
+            "Dynamic section at offset 0x0\n 0x0000000000000001 (NEEDED) Shared library: [libc.so.6]\n",
+            false,
+        ),
     ] {
         let temporary = tempfile::tempdir().unwrap();
         let archive = temporary.path().join("rulette.tar.gz");
@@ -387,8 +396,8 @@ fn smoke_script_accepts_static_pie_and_rejects_an_elf_interpreter() {
             (
                 "readelf",
                 format!(
-                    "#!/usr/bin/env bash\nif [[ \"$1\" == \"-l\" ]]; then\n    printf '%s' '{}'\nelse\n    printf 'Dynamic section at offset 0x0\\n'\nfi\n",
-                    program_headers
+                    "#!/usr/bin/env bash\nif [[ \"$1\" == \"-l\" ]]; then\n    printf '%s' '{}'\nelse\n    printf '%s' '{}'\nfi\n",
+                    program_headers, dynamic_section
                 ),
             ),
             ("ldd", "#!/usr/bin/env bash\nprintf 'statically linked\\n'\n".to_owned()),
@@ -408,7 +417,7 @@ fn smoke_script_accepts_static_pie_and_rejects_an_elf_interpreter() {
         assert_eq!(
             output.status.success(),
             expected_success,
-            "{program_headers}"
+            "{program_headers}{dynamic_section}"
         );
     }
 }
