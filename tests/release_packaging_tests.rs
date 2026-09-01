@@ -13,6 +13,26 @@ fn release_packaging_tasks_keep_the_static_linux_artifact_contract() {
 }
 
 #[test]
+fn release_notes_document_static_portability_and_explicit_publication_safety() {
+    let notes = std::fs::read_to_string("docs/releases/v0.1.0.md").unwrap();
+    for required in [
+        "x86_64-unknown-linux-musl",
+        "fully static",
+        "no runtime dependencies",
+        "--stage",
+        "--apply",
+        "--expect-plan-sha256",
+        "--allow-project-root",
+        "strict by default",
+        "--allow-lossy",
+        "no registry",
+        "no fetch subsystem",
+    ] {
+        assert!(notes.contains(required), "missing {required}");
+    }
+}
+
+#[test]
 fn release_workflow_smokes_the_exact_verified_artifact_before_creating_a_release() {
     let workflow = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
     for required in [
