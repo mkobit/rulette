@@ -15,9 +15,9 @@
     "!.agents",
     "!.claude/commands",
     "!.claude/skills",
+    "!.superpowers",
     "!CLAUDE.md",
     "!AGENTS.md"
   ]
 }
-
 
