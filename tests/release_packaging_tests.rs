@@ -251,14 +251,14 @@ fn smoke_script_requires_checksum_static_linkage_and_runtime_commands() {
     }
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 fn verifier_script() -> std::path::PathBuf {
     std::env::current_dir()
         .unwrap()
         .join("scripts/verify-static-release.sh")
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 fn write_checksum(archive: &std::path::Path, archive_name: &str) {
     use std::process::Command;
 
@@ -270,7 +270,7 @@ fn write_checksum(archive: &std::path::Path, archive_name: &str) {
     std::fs::write(format!("{}.sha256", archive.display()), checksum).unwrap();
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 fn write_hostile_archive(
     archive: &std::path::Path,
     member_path: &str,
@@ -302,7 +302,7 @@ fn write_hostile_archive(
     builder.into_inner().unwrap().finish().unwrap();
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 fn assert_verifier_rejects(archive: &std::path::Path) {
     use std::process::Command;
 
@@ -313,7 +313,7 @@ fn assert_verifier_rejects(archive: &std::path::Path) {
         .success());
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 #[test]
 fn smoke_script_exports_the_verified_snapshot_even_if_the_source_changes_after_snapshot() {
     use std::os::unix::fs::PermissionsExt;
@@ -380,7 +380,7 @@ fn smoke_script_exports_the_verified_snapshot_even_if_the_source_changes_after_s
     );
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 #[test]
 fn smoke_script_accepts_static_pie_and_rejects_an_elf_interpreter() {
     use std::os::unix::fs::PermissionsExt;
@@ -455,7 +455,7 @@ fn smoke_script_accepts_static_pie_and_rejects_an_elf_interpreter() {
     }
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 #[test]
 fn smoke_script_rejects_checksum_mismatch() {
     let temporary = tempfile::tempdir().unwrap();
@@ -470,7 +470,7 @@ fn smoke_script_rejects_checksum_mismatch() {
     assert_verifier_rejects(&archive);
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 #[test]
 fn smoke_script_rejects_a_foreign_checksum_sidecar() {
     let temporary = tempfile::tempdir().unwrap();
@@ -481,7 +481,7 @@ fn smoke_script_rejects_a_foreign_checksum_sidecar() {
     assert_verifier_rejects(&archive);
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 #[test]
 fn smoke_script_rejects_a_malformed_checksum_sidecar() {
     let temporary = tempfile::tempdir().unwrap();
@@ -492,7 +492,7 @@ fn smoke_script_rejects_a_malformed_checksum_sidecar() {
     assert_verifier_rejects(&archive);
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 #[test]
 fn smoke_script_rejects_an_extra_archive_member() {
     use std::process::Command;
@@ -513,7 +513,7 @@ fn smoke_script_rejects_an_extra_archive_member() {
     assert_verifier_rejects(&archive);
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 #[test]
 fn smoke_script_rejects_a_traversal_archive_member() {
     let temporary = tempfile::tempdir().unwrap();
@@ -524,7 +524,7 @@ fn smoke_script_rejects_a_traversal_archive_member() {
     assert_verifier_rejects(&archive);
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 #[test]
 fn smoke_script_rejects_a_symlink_archive_member() {
     let temporary = tempfile::tempdir().unwrap();
@@ -535,7 +535,7 @@ fn smoke_script_rejects_a_symlink_archive_member() {
     assert_verifier_rejects(&archive);
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 #[test]
 fn smoke_script_rejects_a_dynamic_elf_archive() {
     use std::process::Command;
