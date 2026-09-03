@@ -1,5 +1,4 @@
-use rulette::cli::formats::InputFormat;
-use rulette::{compile_graph, inputs::observe_path, PackageKind};
+use rulette::{compile_graph, inputs::observe_path, DecoderSelection, PackageKind};
 use std::path::PathBuf;
 
 fn fixture(name: &str) -> PathBuf {
@@ -20,7 +19,7 @@ fn native_fixture_trees_auto_detect_and_preserve_package_boundaries() {
 
     for (name, frontend, requires_skill, requires_unsupported) in cases {
         let observations = observe_path(fixture(name)).expect("fixture tree is safe to observe");
-        let graph = compile_graph(&observations, InputFormat::Auto)
+        let graph = compile_graph(&observations, DecoderSelection::Auto)
             .expect("fixture tree auto-detects and compiles as a graph");
 
         assert!(

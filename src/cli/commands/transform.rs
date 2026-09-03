@@ -1,18 +1,19 @@
 use crate::cli::formats::InputFormat;
 use crate::emitters::lowering::{
-    lower, CapabilityFinding, CapabilitySeverity, LoweringOptions, NativeTarget,
+    CapabilityFinding, CapabilitySeverity, LoweringOptions, NativeTarget,
 };
-use crate::inputs::{observe_path, observe_stdin, ArtifactObservation};
+use crate::inputs::{observe_sources, ArtifactObservation};
 use crate::publication::{
     apply_plan, check_plan, check_sources, mapping_for, parse_plan_with_expected_digest, stage,
     ApplyOptions, AuthorizedRoot, DestinationState, PlanDigest, PlanOperationRequest,
     PublicationScope, ScopedAcceptedLoss, ScopedLowering, SourceCheckRequest, StageRequest,
     StageRoot,
 };
-use crate::{compile_graph, pipeline, CompilationGraph, PackageId};
+use crate::{compile, lower_unique_targets, AggregationRequest, CompilationRequest};
 use anyhow::{Context, Result};
 use clap::Args;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -99,6 +100,17 @@ struct TargetRequest {
     scope: PublicationScope,
 }
 
+/// Parsed target syntax that deliberately has not resolved a backend yet.
+///
+/// Resolving this target against the compiled-in backend registry is deferred
+/// until source discovery, decoding, aggregation, and collision validation
+/// have completed.
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct TargetSyntax {
+    target_name: String,
+    scope: PublicationScope,
+}
+
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
 struct TransformConfigFile {
@@ -155,38 +167,35 @@ impl TransformArgs {
             .unwrap_or_default();
         let inputs = resolve_inputs(&self.input, &config.inputs)?;
         let selector_strings = resolve_selectors(&self.select, &config.select)?;
-        let targets = resolve_targets(&self.target, &config.targets)?;
+        let target_syntax =
+            normalize_target_syntaxes(parse_target_syntaxes(&self.target, &config.targets)?);
+        let selected_graph = compile(CompilationRequest::new(
+            AggregationRequest::new(observe_inputs(&inputs)?, self.from.into()),
+            selector_strings,
+        ))?;
+        let targets = resolve_targets(target_syntax)?;
         validate_source_mode(self, &targets)?;
         if self.allow_lossy && targets.is_empty() {
             anyhow::bail!("--allow-lossy requires at least one --target");
         }
+        validate_target_mappings(&targets)?;
 
-        let graph = compile_graph(&observe_inputs(&inputs)?, self.from)?;
-        let selectors = resolve_package_ids(&graph, &selector_strings)?;
-        let selected_graph = pipeline::select_packages(&graph, &selectors)?;
-
-        let lowerings = targets
-            .iter()
-            .map(|target| {
-                lower(
-                    &selected_graph,
-                    target.target,
-                    if self.allow_lossy {
-                        LoweringOptions::allow_lossy()
-                    } else {
-                        LoweringOptions::strict()
-                    },
-                )
-                .map(|plan| (target, plan))
-            })
-            .collect::<Result<Vec<_>>>()?;
+        let lowerings = lower_unique_targets(
+            &selected_graph,
+            targets.iter().map(|target| target.target),
+            if self.allow_lossy {
+                LoweringOptions::allow_lossy()
+            } else {
+                LoweringOptions::strict()
+            },
+        )?;
 
         if self.check {
             let report = check_sources(SourceCheckRequest {
                 graph: &selected_graph,
-                lowerings: scoped_lowerings(&lowerings),
+                lowerings: scoped_lowerings(&targets, &lowerings),
                 roots: source_roots(self, &targets)?,
-                accepted_losses: accepted_losses(&lowerings, self.allow_lossy),
+                accepted_losses: accepted_losses(&targets, &lowerings, self.allow_lossy),
             })?;
             render_check_report(&report.entries)?;
             if !quiet {
@@ -201,13 +210,13 @@ impl TransformArgs {
         if let Some(stage_dir) = &self.stage {
             let staged = stage(StageRequest {
                 graph: &selected_graph,
-                lowerings: scoped_lowerings(&lowerings),
+                lowerings: scoped_lowerings(&targets, &lowerings),
                 roots: stage_roots(self, &targets)?,
-                accepted_losses: accepted_losses(&lowerings, self.allow_lossy),
+                accepted_losses: accepted_losses(&targets, &lowerings, self.allow_lossy),
                 stage_dir,
             })?;
             if self.allow_lossy {
-                for (_, plan) in &lowerings {
+                for plan in lowerings.values() {
                     render_accepted_losses(&plan.findings)?;
                 }
             }
@@ -471,28 +480,33 @@ fn find_user_root<'a>(
 }
 
 fn scoped_lowerings<'a>(
-    lowerings: &'a [(&'a TargetRequest, crate::emitters::lowering::LoweringPlan)],
+    targets: &'a [TargetRequest],
+    lowerings: &'a BTreeMap<NativeTarget, crate::emitters::lowering::LoweringPlan>,
 ) -> Vec<ScopedLowering<'a>> {
-    lowerings
+    targets
         .iter()
-        .map(|(target, plan)| ScopedLowering {
+        .map(|target| ScopedLowering {
             scope: target.scope,
-            lowering: plan,
+            lowering: lowerings
+                .get(&target.target)
+                .expect("every resolved target has one lowering"),
         })
         .collect()
 }
 
 fn accepted_losses<'a>(
-    lowerings: &'a [(&'a TargetRequest, crate::emitters::lowering::LoweringPlan)],
+    targets: &'a [TargetRequest],
+    lowerings: &'a BTreeMap<NativeTarget, crate::emitters::lowering::LoweringPlan>,
     allow_lossy: bool,
 ) -> Vec<ScopedAcceptedLoss<'a>> {
     if !allow_lossy {
         return Vec::new();
     }
-    lowerings
+    targets
         .iter()
-        .flat_map(|(target, plan)| {
-            plan.findings
+        .flat_map(|target| {
+            lowerings[&target.target]
+                .findings
                 .iter()
                 .filter(move |finding| finding.severity != CapabilitySeverity::Supported)
                 .map(move |finding| ScopedAcceptedLoss {
@@ -541,36 +555,58 @@ fn resolve_selectors(cli_selectors: &[String], config_selectors: &[String]) -> R
     })
 }
 
-fn resolve_targets(
+fn parse_target_syntaxes(
     cli_targets: &[String],
     config_targets: &[TransformConfigTarget],
-) -> Result<Vec<TargetRequest>> {
-    let mut targets = if cli_targets.is_empty() {
+) -> Result<Vec<TargetSyntax>> {
+    if cli_targets.is_empty() {
         config_targets
             .iter()
-            .map(|target| parse_target_request(&format!("{}@{}", target.target, target.scope)))
-            .collect::<Result<Vec<_>>>()?
+            .map(|target| parse_target_syntax(&format!("{}@{}", target.target, target.scope)))
+            .collect()
     } else {
         cli_targets
             .iter()
-            .map(|target| parse_target_request(target))
-            .collect::<Result<Vec<_>>>()?
-    };
-    targets.sort_unstable();
-    targets.dedup();
-    for target in &targets {
-        mapping_for(target.target, target.scope)?;
+            .map(|target| parse_target_syntax(target))
+            .collect()
     }
+}
+
+fn resolve_targets(target_syntax: Vec<TargetSyntax>) -> Result<Vec<TargetRequest>> {
+    let targets = target_syntax
+        .into_iter()
+        .map(|target| {
+            Ok(TargetRequest {
+                target: parse_native_target(&target.target_name)?,
+                scope: target.scope,
+            })
+        })
+        .collect::<Result<Vec<_>>>()?;
     Ok(targets)
 }
 
-fn parse_target_request(value: &str) -> Result<TargetRequest> {
+fn normalize_target_syntaxes(mut target_syntaxes: Vec<TargetSyntax>) -> Vec<TargetSyntax> {
+    target_syntaxes.sort_unstable();
+    target_syntaxes.dedup();
+    target_syntaxes
+}
+
+fn validate_target_mappings(targets: &[TargetRequest]) -> Result<()> {
+    for target in targets {
+        mapping_for(target.target, target.scope)?;
+    }
+    Ok(())
+}
+
+fn parse_target_syntax(value: &str) -> Result<TargetSyntax> {
     let (target, scope) = match value.split_once('@') {
         Some((target, scope)) if !scope.contains('@') => (target, scope),
         Some(_) => anyhow::bail!("target `{value}` must use at most one `@` scope separator"),
         None => anyhow::bail!("target `{value}` must use the form format@scope"),
     };
-    let target = parse_native_target(target)?;
+    if target.is_empty() {
+        anyhow::bail!("target `{value}` must name a target before `@`");
+    }
     let scope = match scope {
         "project" => PublicationScope::Project,
         "user" => PublicationScope::User,
@@ -578,7 +614,10 @@ fn parse_target_request(value: &str) -> Result<TargetRequest> {
             anyhow::bail!("unsupported v0.1 publication scope `{scope}`; expected project or user")
         }
     };
-    Ok(TargetRequest { target, scope })
+    Ok(TargetSyntax {
+        target_name: target.to_owned(),
+        scope,
+    })
 }
 
 pub(crate) fn parse_native_target(value: &str) -> Result<NativeTarget> {
@@ -595,7 +634,7 @@ pub(crate) fn parse_native_target(value: &str) -> Result<NativeTarget> {
 }
 
 fn observe_inputs(inputs: &[String]) -> Result<Vec<ArtifactObservation>> {
-    let mut observations = Vec::new();
+    let mut paths = Vec::with_capacity(inputs.len());
     let mut saw_stdin = false;
     for input in inputs {
         if input == "-" {
@@ -603,26 +642,17 @@ fn observe_inputs(inputs: &[String]) -> Result<Vec<ArtifactObservation>> {
                 anyhow::bail!("standard input may be supplied only once");
             }
             saw_stdin = true;
-            observations.extend(observe_stdin(io::stdin().lock())?);
         } else {
-            observations.extend(observe_path(input)?);
+            paths.push(Path::new(input));
         }
     }
-    Ok(observations)
-}
-
-fn resolve_package_ids(graph: &CompilationGraph, selectors: &[String]) -> Result<Vec<PackageId>> {
-    selectors
-        .iter()
-        .map(|selector| {
-            graph
-                .packages
-                .keys()
-                .find(|identifier| identifier.as_str() == selector)
-                .cloned()
-                .ok_or_else(|| anyhow::anyhow!("unknown package ID `{selector}`"))
-        })
-        .collect()
+    if saw_stdin {
+        let stdin = io::stdin();
+        let mut reader = stdin.lock();
+        observe_sources(paths, Some(&mut reader))
+    } else {
+        observe_sources(paths, None)
+    }
 }
 
 #[derive(Serialize)]
@@ -665,16 +695,33 @@ fn render_accepted_losses(findings: &[CapabilityFinding]) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_target_request, resolve_inputs, TransformConfigFile};
+    use super::{
+        normalize_target_syntaxes, parse_target_syntax, resolve_inputs, TransformConfigFile,
+    };
     use crate::publication::PublicationScope;
 
     #[test]
     fn target_requires_an_explicit_scope() {
-        assert!(parse_target_request("codex").is_err());
+        assert!(parse_target_syntax("codex").is_err());
         assert_eq!(
-            parse_target_request("codex@project").unwrap().scope,
+            parse_target_syntax("codex@project").unwrap().scope,
             PublicationScope::Project
         );
+    }
+
+    #[test]
+    fn target_syntaxes_are_sorted_and_deduplicated_before_backend_resolution() {
+        let syntaxes = vec![
+            parse_target_syntax("opencode@project").unwrap(),
+            parse_target_syntax("codex@project").unwrap(),
+            parse_target_syntax("opencode@project").unwrap(),
+        ];
+
+        let normalized = normalize_target_syntaxes(syntaxes);
+
+        assert_eq!(normalized.len(), 2);
+        assert_eq!(normalized[0].target_name, "codex");
+        assert_eq!(normalized[1].target_name, "opencode");
     }
 
     #[test]

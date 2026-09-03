@@ -1,9 +1,9 @@
 use crate::inputs::ArtifactObservation;
+use crate::parsers::frontend::{NativeCompilation, NativeFrontend, NativeObservationDisposition};
 use crate::{ActivationMode, PortableActivation};
 use crate::{
-    CompilationGraph, FrontendPayload, Package, PackageKind, PackageRoot, Resource,
-    ResourceContent, ResourcePath, SemanticIdentity, SemanticItem, SourceProvenance,
-    TargetActivation,
+    FrontendPayload, Package, PackageKind, PackageRoot, Resource, ResourceContent, ResourcePath,
+    SemanticIdentity, SemanticItem, SourceProvenance, TargetActivation,
 };
 use anyhow::{bail, Context, Result};
 use std::collections::BTreeMap;
@@ -13,22 +13,32 @@ use std::collections::BTreeMap;
 /// The caller supplies observations in source order.
 /// Sorting them again keeps standalone use deterministic and leaves all
 /// package-resource ordering to the graph's ordered maps.
-pub fn parse_graph(observations: &[ArtifactObservation]) -> Result<CompilationGraph> {
-    let mut observations: Vec<_> = observations.iter().collect();
-    observations.sort_by(|left, right| observation_key(left).cmp(&observation_key(right)));
+#[cfg(test)]
+fn parse_graph(observations: &[ArtifactObservation]) -> Result<crate::CompilationGraph> {
+    compile_native(observations)?.into_graph()
+}
+
+/// Compiles Claude observations while recording the disposition of each input.
+pub(crate) fn compile_native(observations: &[ArtifactObservation]) -> Result<NativeCompilation> {
+    let mut ordered_observations: Vec<_> = observations.iter().enumerate().collect();
+    ordered_observations
+        .sort_by(|left, right| observation_key(left.1).cmp(&observation_key(right.1)));
 
     let mut packages = Vec::new();
-    let mut skill_members: BTreeMap<SkillGroupKey, Vec<&ArtifactObservation>> = BTreeMap::new();
+    let mut dispositions = vec![None; observations.len()];
+    let mut skill_members: BTreeMap<SkillGroupKey, Vec<(usize, &ArtifactObservation)>> =
+        BTreeMap::new();
 
-    for observation in observations {
+    for (index, observation) in ordered_observations {
         let path = observation.source_path.as_str();
         if let Some(root) = skill_root(path) {
             skill_members
                 .entry(SkillGroupKey::from_observation(root, observation))
                 .or_default()
-                .push(observation);
+                .push((index, observation));
         } else if is_rule_path(path) {
             packages.push(rule_package(observation)?);
+            dispositions[index] = Some(NativeObservationDisposition::PackageContent);
         } else if is_agent_path(path) {
             packages.push(unsupported_package(
                 observation,
@@ -36,24 +46,50 @@ pub fn parse_graph(observations: &[ArtifactObservation]) -> Result<CompilationGr
                 None,
                 markdown_frontmatter_payload(observation, "claude.agent-frontmatter")?,
             )?);
+            dispositions[index] = Some(NativeObservationDisposition::RetainedUnsupportedContent);
         } else if path == ".claude/settings.json" {
             packages.extend(settings_packages(observation)?);
+            dispositions[index] = Some(NativeObservationDisposition::RetainedUnsupportedContent);
         } else if path == ".mcp.json" {
             packages.extend(mcp_packages(observation)?);
+            dispositions[index] = Some(NativeObservationDisposition::RetainedUnsupportedContent);
+        } else {
+            dispositions[index] = Some(NativeObservationDisposition::UnrecognizedWarning);
         }
     }
 
     for (key, members) in skill_members {
         if let Some(primary) = members
             .iter()
-            .copied()
-            .find(|observation| skill_member(observation.source_path.as_str()) == Some("SKILL.md"))
+            .find(|(_, observation)| {
+                skill_member(observation.source_path.as_str()) == Some("SKILL.md")
+            })
+            .map(|(_, observation)| *observation)
         {
-            packages.push(skill_package(&key.root, primary, &members)?);
+            let member_observations = members
+                .iter()
+                .map(|(_, observation)| *observation)
+                .collect::<Vec<_>>();
+            packages.push(skill_package(&key.root, primary, &member_observations)?);
+            for (index, _) in members {
+                dispositions[index] = Some(NativeObservationDisposition::PackageContent);
+            }
+        } else {
+            for (index, _) in members {
+                dispositions[index] = Some(NativeObservationDisposition::UnrecognizedWarning);
+            }
         }
     }
 
-    CompilationGraph::new(packages)
+    NativeCompilation::new(
+        NativeFrontend::Claude,
+        observations,
+        packages,
+        dispositions
+            .into_iter()
+            .collect::<Option<Vec<NativeObservationDisposition>>>()
+            .expect("Claude parser classifies every observation"),
+    )
 }
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -704,7 +740,7 @@ mod tests {
 
         assert!(error
             .to_string()
-            .contains("duplicate semantic identity `skill:release-workflow`"));
+            .contains("semantic identity `skill:release-workflow`"));
     }
 
     #[test]
