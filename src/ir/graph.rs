@@ -742,15 +742,9 @@ pub struct CompilationGraph {
 
 impl CompilationGraph {
     pub fn new(packages: impl IntoIterator<Item = Package>) -> Result<Self> {
-        let mut ordered = BTreeMap::new();
-        for package in packages {
-            let id = package.id.clone();
-            if ordered.insert(id.clone(), package).is_some() {
-                bail!("duplicate package ID `{}`", id.as_str());
-            }
-        }
-        let mut diagnostics: Vec<_> = ordered
-            .values()
+        let packages = packages.into_iter().collect::<Vec<_>>();
+        let diagnostics = packages
+            .iter()
             .filter_map(|package| match &package.semantic_item {
                 SemanticItem::Unsupported { native_kind } => Some(GraphDiagnostic {
                     severity: DiagnosticSeverity::UnsupportedSemantic,
@@ -764,6 +758,23 @@ impl CompilationGraph {
                 _ => None,
             })
             .collect();
+        Self::from_parts(packages, diagnostics)
+    }
+
+    /// Constructs a graph from packages and diagnostics decoded from graph interchange.
+    ///
+    /// Diagnostics are retained and placed in their canonical stable order.
+    pub(crate) fn from_parts(
+        packages: impl IntoIterator<Item = Package>,
+        mut diagnostics: Vec<GraphDiagnostic>,
+    ) -> Result<Self> {
+        let mut ordered = BTreeMap::new();
+        for package in packages {
+            let id = package.id.clone();
+            if ordered.insert(id.clone(), package).is_some() {
+                bail!("duplicate package ID `{}`", id.as_str());
+            }
+        }
         diagnostics.sort_by(|left, right| left.sort_key().cmp(&right.sort_key()));
         let graph = Self {
             graph_version: GRAPH_VERSION.to_owned(),
@@ -797,6 +808,16 @@ impl CompilationGraph {
             .any(|pair| pair[0].sort_key() > pair[1].sort_key())
         {
             bail!("graph diagnostics must be in deterministic order");
+        }
+        for diagnostic in &self.diagnostics {
+            if let Some(package_id) = &diagnostic.package_id {
+                if !self.packages.contains_key(package_id) {
+                    bail!(
+                        "graph diagnostic references missing package ID `{}`",
+                        package_id.as_str()
+                    );
+                }
+            }
         }
         for package in self.packages.values() {
             if matches!(package.semantic_item, SemanticItem::Unsupported { .. })
@@ -1008,8 +1029,8 @@ fn base64_decode(encoded: &str) -> Result<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::{
-        CompilationGraph, Package, Resource, ResourceContent, ResourcePath, SemanticIdentity,
-        SourceProvenance,
+        CompilationGraph, DiagnosticSeverity, GraphDiagnostic, Package, PackageId, Resource,
+        ResourceContent, ResourcePath, SemanticIdentity, SourceProvenance,
     };
 
     fn supported_rule_package() -> Package {
@@ -1190,6 +1211,20 @@ mod tests {
 
         assert!(CompilationGraph::from_json(&value.to_string()).is_err());
         assert!(CompilationGraph::from_json(r#"{"ir_version":"0.1","entities":[]}"#).is_err());
+    }
+
+    #[test]
+    fn graph_interchange_rejects_diagnostics_for_missing_packages() {
+        let mut graph = CompilationGraph::new([supported_rule_package()]).unwrap();
+        graph.diagnostics.push(GraphDiagnostic {
+            severity: DiagnosticSeverity::Warning,
+            code: "missing-package".to_owned(),
+            message: "diagnostic package is absent".to_owned(),
+            package_id: Some(PackageId(format!("pkg_{}", "0".repeat(64)))),
+        });
+
+        assert!(CompilationGraph::from_json(&serde_json::to_string(&graph).unwrap()).is_err());
+        assert!(CompilationGraph::from_toml(&toml::to_string(&graph).unwrap()).is_err());
     }
 
     #[test]

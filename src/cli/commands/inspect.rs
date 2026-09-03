@@ -3,8 +3,8 @@ use crate::cli::formats::InputFormat;
 use crate::emitters::lowering::{
     lower, CapabilityFinding, CapabilitySeverity, LoweringOptions, NativeTarget,
 };
-use crate::inputs::{observe_path, observe_stdin, ArtifactObservation};
-use crate::{compile_graph, CompilationGraph, PackageKind};
+use crate::inputs::{observe_sources, ArtifactObservation};
+use crate::{aggregate, AggregationRequest, CompilationGraph, PackageKind};
 use anyhow::Result;
 use clap::Args;
 use serde::Serialize;
@@ -80,7 +80,10 @@ struct FindingJson<'a> {
 
 impl InspectArgs {
     pub fn execute(&self, quiet: bool) -> Result<()> {
-        let graph = compile_graph(&observe_inputs(&self.input)?, self.from)?;
+        let graph = aggregate(AggregationRequest::new(
+            observe_inputs(&self.input)?,
+            self.from.into(),
+        ))?;
         if !quiet && !self.json {
             println!("=== Compilation graph ===");
             print!("{}", graph.to_canonical_json()?);
@@ -152,7 +155,7 @@ impl InspectArgs {
 }
 
 fn observe_inputs(inputs: &[String]) -> Result<Vec<ArtifactObservation>> {
-    let mut observations = Vec::new();
+    let mut paths = Vec::with_capacity(inputs.len());
     let mut saw_stdin = false;
     for input in inputs {
         if input == "-" {
@@ -160,12 +163,17 @@ fn observe_inputs(inputs: &[String]) -> Result<Vec<ArtifactObservation>> {
                 anyhow::bail!("standard input may be supplied only once");
             }
             saw_stdin = true;
-            observations.extend(observe_stdin(io::stdin().lock())?);
         } else {
-            observations.extend(observe_path(input)?);
+            paths.push(std::path::Path::new(input));
         }
     }
-    Ok(observations)
+    if saw_stdin {
+        let stdin = io::stdin();
+        let mut reader = stdin.lock();
+        observe_sources(paths, Some(&mut reader))
+    } else {
+        observe_sources(paths, None)
+    }
 }
 
 fn coverage_cells(graph: &CompilationGraph) -> Result<Vec<CoverageCell>> {

@@ -410,6 +410,9 @@ fn reject_destination_collisions(
 }
 
 #[cfg(test)]
+// Failure injection stays private and test-only: callers cannot manufacture a
+// mid-transaction error through the publication API, while the unit test can
+// still exercise rollback after a later target mutates its destination.
 pub(crate) fn apply_plan_with_late_failure_for_test(
     request: PlanOperationRequest<'_>,
     options: ApplyOptions,

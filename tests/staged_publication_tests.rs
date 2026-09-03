@@ -219,6 +219,150 @@ fn rejects_a_stage_directory_inside_a_live_root() {
 }
 
 #[test]
+fn multi_target_stage_preflight_failure_creates_no_partial_stage() {
+    let temporary = tempfile::tempdir().unwrap();
+    let live_root = temporary.path().join("live");
+    let stage_dir = temporary.path().join("stage");
+    fs::create_dir(&live_root).unwrap();
+    fs::write(live_root.join("sentinel.txt"), "leave me alone").unwrap();
+    let graph = graph_with_rule(false);
+    let codex = lower(&graph, NativeTarget::Codex, LoweringOptions::strict()).unwrap();
+    let opencode = lower(&graph, NativeTarget::OpenCode, LoweringOptions::strict()).unwrap();
+
+    let error = stage(request(
+        &graph,
+        vec![
+            ScopedLowering {
+                scope: PublicationScope::Project,
+                lowering: &codex,
+            },
+            ScopedLowering {
+                scope: PublicationScope::Project,
+                lowering: &opencode,
+            },
+        ],
+        vec![StageRoot {
+            target: NativeTarget::Codex,
+            scope: PublicationScope::Project,
+            path: &live_root,
+        }],
+        vec![],
+        &stage_dir,
+    ))
+    .unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains("every scoped lowering requires exactly one live root binding"));
+    assert!(!stage_dir.exists());
+    assert_eq!(
+        fs::read_to_string(live_root.join("sentinel.txt")).unwrap(),
+        "leave me alone"
+    );
+}
+
+#[test]
+fn stage_collision_fails_before_creating_stage_or_touching_live_output() {
+    let temporary = tempfile::tempdir().unwrap();
+    let live_root = temporary.path().join("live");
+    let stage_dir = temporary.path().join("stage");
+    fs::create_dir(&live_root).unwrap();
+    fs::write(live_root.join("sentinel.txt"), "keep me").unwrap();
+    let graph = graph_with_rule(false);
+    let lowering = lower(&graph, NativeTarget::Codex, LoweringOptions::strict()).unwrap();
+
+    let error = stage(request(
+        &graph,
+        vec![
+            ScopedLowering {
+                scope: PublicationScope::Project,
+                lowering: &lowering,
+            },
+            ScopedLowering {
+                scope: PublicationScope::Project,
+                lowering: &lowering,
+            },
+        ],
+        vec![StageRoot {
+            target: NativeTarget::Codex,
+            scope: PublicationScope::Project,
+            path: &live_root,
+        }],
+        vec![],
+        &stage_dir,
+    ))
+    .unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains("duplicate target and scope lowerings"));
+    assert!(!stage_dir.exists());
+    assert_eq!(
+        fs::read_to_string(live_root.join("sentinel.txt")).unwrap(),
+        "keep me"
+    );
+}
+
+#[test]
+fn multi_target_stage_keeps_independent_artifacts_and_package_ids() {
+    let temporary = tempfile::tempdir().unwrap();
+    let live_root = temporary.path().join("live");
+    let stage_dir = temporary.path().join("stage");
+    fs::create_dir(&live_root).unwrap();
+    let graph = graph_with_rule(false);
+    let codex = lower(&graph, NativeTarget::Codex, LoweringOptions::strict()).unwrap();
+    let opencode = lower(&graph, NativeTarget::OpenCode, LoweringOptions::strict()).unwrap();
+
+    let staged = stage(request(
+        &graph,
+        vec![
+            ScopedLowering {
+                scope: PublicationScope::Project,
+                lowering: &codex,
+            },
+            ScopedLowering {
+                scope: PublicationScope::Project,
+                lowering: &opencode,
+            },
+        ],
+        vec![
+            StageRoot {
+                target: NativeTarget::Codex,
+                scope: PublicationScope::Project,
+                path: &live_root,
+            },
+            StageRoot {
+                target: NativeTarget::OpenCode,
+                scope: PublicationScope::Project,
+                path: &live_root,
+            },
+        ],
+        vec![],
+        &stage_dir,
+    ))
+    .unwrap();
+
+    assert_eq!(staged.plan.entries.len(), 2);
+    for entry in &staged.plan.entries {
+        let lowering = match entry.target {
+            NativeTarget::Codex => &codex,
+            NativeTarget::OpenCode => &opencode,
+            target => panic!("unexpected target {target:?}"),
+        };
+        let artifact = lowering
+            .artifacts
+            .iter()
+            .find(|artifact| artifact.path == entry.artifact.native_path)
+            .unwrap();
+        assert_eq!(entry.source_package, artifact.source_package);
+        assert_eq!(
+            fs::read(stage_dir.join(entry.stage_artifact_path.as_str())).unwrap(),
+            artifact.bytes
+        );
+    }
+}
+
+#[test]
 fn records_accepted_loss_with_a_scoped_entry_identifier() {
     let temporary = tempfile::tempdir().unwrap();
     let project_root = temporary.path().join("project");

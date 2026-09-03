@@ -1,30 +1,41 @@
 use crate::inputs::ArtifactObservation;
 use crate::ir::graph::{
-    CompilationGraph, FrontendPayload, GraphDiagnostic, Package, PackageKind, PackageRoot,
-    Resource, ResourceContent, ResourcePath, SemanticIdentity, SemanticItem, SourceProvenance,
+    FrontendPayload, Package, PackageKind, PackageRoot, Resource, ResourceContent, ResourcePath,
+    SemanticIdentity, SemanticItem, SourceProvenance,
 };
-use anyhow::{anyhow, Context, Result};
+use crate::parsers::frontend::{NativeCompilation, NativeFrontend, NativeObservationDisposition};
+use anyhow::{anyhow, bail, Context, Result};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 
 /// Compiles ordered OpenCode observations into portable rule and skill
 /// packages while retaining native configuration, MCP, and agent semantics as
 /// opaque unsupported packages.
-pub fn compile_opencode_graph(inputs: &[ArtifactObservation]) -> Result<CompilationGraph> {
+#[cfg(test)]
+fn compile_opencode_graph(inputs: &[ArtifactObservation]) -> Result<crate::CompilationGraph> {
+    compile_native(inputs)?.into_graph()
+}
+
+/// Compiles OpenCode observations while recording the disposition of each input.
+pub(crate) fn compile_native(inputs: &[ArtifactObservation]) -> Result<NativeCompilation> {
     let mut packages = Vec::new();
-    let mut warnings = Vec::new();
-    let mut skill_groups: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+    let mut dispositions = vec![None; inputs.len()];
+    let mut skill_groups: BTreeMap<SkillGroupKey, Vec<usize>> = BTreeMap::new();
     for (index, observation) in inputs.iter().enumerate() {
         if let Some((root, _)) = skill_location(&observation.source_path) {
-            skill_groups.entry(root).or_default().push(index);
+            skill_groups
+                .entry(SkillGroupKey::from_observation(&root, observation))
+                .or_default()
+                .push(index);
         }
     }
 
     let mut consumed = vec![false; inputs.len()];
-    for (root, members) in skill_groups {
-        if let Some(package) = compile_skill_package(&root, &members, inputs)? {
+    for (key, members) in skill_groups {
+        if let Some(package) = compile_skill_package(&key.root, &members, inputs)? {
             for index in members {
                 consumed[index] = true;
+                dispositions[index] = Some(NativeObservationDisposition::PackageContent);
             }
             packages.push(package);
         }
@@ -37,20 +48,50 @@ pub fn compile_opencode_graph(inputs: &[ArtifactObservation]) -> Result<Compilat
         let path = observation.source_path.as_str();
         if is_opencode_config(path) {
             packages.extend(compile_config(observation)?);
+            dispositions[index] = Some(NativeObservationDisposition::RetainedUnsupportedContent);
         } else if is_agent_path(path) {
             packages.push(unsupported_package(
                 observation,
                 "opencode-agent",
                 "agent-markdown",
             )?);
+            dispositions[index] = Some(NativeObservationDisposition::RetainedUnsupportedContent);
         } else if is_markdown(path) && !file_name(path).eq_ignore_ascii_case("readme.md") {
             packages.push(compile_rule(observation)?);
+            dispositions[index] = Some(NativeObservationDisposition::PackageContent);
         } else {
-            warnings.push(unrecognized_warning(observation));
+            dispositions[index] = Some(NativeObservationDisposition::UnrecognizedWarning);
         }
     }
 
-    graph_with_warnings(packages, warnings)
+    NativeCompilation::new(
+        NativeFrontend::Opencode,
+        inputs,
+        packages,
+        dispositions
+            .into_iter()
+            .collect::<Option<Vec<NativeObservationDisposition>>>()
+            .expect("OpenCode parser classifies every observation"),
+    )
+}
+
+/// A native skill package can only contain members from one explicit input.
+///
+/// `input_label` is validated as content-safe at observation construction and
+/// `root` comes from a normalized resource path.
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct SkillGroupKey {
+    root: String,
+    input_label: String,
+}
+
+impl SkillGroupKey {
+    fn from_observation(root: &str, observation: &ArtifactObservation) -> Self {
+        Self {
+            root: root.to_owned(),
+            input_label: observation.provenance.input_label.clone(),
+        }
+    }
 }
 
 fn compile_rule(observation: &ArtifactObservation) -> Result<Package> {
@@ -128,7 +169,9 @@ fn compile_skill_package(
                 observation.executable,
             )
         };
-        resources.insert(path, resource);
+        if resources.insert(path.clone(), resource).is_some() {
+            bail!("duplicate OpenCode skill resource `{}`", path.as_str());
+        }
     }
     Package::new(
         PackageKind::Skill,
@@ -216,29 +259,6 @@ fn unsupported_package(
         resources,
         None,
     )
-}
-
-fn graph_with_warnings(
-    packages: Vec<Package>,
-    mut warnings: Vec<GraphDiagnostic>,
-) -> Result<CompilationGraph> {
-    let mut graph = CompilationGraph::new(packages)?;
-    warnings.sort();
-    graph.diagnostics.splice(0..0, warnings);
-    graph.validate()?;
-    Ok(graph)
-}
-
-fn unrecognized_warning(observation: &ArtifactObservation) -> GraphDiagnostic {
-    GraphDiagnostic {
-        severity: crate::DiagnosticSeverity::Warning,
-        code: "unrecognized-native-file".to_owned(),
-        message: format!(
-            "opencode frontend did not recognize `{}` as a native package member",
-            observation.source_path.as_str()
-        ),
-        package_id: None,
-    }
 }
 
 fn provenance(observation: &ArtifactObservation) -> Result<SourceProvenance> {
@@ -377,12 +397,21 @@ mod tests {
     use crate::ir::graph::{PackageKind, ResourceContent, SemanticItem};
 
     fn observation(path: &str, bytes: impl AsRef<[u8]>, executable: bool) -> ArtifactObservation {
+        observation_with_label(path, bytes, executable, "workspace")
+    }
+
+    fn observation_with_label(
+        path: &str,
+        bytes: impl AsRef<[u8]>,
+        executable: bool,
+        input_label: &str,
+    ) -> ArtifactObservation {
         ArtifactObservation::new(
             bytes.as_ref().to_vec(),
             path,
             executable,
             InputOrigin::Filesystem,
-            "workspace",
+            input_label,
             None,
         )
         .unwrap()
@@ -475,5 +504,121 @@ mod tests {
             SemanticItem::Unsupported { ref native_kind } if native_kind == "opencode-agent"
         ));
         assert_eq!(package.resources.len(), 1);
+    }
+
+    #[test]
+    fn keeps_equal_root_opencode_skills_from_distinct_inputs_separate() {
+        let observations = vec![
+            observation_with_label(
+                ".opencode/skills/review/SKILL.md",
+                "---\nname: first-review\ndescription: First review\n---\n# First\n",
+                false,
+                "snapshots/first",
+            ),
+            observation_with_label(
+                ".opencode/skills/review/scripts/first",
+                "first companion",
+                false,
+                "snapshots/first",
+            ),
+            observation_with_label(
+                ".opencode/skills/review/SKILL.md",
+                "---\nname: second-review\ndescription: Second review\n---\n# Second\n",
+                false,
+                "snapshots/second",
+            ),
+            observation_with_label(
+                ".opencode/skills/review/scripts/second",
+                "second companion",
+                false,
+                "snapshots/second",
+            ),
+        ];
+        let mut reversed = observations.clone();
+        reversed.reverse();
+
+        let graphs = [
+            compile_opencode_graph(&observations).unwrap(),
+            compile_opencode_graph(&reversed).unwrap(),
+        ];
+        assert_eq!(
+            graphs[0].to_canonical_json().unwrap(),
+            graphs[1].to_canonical_json().unwrap()
+        );
+        assert_eq!(graphs[0].packages.len(), 2);
+
+        let first = graphs[0]
+            .packages
+            .values()
+            .find(|package| package.semantic_identity.as_str() == "skill:first-review")
+            .unwrap();
+        assert!(first
+            .resources
+            .contains_key(&crate::ResourcePath::parse("scripts/first").unwrap()));
+        assert!(!first
+            .resources
+            .contains_key(&crate::ResourcePath::parse("scripts/second").unwrap()));
+
+        let second = graphs[0]
+            .packages
+            .values()
+            .find(|package| package.semantic_identity.as_str() == "skill:second-review")
+            .unwrap();
+        assert!(second
+            .resources
+            .contains_key(&crate::ResourcePath::parse("scripts/second").unwrap()));
+        assert!(!second
+            .resources
+            .contains_key(&crate::ResourcePath::parse("scripts/first").unwrap()));
+    }
+
+    #[test]
+    fn reports_equal_root_opencode_skill_collisions_stably_across_input_orders() {
+        let observations = vec![
+            observation_with_label(
+                ".opencode/skills/review/SKILL.md",
+                "---\nname: review\ndescription: First review\n---\n# First\n",
+                false,
+                "snapshots/first",
+            ),
+            observation_with_label(
+                ".opencode/skills/review/SKILL.md",
+                "---\nname: review\ndescription: Second review\n---\n# Second\n",
+                false,
+                "snapshots/second",
+            ),
+        ];
+        let mut reversed = observations.clone();
+        reversed.reverse();
+
+        let errors = [
+            compile_opencode_graph(&observations)
+                .unwrap_err()
+                .to_string(),
+            compile_opencode_graph(&reversed).unwrap_err().to_string(),
+        ];
+        assert_eq!(errors[0], errors[1]);
+        assert!(errors[0].contains("semantic identity `skill:review`"));
+    }
+
+    #[test]
+    fn rejects_duplicate_opencode_skill_resource_paths() {
+        let error = compile_opencode_graph(&[
+            observation(
+                ".opencode/skills/review/SKILL.md",
+                "---\nname: review\ndescription: Review changes\n---\n# First\n",
+                false,
+            ),
+            observation(
+                ".opencode/skills/review/SKILL.md",
+                "---\nname: review\ndescription: Review changes\n---\n# Second\n",
+                false,
+            ),
+        ])
+        .unwrap_err();
+
+        assert!(error
+            .to_string()
+            .contains("duplicate OpenCode skill resource `SKILL.md`"));
     }
 }

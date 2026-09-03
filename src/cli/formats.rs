@@ -1,3 +1,4 @@
+use crate::parsers::{DecoderSelection, NativeFrontend};
 use clap::ValueEnum;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -15,6 +16,21 @@ pub enum InputFormat {
     Opencode,
     GraphJson,
     GraphToml,
+}
+
+impl From<InputFormat> for DecoderSelection {
+    fn from(value: InputFormat) -> Self {
+        match value {
+            InputFormat::Auto => Self::Auto,
+            InputFormat::Codex => Self::Native(NativeFrontend::Codex),
+            InputFormat::Claude => Self::Native(NativeFrontend::Claude),
+            InputFormat::CursorMdc => Self::Native(NativeFrontend::CursorMdc),
+            InputFormat::Opencode => Self::Native(NativeFrontend::Opencode),
+            InputFormat::Antigravity => Self::Native(NativeFrontend::Antigravity),
+            InputFormat::GraphJson => Self::GraphJson,
+            InputFormat::GraphToml => Self::GraphToml,
+        }
+    }
 }
 
 #[cfg(test)]

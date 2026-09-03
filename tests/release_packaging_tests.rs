@@ -613,7 +613,8 @@ chmod 0644 target/x86_64-unknown-linux-musl/release/rulette
     std::fs::set_permissions(&cargo_path, std::fs::Permissions::from_mode(0o755)).unwrap();
 
     let path = format!("{}:{}", tools.display(), std::env::var("PATH").unwrap());
-    let output = Command::new(&script_path)
+    let output = Command::new("bash")
+        .arg(&script_path)
         .current_dir(&caller)
         .env("PATH", &path)
         .env("EXPECTED_REPOSITORY", &repository)
@@ -676,7 +677,8 @@ chmod 0644 target/x86_64-unknown-linux-musl/release/rulette
     std::fs::set_permissions(&tar_path, std::fs::Permissions::from_mode(0o755)).unwrap();
     std::fs::write(&archive, "stale archive").unwrap();
     std::fs::write(&checksum, "stale checksum\n").unwrap();
-    let output = Command::new(&script_path)
+    let output = Command::new("bash")
+        .arg(&script_path)
         .current_dir(&caller)
         .env("PATH", &path)
         .env("EXPECTED_REPOSITORY", &repository)
@@ -725,7 +727,8 @@ fn package_script_rejects_a_malformed_cargo_package_identifier() {
     std::fs::set_permissions(&cargo_path, std::fs::Permissions::from_mode(0o755)).unwrap();
 
     let path = format!("{}:{}", tools.display(), std::env::var("PATH").unwrap());
-    let output = Command::new(&script_path)
+    let output = Command::new("bash")
+        .arg(&script_path)
         .env("PATH", path)
         .output()
         .unwrap();
@@ -786,7 +789,8 @@ fn cargo_package_version_script_accepts_only_cargo_compatible_semver_identifiers
         std::fs::set_permissions(&cargo_path, std::fs::Permissions::from_mode(0o755)).unwrap();
 
         let path = format!("{}:{}", tools.display(), std::env::var("PATH").unwrap());
-        let output = Command::new(&script_path)
+        let output = Command::new("bash")
+            .arg(&script_path)
             .env("PACKAGE_VERSION", version)
             .env("PATH", path)
             .output()

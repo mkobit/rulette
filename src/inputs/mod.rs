@@ -96,7 +96,40 @@ pub fn observe_path_with_limits(
     path: impl AsRef<Path>,
     limits: ObservationLimits,
 ) -> Result<Vec<ArtifactObservation>> {
-    let path = path.as_ref();
+    observe_sources_with_limits(std::iter::once(path), None::<&mut dyn Read>, limits)
+}
+
+pub fn observe_sources<P, I>(
+    paths: I,
+    stdin: Option<&mut dyn Read>,
+) -> Result<Vec<ArtifactObservation>>
+where
+    I: IntoIterator<Item = P>,
+    P: AsRef<Path>,
+{
+    observe_sources_with_limits(paths, stdin, ObservationLimits::default())
+}
+
+pub fn observe_sources_with_limits<P, I>(
+    paths: I,
+    stdin: Option<&mut dyn Read>,
+    limits: ObservationLimits,
+) -> Result<Vec<ArtifactObservation>>
+where
+    I: IntoIterator<Item = P>,
+    P: AsRef<Path>,
+{
+    let mut collector = ObservationCollector::new(limits);
+    for path in paths {
+        observe_path_into(path.as_ref(), &mut collector)?;
+    }
+    if let Some(reader) = stdin {
+        observe_stdin_into(reader, &mut collector)?;
+    }
+    Ok(collector.finish())
+}
+
+fn observe_path_into(path: &Path, collector: &mut ObservationCollector) -> Result<()> {
     let metadata = fs::symlink_metadata(path)
         .with_context(|| format!("could not inspect input path {}", path.display()))?;
     if metadata.file_type().is_symlink() {
@@ -104,27 +137,26 @@ pub fn observe_path_with_limits(
     }
 
     let input_label = input_label(path)?;
-    let mut collector = ObservationCollector::new(limits);
     if metadata.is_dir() {
-        observe_directory(path, path, &input_label, &mut collector)?;
+        observe_directory(path, path, &input_label, collector)?;
     } else if metadata.is_file() {
         match archive_origin(path)? {
             Some(InputOrigin::GzipTar) => {
                 let file = File::open(path)
                     .with_context(|| format!("could not open gzip tar input {}", path.display()))?;
-                collector.extend(observe_gzip_tar_with_limits(file, &input_label, limits)?)?;
+                observe_gzip_tar_into(file, &input_label, collector)?;
             }
             Some(InputOrigin::Tar) => {
                 let file = File::open(path)
                     .with_context(|| format!("could not open tar input {}", path.display()))?;
-                collector.extend(observe_tar_with_limits(file, &input_label, limits)?)?;
+                observe_tar_into(file, &input_label, collector)?;
             }
             None => {
                 let source_path = file_name_path(path)?;
                 let bytes = read_resource(
                     File::open(path)
                         .with_context(|| format!("could not open input file {}", path.display()))?,
-                    limits.max_resource_bytes,
+                    collector.limits.max_resource_bytes,
                 )?;
                 collector.push(ArtifactObservation::new(
                     bytes,
@@ -146,7 +178,7 @@ pub fn observe_path_with_limits(
         );
     }
 
-    Ok(collector.finish())
+    Ok(())
 }
 
 pub fn observe_stdin<R: Read>(reader: R) -> Result<Vec<ArtifactObservation>> {
@@ -154,9 +186,13 @@ pub fn observe_stdin<R: Read>(reader: R) -> Result<Vec<ArtifactObservation>> {
 }
 
 pub fn observe_stdin_with_limits<R: Read>(
-    reader: R,
+    mut reader: R,
     limits: ObservationLimits,
 ) -> Result<Vec<ArtifactObservation>> {
+    observe_sources_with_limits(std::iter::empty::<&Path>(), Some(&mut reader), limits)
+}
+
+fn observe_stdin_into<R: Read>(reader: R, collector: &mut ObservationCollector) -> Result<()> {
     let mut reader = BufReader::with_capacity(512, reader);
     let origin = {
         let prefix = reader
@@ -172,11 +208,10 @@ pub fn observe_stdin_with_limits<R: Read>(
     };
 
     match origin {
-        InputOrigin::GzipTar => observe_gzip_tar_with_limits(reader, "stdin", limits),
-        InputOrigin::Tar => observe_tar_with_limits(reader, "stdin", limits),
+        InputOrigin::GzipTar => observe_gzip_tar_into(reader, "stdin", collector),
+        InputOrigin::Tar => observe_tar_into(reader, "stdin", collector),
         InputOrigin::Stdin => {
-            let bytes = read_resource(reader, limits.max_resource_bytes)?;
-            let mut collector = ObservationCollector::new(limits);
+            let bytes = read_resource(reader, collector.limits.max_resource_bytes)?;
             collector.push(ArtifactObservation::new(
                 bytes,
                 "stdin",
@@ -185,7 +220,7 @@ pub fn observe_stdin_with_limits<R: Read>(
                 "stdin",
                 None,
             )?)?;
-            Ok(collector.finish())
+            Ok(())
         }
         InputOrigin::Filesystem => unreachable!("stdin has no filesystem observation origin"),
     }
@@ -238,27 +273,29 @@ fn observe_directory(
 
 #[cfg(test)]
 fn observe_tar<R: Read>(reader: R, input_label: &str) -> Result<Vec<ArtifactObservation>> {
-    observe_tar_with_limits(reader, input_label, ObservationLimits::default())
+    let mut collector = ObservationCollector::new(ObservationLimits::default());
+    observe_tar_into(reader, input_label, &mut collector)?;
+    Ok(collector.finish())
 }
 
-fn observe_tar_with_limits<R: Read>(
+fn observe_tar_into<R: Read>(
     reader: R,
     input_label: &str,
-    limits: ObservationLimits,
-) -> Result<Vec<ArtifactObservation>> {
-    observe_archive(reader, input_label, InputOrigin::Tar, limits)
+    collector: &mut ObservationCollector,
+) -> Result<()> {
+    observe_archive(reader, input_label, InputOrigin::Tar, collector)
 }
 
-fn observe_gzip_tar_with_limits<R: Read>(
+fn observe_gzip_tar_into<R: Read>(
     reader: R,
     input_label: &str,
-    limits: ObservationLimits,
-) -> Result<Vec<ArtifactObservation>> {
+    collector: &mut ObservationCollector,
+) -> Result<()> {
     observe_archive(
         GzDecoder::new(reader),
         input_label,
         InputOrigin::GzipTar,
-        limits,
+        collector,
     )
 }
 
@@ -266,10 +303,9 @@ fn observe_archive<R: Read>(
     reader: R,
     input_label: &str,
     origin: InputOrigin,
-    limits: ObservationLimits,
-) -> Result<Vec<ArtifactObservation>> {
+    collector: &mut ObservationCollector,
+) -> Result<()> {
     let mut archive = Archive::new(reader);
-    let mut collector = ObservationCollector::new(limits);
     let mut member_paths = BTreeSet::new();
 
     for entry in archive
@@ -280,10 +316,10 @@ fn observe_archive<R: Read>(
         if !entry.header().entry_type().is_file() {
             bail!("archive contains a non-regular entry");
         }
-        if entry.size() > limits.max_resource_bytes as u64 {
+        if entry.size() > collector.limits.max_resource_bytes as u64 {
             bail!(
                 "resource byte limit exceeded: archive member is larger than {} bytes",
-                limits.max_resource_bytes
+                collector.limits.max_resource_bytes
             );
         }
 
@@ -294,7 +330,7 @@ fn observe_archive<R: Read>(
                 source_path.as_str()
             );
         }
-        let bytes = read_resource(&mut entry, limits.max_resource_bytes)?;
+        let bytes = read_resource(&mut entry, collector.limits.max_resource_bytes)?;
         let source_path_string = source_path.as_str().to_owned();
         collector.push(ArtifactObservation::new(
             bytes,
@@ -306,7 +342,7 @@ fn observe_archive<R: Read>(
         )?)?;
     }
 
-    Ok(collector.finish())
+    Ok(())
 }
 
 fn read_resource<R: Read>(reader: R, max_resource_bytes: usize) -> Result<Vec<u8>> {
@@ -373,7 +409,7 @@ fn normalized_relative_input_label(path: &Path) -> Result<Option<String>> {
     }
     let label = components.join("/");
     ResourcePath::parse(label.clone()).context("input path must be a safe relative path")?;
-    Ok(Some(label))
+    Ok((label != "stdin").then_some(label))
 }
 
 fn validate_input_label(label: &str) -> Result<()> {
@@ -503,13 +539,6 @@ impl ObservationCollector {
         }
         self.total_bytes = total_bytes;
         self.observations.push(observation);
-        Ok(())
-    }
-
-    fn extend(&mut self, observations: Vec<ArtifactObservation>) -> Result<()> {
-        for observation in observations {
-            self.push(observation)?;
-        }
         Ok(())
     }
 

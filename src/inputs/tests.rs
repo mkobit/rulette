@@ -1,6 +1,6 @@
 use super::{
-    observe_path, observe_path_with_limits, observe_stdin, ArtifactObservation, InputOrigin,
-    ObservationLimits,
+    observe_path, observe_path_with_limits, observe_sources_with_limits, observe_stdin,
+    ArtifactObservation, InputOrigin, ObservationLimits,
 };
 use flate2::write::GzEncoder;
 use flate2::Compression;
@@ -26,6 +26,30 @@ fn replace_first_member_path(archive: &mut [u8], path: &[u8]) {
     let checksum: u32 = archive[..512].iter().map(|byte| u32::from(*byte)).sum();
     let checksum = format!("{:06o}\0 ", checksum);
     archive[148..156].copy_from_slice(checksum.as_bytes());
+}
+
+fn gzip(archive: Vec<u8>) -> Vec<u8> {
+    let mut gzip = GzEncoder::new(Vec::new(), Compression::default());
+    std::io::Write::write_all(&mut gzip, &archive).unwrap();
+    gzip.finish().unwrap()
+}
+
+fn assert_shared_ledger_rejects_archive(archive: Vec<u8>, expected: &str) {
+    let temp = tempfile::tempdir().unwrap();
+    let safe_path = temp.path().join("safe.md");
+    fs::write(&safe_path, b"safe").unwrap();
+
+    for archive in [archive.clone(), gzip(archive)] {
+        let mut stdin = Cursor::new(archive);
+        let error = observe_sources_with_limits(
+            [&safe_path],
+            Some(&mut stdin),
+            ObservationLimits::default(),
+        )
+        .unwrap_err();
+
+        assert!(error.to_string().contains(expected));
+    }
 }
 
 #[test]
@@ -234,6 +258,113 @@ fn enforces_each_observation_budget_during_discovery() {
 }
 
 #[test]
+fn shares_observation_limit_across_explicit_paths() {
+    let temp = tempfile::tempdir().unwrap();
+    let first = temp.path().join("first.md");
+    let second = temp.path().join("second.md");
+    fs::write(&first, b"first").unwrap();
+    fs::write(&second, b"second").unwrap();
+
+    let limits = ObservationLimits {
+        max_observations: 1,
+        max_resource_bytes: 8,
+        max_total_bytes: 16,
+    };
+    let error =
+        observe_sources_with_limits([&first, &second], None::<&mut dyn std::io::Read>, limits)
+            .unwrap_err();
+
+    assert!(error.to_string().contains("observation limit"));
+}
+
+#[test]
+fn shares_total_byte_limit_across_path_and_archive() {
+    let temp = tempfile::tempdir().unwrap();
+    let file = temp.path().join("rules.md");
+    let archive = temp.path().join("snapshot.tar");
+    fs::write(&file, b"12").unwrap();
+    let mut tar = Builder::new(Vec::new());
+    append_file(&mut tar, "skills/demo/SKILL.md", b"34");
+    fs::write(&archive, tar.into_inner().unwrap()).unwrap();
+
+    let limits = ObservationLimits {
+        max_observations: 4,
+        max_resource_bytes: 4,
+        max_total_bytes: 3,
+    };
+    let error =
+        observe_sources_with_limits([&file, &archive], None::<&mut dyn std::io::Read>, limits)
+            .unwrap_err();
+
+    assert!(error.to_string().contains("total byte limit"));
+}
+
+#[test]
+fn shares_total_byte_limit_across_path_and_stdin() {
+    let temp = tempfile::tempdir().unwrap();
+    let file = temp.path().join("rules.md");
+    fs::write(&file, b"12").unwrap();
+    let mut stdin = Cursor::new(b"34".to_vec());
+
+    let limits = ObservationLimits {
+        max_observations: 4,
+        max_resource_bytes: 4,
+        max_total_bytes: 3,
+    };
+    let error = observe_sources_with_limits([&file], Some(&mut stdin), limits).unwrap_err();
+
+    assert!(error.to_string().contains("total byte limit"));
+}
+
+#[test]
+fn shared_ledger_preserves_tar_and_gzip_archive_safety_rejections() {
+    for entry_type in [EntryType::Symlink, EntryType::Link] {
+        let mut archive = Builder::new(Vec::new());
+        let mut header = Header::new_gnu();
+        header.set_entry_type(entry_type);
+        header.set_size(0);
+        header.set_link_name("target").unwrap();
+        header.set_cksum();
+        archive
+            .append_data(&mut header, "link.md", std::io::empty())
+            .unwrap();
+        assert_shared_ledger_rejects_archive(archive.into_inner().unwrap(), "non-regular");
+    }
+
+    let mut duplicate = Builder::new(Vec::new());
+    append_file(&mut duplicate, "same.md", b"first");
+    append_file(&mut duplicate, "same.md", b"second");
+    assert_shared_ledger_rejects_archive(duplicate.into_inner().unwrap(), "duplicate");
+
+    for unsafe_path in [b"../outside.md" as &[u8], b"/outside.md", b"C:/outside.md"] {
+        let mut archive = Builder::new(Vec::new());
+        append_file(&mut archive, "inside.md", b"escape");
+        let mut archive = archive.into_inner().unwrap();
+        replace_first_member_path(&mut archive, unsafe_path);
+        assert_shared_ledger_rejects_archive(archive, "safe relative");
+    }
+
+    let mut pax = Builder::new(Vec::new());
+    pax.append_pax_extensions([("path", b"../outside.md" as &[u8])])
+        .unwrap();
+    append_file(&mut pax, "fallback.md", b"escape");
+    assert_shared_ledger_rejects_archive(pax.into_inner().unwrap(), "safe relative");
+
+    let safe_long_path = "a".repeat(110);
+    let unsafe_long_path = format!("../{}", "b".repeat(107));
+    let mut gnu = Builder::new(Vec::new());
+    append_file(&mut gnu, &safe_long_path, b"escape");
+    let mut gnu = gnu.into_inner().unwrap();
+    let path_offset = gnu
+        .windows(safe_long_path.len())
+        .position(|window| window == safe_long_path.as_bytes())
+        .unwrap();
+    gnu[path_offset..path_offset + unsafe_long_path.len()]
+        .copy_from_slice(unsafe_long_path.as_bytes());
+    assert_shared_ledger_rejects_archive(gnu, "safe relative");
+}
+
+#[test]
 fn rejects_unsafe_source_paths() {
     let observation = ArtifactObservation::new(
         vec![],
@@ -257,4 +388,12 @@ fn normalizes_safe_relative_input_labels_without_retaining_host_paths() {
         .unwrap()
         .starts_with("input_"));
     assert!(super::input_label(Path::new("../escape")).is_err());
+}
+
+#[test]
+fn reserves_the_stdin_label_for_the_stream() {
+    assert_eq!(
+        super::normalized_relative_input_label(Path::new("stdin")).unwrap(),
+        None
+    );
 }
