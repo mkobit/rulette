@@ -1,0 +1,34 @@
+schemaVersion: "2"
+kind: mixin
+name: rulette-toolchain
+version: "0.1.0"
+description: Bootstrap mise, bun, beads, and rust toolchain for rulette
+
+permissions:
+  network:
+    allow:
+      - mise.run
+      - mise.jdx.dev
+      - github.com
+      - api.github.com
+      - "*.githubusercontent.com"
+      - registry.npmjs.org
+      - bun.sh
+      - static.rust-lang.org
+      - crates.io
+      - index.crates.io
+
+environment:
+  variables:
+    PATH: /home/agent/.local/share/mise/shims:/home/agent/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    MISE_YES: "1"
+
+setup:
+  install:
+    - command: |
+        curl -fsSL https://mise.run | MISE_VERSION=v2026.8.14 MISE_INSTALL_PATH=/usr/local/bin/mise sh
+        echo 'if command -v mise >/dev/null 2>&1; then eval "$(mise activate bash)"; fi' > /etc/profile.d/mise.sh
+      description: "Install mise into /usr/local/bin and configure profile"
+    - command: "mise settings set paranoid false && mise settings set yes true && mise use -g bun@1.4.0 && mise use -g github:gastownhall/beads@1.2.2 && mise use -g rust@1.98.0"
+      user: "1000"
+      description: "Install bun 1.4.0, beads 1.2.2, and rust 1.98.0 for agent"

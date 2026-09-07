@@ -36,10 +36,14 @@ description = "Lint markdown files"
 run = "cargo test"
 description = "Run all tests"
 
+[tasks."check:sbx-env"]
+run = "cargo run --bin check-sbx-env"
+description = "Validate Docker Sandbox environment files"
+
 [tasks.check]
 depends = ["spec-validate"]
-run = "bun x markdownlint-cli2 && cargo fmt --check && cargo clippy -- -D warnings && cargo test"
-description = "Run quality gates in CI order (spec-validate -> lint:md -> fmt -> lint:rust -> test)"
+run = "bun x markdownlint-cli2 && cargo fmt --check && cargo clippy -- -D warnings && cargo run --bin check-sbx-env && cargo test"
+description = "Run quality gates in CI order (spec-validate -> lint:md -> fmt -> lint:rust -> check:sbx-env -> test)"
 
 [tasks.bd-push]
 run = "bd dolt push"
