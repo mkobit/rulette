@@ -14,7 +14,7 @@ on:
   workflow_dispatch: {}
 
 env:
-  MISE_VERSION: "v2026.8.11"
+  MISE_VERSION: "v2026.9.1"
 
 permissions: {}
 
