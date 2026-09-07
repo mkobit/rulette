@@ -624,10 +624,177 @@ pub fn check_kit_with_sbx_if_available(kit_dir: &Path) -> Result<()> {
     Ok(())
 }
 
+pub fn check_toolchain_parity(repo_root: &Path) -> Result<()> {
+    // 1. Read mise.toml
+    let mise_path = repo_root.join("mise.toml");
+    let mise_raw = std::fs::read_to_string(&mise_path)
+        .with_context(|| format!("Failed to read {}", mise_path.display()))?;
+
+    let mise_doc: toml::Table = toml::from_str(&mise_raw)
+        .with_context(|| format!("Failed to parse {}", mise_path.display()))?;
+    let tools = mise_doc
+        .get("tools")
+        .and_then(|v| v.as_table())
+        .ok_or_else(|| anyhow::anyhow!("Missing [tools] in {}", mise_path.display()))?;
+
+    let bun_version = tools.get("bun").and_then(|v| v.as_str()).ok_or_else(|| {
+        anyhow::anyhow!("Missing bun version in [tools] in {}", mise_path.display())
+    })?;
+
+    let beads_version = tools
+        .get("github:gastownhall/beads")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "Missing github:gastownhall/beads in [tools] in {}",
+                mise_path.display()
+            )
+        })?;
+
+    let rust_version = match tools.get("rust") {
+        Some(toml::Value::String(s)) => s.as_str(),
+        Some(toml::Value::Table(t)) => t
+            .get("version")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow::anyhow!("Missing rust.version in {}", mise_path.display()))?,
+        _ => bail!("Missing rust in [tools] in {}", mise_path.display()),
+    };
+
+    // 2. Read rust-toolchain.toml
+    let rust_toolchain_path = repo_root.join("rust-toolchain.toml");
+    let rust_toolchain_raw = std::fs::read_to_string(&rust_toolchain_path)
+        .with_context(|| format!("Failed to read {}", rust_toolchain_path.display()))?;
+    let rust_toolchain_doc: toml::Table = toml::from_str(&rust_toolchain_raw)
+        .with_context(|| format!("Failed to parse {}", rust_toolchain_path.display()))?;
+    let rust_toolchain_channel = rust_toolchain_doc
+        .get("toolchain")
+        .and_then(|v| v.as_table())
+        .and_then(|t| t.get("channel"))
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "Missing toolchain.channel in {}",
+                rust_toolchain_path.display()
+            )
+        })?;
+
+    if rust_toolchain_channel != rust_version {
+        bail!(
+            "Rust toolchain mismatch: mise.toml specifies '{}' but rust-toolchain.toml specifies '{}'",
+            rust_version,
+            rust_toolchain_channel
+        );
+    }
+
+    // 3. Read GitHub Actions workflows and extract MISE_VERSION
+    let workflows_dir = repo_root.join(".github").join("workflows");
+    let mut workflow_mise_versions: BTreeMap<String, String> = BTreeMap::new();
+    if workflows_dir.exists() {
+        for entry in std::fs::read_dir(&workflows_dir)
+            .with_context(|| format!("Failed to read {}", workflows_dir.display()))?
+        {
+            let entry = entry?;
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) == Some("yml")
+                || path.extension().and_then(|s| s.to_str()) == Some("yaml")
+            {
+                let content = std::fs::read_to_string(&path)?;
+                for line in content.lines() {
+                    let trimmed = line.trim();
+                    if trimmed.starts_with("MISE_VERSION:") {
+                        let val = trimmed
+                            .trim_start_matches("MISE_VERSION:")
+                            .trim()
+                            .trim_matches('"')
+                            .trim_matches('\'');
+                        workflow_mise_versions.insert(
+                            path.file_name().unwrap().to_string_lossy().to_string(),
+                            val.to_string(),
+                        );
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    let expected_mise_version =
+        if let Some((first_file, first_ver)) = workflow_mise_versions.iter().next() {
+            for (file, ver) in &workflow_mise_versions {
+                if ver != first_ver {
+                    bail!(
+                        "Workflow MISE_VERSION mismatch: {} has '{}' but {} has '{}'",
+                        first_file,
+                        first_ver,
+                        file,
+                        ver
+                    );
+                }
+            }
+            first_ver.clone()
+        } else {
+            bail!(
+                "No workflow files found with MISE_VERSION in {}",
+                workflows_dir.display()
+            );
+        };
+
+    // 4. Verify .sbx/kit/spec.yaml
+    let kit_spec_path = repo_root.join(".sbx").join("kit").join("spec.yaml");
+    let kit_spec_raw = std::fs::read_to_string(&kit_spec_path)
+        .with_context(|| format!("Failed to read {}", kit_spec_path.display()))?;
+
+    let expected_mise_str = format!("MISE_VERSION={}", expected_mise_version);
+    if !kit_spec_raw.contains(&expected_mise_str) {
+        bail!(
+            ".sbx/kit/spec.yaml does not contain expected '{}' (aligned with workflows)",
+            expected_mise_str
+        );
+    }
+
+    let expected_bun_str = format!("bun@{}", bun_version);
+    if !kit_spec_raw.contains(&expected_bun_str) {
+        bail!(
+            ".sbx/kit/spec.yaml does not contain expected '{}' (aligned with mise.toml)",
+            expected_bun_str
+        );
+    }
+
+    let expected_beads_str = format!("github:gastownhall/beads@{}", beads_version);
+    if !kit_spec_raw.contains(&expected_beads_str) {
+        bail!(
+            ".sbx/kit/spec.yaml does not contain expected '{}' (aligned with mise.toml)",
+            expected_beads_str
+        );
+    }
+
+    let expected_rust_str = format!("rust@{}", rust_version);
+    if !kit_spec_raw.contains(&expected_rust_str) {
+        bail!(
+            ".sbx/kit/spec.yaml does not contain expected '{}' (aligned with mise.toml)",
+            expected_rust_str
+        );
+    }
+
+    println!(
+        "✓ Toolchain versions aligned (rust: {}, bun: {}, beads: {}, mise: {})",
+        rust_version, bun_version, beads_version, expected_mise_version
+    );
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use tempfile::tempdir;
+
+    #[test]
+    fn test_toolchain_parity() {
+        let repo_root = Path::new(".");
+        check_toolchain_parity(repo_root)
+            .expect("toolchain versions should be aligned across repo files");
+    }
 
     #[test]
     fn test_valid_kit_name() {

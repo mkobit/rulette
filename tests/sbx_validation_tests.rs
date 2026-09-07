@@ -1,11 +1,15 @@
-use rulette::sbx::{check_kit_spec, check_sbx_env, REQUIRED_PORTS};
+use rulette::sbx::{check_kit_spec, check_sbx_env, check_toolchain_parity, REQUIRED_PORTS};
 use std::path::Path;
 
 #[test]
 fn test_docker_sandbox_environment_validation() {
+    let repo_root = Path::new(".");
     let kit_spec = Path::new(".sbx/kit/spec.yaml");
     let env_file = Path::new(".sbx/.sbxenv.yaml");
     let agy_file = Path::new(".sbx/.sbxenv.agy.yaml");
+
+    check_toolchain_parity(repo_root)
+        .expect("toolchain versions must be aligned across mise, github actions, and sbx");
 
     let kit = check_kit_spec(kit_spec).expect(".sbx/kit/spec.yaml must be valid");
     assert_eq!(kit.name(), "rulette-toolchain");

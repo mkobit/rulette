@@ -1,10 +1,12 @@
 use rulette::sbx::{
-    check_kit_spec, check_kit_with_sbx_if_available, check_sbx_env, REQUIRED_PORTS,
+    check_kit_spec, check_kit_with_sbx_if_available, check_sbx_env, check_toolchain_parity,
+    REQUIRED_PORTS,
 };
 use std::path::Path;
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
+    let repo_root = Path::new(".");
     let kit_spec = Path::new(".sbx/kit/spec.yaml");
     let env_files = [
         Path::new(".sbx/.sbxenv.yaml"),
@@ -13,6 +15,11 @@ fn main() -> ExitCode {
     let kit_dir = Path::new(".sbx/kit");
 
     let mut failed = false;
+
+    if let Err(err) = check_toolchain_parity(repo_root) {
+        eprintln!("Error: {:#}", err);
+        failed = true;
+    }
 
     if let Err(err) = check_kit_spec(kit_spec) {
         eprintln!("Error: {:#}", err);
