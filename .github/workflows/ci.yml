@@ -75,7 +75,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Validate Docker Sandbox environments
-        run: cargo run --bin check-sbx-env
+        run: mise run validate-sbx
 
   test:
     name: Test (${{ matrix.os }})

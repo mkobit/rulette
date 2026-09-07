@@ -17,6 +17,7 @@ permissions:
       - static.rust-lang.org
       - crates.io
       - index.crates.io
+      - static.crates.io
 
 environment:
   variables:
