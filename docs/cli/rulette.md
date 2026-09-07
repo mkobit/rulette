@@ -78,20 +78,20 @@ Compile graphs and stage or apply native publication plans
 
 ###### **Arguments:**
 
-* `<INPUT>` — Native input files or directories, or `-` for standard input.
+* `<INPUT>` — Explicit snapshot files, directories, tar archives, or gzip-compressed tar archives.
 
-   Stdin is used when neither these inputs nor config inputs are supplied.
+   Use `-` for one explicitly selected tar, gzip-compressed tar, graph JSON, or graph TOML stream. Plain native stdin is rejected because it has no naming and layout contract.
 
 ###### **Options:**
 
-* `--from <FROM>` — Source frontend, auto-detected when omitted
+* `--from <FROM>` — Select one homogeneous source decoder; `auto` accepts only one unambiguous native frontend. Graph JSON and TOML require explicit selection
 
   Default value: `auto`
 
   Possible values: `auto`, `claude`, `cursor-mdc`, `codex`, `antigravity`, `opencode`, `graph-json`, `graph-toml`
 
 * `--select <SELECT>` — Select one package by its exact graph package ID
-* `--target <TARGET>` — Stage a native target as `format@scope`
+* `--target <TARGET>` — Stage one or more unique native targets as `format@scope`; repeated spellings are deduplicated
 * `--allow-lossy` — Accept reported representational loss for requested native targets
 * `--stage <STAGE>` — Write a self-contained publication plan to this new directory
 * `--project-root <PROJECT_ROOT>` — Explicitly authorize the live project root for all project targets
