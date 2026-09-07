@@ -7,6 +7,3 @@ workspace:
 kits:
   - "git+https://github.com/shelajev/agy-sbx-kit.git#ref=3e7016f108f3cf09922cf351b55a49e38d97f9f2"
   - ./kit
-ports:
-  - sandbox: 5173
-    host: 5173
