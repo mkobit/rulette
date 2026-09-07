@@ -4,6 +4,24 @@ use std::io::Write;
 
 const CODEX_FIXTURE: &str = "tests/fixtures/v0_1/codex";
 
+#[test]
+fn transform_help_describes_snapshot_boundaries() {
+    Command::cargo_bin("rulette")
+        .unwrap()
+        .arg("transform")
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("one homogeneous source decoder"))
+        .stdout(predicate::str::contains(
+            "auto` accepts only one unambiguous native frontend",
+        ))
+        .stdout(predicate::str::contains("Plain native stdin is rejected"))
+        .stdout(predicate::str::contains(
+            "one or more unique native targets",
+        ));
+}
+
 fn graph_from(command: &mut Command) -> serde_json::Value {
     let output = command.assert().success().get_output().stdout.clone();
     serde_json::from_slice(&output).expect("transform must write a compilation graph JSON value")

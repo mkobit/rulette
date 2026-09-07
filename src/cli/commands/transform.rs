@@ -30,13 +30,15 @@ impl std::error::Error for DestinationDrift {}
 
 #[derive(Args, Debug)]
 pub struct TransformArgs {
-    /// Native input files or directories, or `-` for standard input.
+    /// Explicit snapshot files, directories, tar archives, or gzip-compressed tar archives.
     ///
-    /// Stdin is used when neither these inputs nor config inputs are supplied.
+    /// Use `-` for one explicitly selected tar, gzip-compressed tar, graph JSON, or graph TOML stream.
+    /// Plain native stdin is rejected because it has no naming and layout contract.
     #[arg(conflicts_with = "apply")]
     pub input: Vec<String>,
 
-    /// Source frontend, auto-detected when omitted.
+    /// Select one homogeneous source decoder; `auto` accepts only one unambiguous native frontend.
+    /// Graph JSON and TOML require explicit selection.
     #[arg(long, value_enum, default_value_t = InputFormat::Auto, conflicts_with = "apply")]
     pub from: InputFormat,
 
@@ -44,7 +46,7 @@ pub struct TransformArgs {
     #[arg(long, conflicts_with = "apply")]
     pub select: Vec<String>,
 
-    /// Stage a native target as `format@scope`.
+    /// Stage one or more unique native targets as `format@scope`; repeated spellings are deduplicated.
     ///
     #[arg(long, conflicts_with = "apply")]
     pub target: Vec<String>,

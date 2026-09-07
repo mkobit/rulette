@@ -103,11 +103,11 @@ The later-target apply failure test uses a deliberately crate-private, test-only
 
 ## 9. Document the explicit snapshot-build boundary
 
-- [ ] 9.1 Update `docs/2026-04-11-prd.md`, `docs/2026-04-11-man-page.md`, and `docs/cli/rulette.md` to describe explicit homogeneous snapshot inputs, constrained auto detection, accepted stdin forms, shared limits, one-or-more unique targets, and check-stage-apply direction.
-- [ ] 9.2 Update `src/bin/gen_docs.rs` and regenerate only tracked project CLI reference files when their source-of-truth command descriptions require new `--from`, stdin, or target-cardinality text, without invoking Beads, OpenSpec, or another external generator.
-- [ ] 9.3 Document that Beads, OpenSpec, and other generators run outside Rulette, that graph JSON and TOML are explicit interchange inputs only, and that outputs are derived artifacts never imported or merged.
-- [ ] 9.4 Document collision diagnostics as displaying package provenance plus transient outer input identity, while capability and lowering findings display only package provenance.
-- [ ] 9.5 Add documentation assertions or CLI help snapshots covering rejected plain native stdin, ambiguous auto detection, and deduplicated targets.
+- [x] 9.1 Update `docs/2026-04-11-prd.md`, `docs/2026-04-11-man-page.md`, and `docs/cli/rulette.md` to describe explicit homogeneous snapshot inputs, constrained auto detection, accepted stdin forms, shared limits, one-or-more unique targets, and check-stage-apply direction.
+- [x] 9.2 Update `src/bin/gen_docs.rs` and regenerate only tracked project CLI reference files when their source-of-truth command descriptions require new `--from`, stdin, or target-cardinality text, without invoking Beads, OpenSpec, or another external generator.
+- [x] 9.3 Document that Beads, OpenSpec, and other generators run outside Rulette, that graph JSON and TOML are explicit interchange inputs only, and that outputs are derived artifacts never imported or merged.
+- [x] 9.4 Document collision diagnostics as displaying package provenance plus transient outer input identity, while capability and lowering findings display only package provenance.
+- [x] 9.5 Add documentation assertions or CLI help snapshots covering rejected plain native stdin, ambiguous auto detection, and deduplicated targets.
 
 Acceptance evidence: generated CLI documentation and user-facing references agree with the library behavior and contain no command, plugin, runtime-loading, reverse-sync, or initialization workflow.
 
