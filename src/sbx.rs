@@ -1040,25 +1040,25 @@ mod tests {
     #[test]
     fn test_repo_kit_spec_and_env_files() {
         let kit_spec = Path::new(".sbx/kit/spec.yaml");
-        let env_file = Path::new(".sbx/.sbxenv.yaml");
-        let agy_file = Path::new(".sbx/.sbxenv.agy.yaml");
+        let env_file = Path::new(".sbx/sbxenv.yaml");
+        let agy_file = Path::new(".sbx/sbxenv.agy.yaml");
 
         let spec = check_kit_spec(kit_spec).expect(".sbx/kit/spec.yaml should be valid");
         assert_eq!(spec.name(), "rulette-toolchain");
 
         let env =
-            check_sbx_env(env_file, REQUIRED_PORTS).expect(".sbx/.sbxenv.yaml should be valid");
+            check_sbx_env(env_file, REQUIRED_PORTS).expect(".sbx/sbxenv.yaml should be valid");
         assert_eq!(env.agent, "codex");
 
         let agy =
-            check_sbx_env(agy_file, REQUIRED_PORTS).expect(".sbx/.sbxenv.agy.yaml should be valid");
+            check_sbx_env(agy_file, REQUIRED_PORTS).expect(".sbx/sbxenv.agy.yaml should be valid");
         assert_eq!(agy.agent, "agy");
     }
 
     #[test]
     fn test_forbidden_keys_rejected() {
         let dir = tempdir().unwrap();
-        let file = dir.path().join(".sbxenv.yaml");
+        let file = dir.path().join("sbxenv.yaml");
         for forbidden in FORBIDDEN_KEYS {
             let yaml = format!(
                 "schemaVersion: \"1\"\nagent: codex\nworkspace:\n  path: ..\n  clone: true\nkits:\n  - ./kit\nports:\n  - sandbox: 5173\n{}: {{}}\n",
@@ -1073,7 +1073,7 @@ mod tests {
     #[test]
     fn test_missing_required_port_rejected() {
         let dir = tempdir().unwrap();
-        let file = dir.path().join(".sbxenv.yaml");
+        let file = dir.path().join("sbxenv.yaml");
         let yaml = "schemaVersion: \"1\"\nagent: codex\nworkspace:\n  path: ..\n  clone: true\nkits:\n  - ./kit\nports:\n  - sandbox: 8080\n";
         std::fs::write(&file, yaml).unwrap();
         let err = check_sbx_env(&file, &[5173]).unwrap_err();
@@ -1085,7 +1085,7 @@ mod tests {
     #[test]
     fn test_missing_clone_mode_rejected() {
         let dir = tempdir().unwrap();
-        let file = dir.path().join(".sbxenv.yaml");
+        let file = dir.path().join("sbxenv.yaml");
         let yaml = "schemaVersion: \"1\"\nagent: codex\nworkspace:\n  path: ..\n  clone: false\nkits:\n  - ./kit\nports:\n  - sandbox: 5173\n";
         std::fs::write(&file, yaml).unwrap();
         let err = check_sbx_env(&file, &[5173]).unwrap_err();
@@ -1095,7 +1095,7 @@ mod tests {
     #[test]
     fn test_missing_local_kit_rejected() {
         let dir = tempdir().unwrap();
-        let file = dir.path().join(".sbxenv.yaml");
+        let file = dir.path().join("sbxenv.yaml");
         let yaml = "schemaVersion: \"1\"\nagent: codex\nworkspace:\n  path: ..\n  clone: true\nkits:\n  - some-other-kit\nports:\n  - sandbox: 5173\n";
         std::fs::write(&file, yaml).unwrap();
         let err = check_sbx_env(&file, &[5173]).unwrap_err();
@@ -1145,7 +1145,7 @@ mod tests {
     #[test]
     fn test_environment_without_schema_version_rejected() {
         let dir = tempdir().unwrap();
-        let file = dir.path().join(".sbxenv.yaml");
+        let file = dir.path().join("sbxenv.yaml");
         let yaml = "agent: codex\nworkspace:\n  path: ..\n  clone: true\nkits:\n  - ./kit\n";
         std::fs::write(&file, yaml).unwrap();
         let err = check_sbx_env(&file, &[]).unwrap_err();
@@ -1155,7 +1155,7 @@ mod tests {
     #[test]
     fn test_environment_with_wrong_schema_version_rejected() {
         let dir = tempdir().unwrap();
-        let file = dir.path().join(".sbxenv.yaml");
+        let file = dir.path().join("sbxenv.yaml");
         let yaml = "schemaVersion: \"2\"\nagent: codex\nworkspace:\n  path: ..\n  clone: true\nkits:\n  - ./kit\n";
         std::fs::write(&file, yaml).unwrap();
         let err = check_sbx_env(&file, &[]).unwrap_err();
@@ -1165,7 +1165,7 @@ mod tests {
     #[test]
     fn test_environment_with_numeric_schema_version_rejected() {
         let dir = tempdir().unwrap();
-        let file = dir.path().join(".sbxenv.yaml");
+        let file = dir.path().join("sbxenv.yaml");
         let yaml = "schemaVersion: 1\nagent: codex\nworkspace:\n  path: ..\n  clone: true\nkits:\n  - ./kit\n";
         std::fs::write(&file, yaml).unwrap();
         let err = check_sbx_env(&file, &[]).unwrap_err();
@@ -1205,7 +1205,7 @@ mod tests {
     #[test]
     fn test_environment_with_wrong_workspace_path_rejected() {
         let dir = tempdir().unwrap();
-        let file = dir.path().join(".sbxenv.yaml");
+        let file = dir.path().join("sbxenv.yaml");
         let yaml = "schemaVersion: \"1\"\nagent: codex\nworkspace:\n  path: .\n  clone: true\nkits:\n  - ./kit\n";
         std::fs::write(&file, yaml).unwrap();
         let err = check_sbx_env(&file, &[]).unwrap_err();

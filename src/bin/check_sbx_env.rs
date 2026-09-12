@@ -9,8 +9,8 @@ fn main() -> ExitCode {
     let repo_root = Path::new(".");
     let kit_spec = Path::new(".sbx/kit/spec.yaml");
     let env_files = [
-        Path::new(".sbx/.sbxenv.yaml"),
-        Path::new(".sbx/.sbxenv.agy.yaml"),
+        Path::new(".sbx/sbxenv.yaml"),
+        Path::new(".sbx/sbxenv.agy.yaml"),
     ];
     let kit_dir = Path::new(".sbx/kit");
 
