@@ -18,7 +18,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: jdx/mise-action@v4
         with:
@@ -78,7 +78,7 @@ jobs:
           RELEASE_ARCHIVE="${archive}" VERIFIED_RELEASE_DIR=verified-release mise run release:smoke
 
       - name: Upload verified release artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: verified-static-release
           path: |
@@ -94,7 +94,7 @@ jobs:
       contents: write
     steps:
       - name: Download verified release artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: verified-static-release
           path: verified-release
