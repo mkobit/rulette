@@ -6,7 +6,6 @@ pub mod ir;
 pub mod parsers;
 pub mod pipeline;
 pub mod publication;
-pub mod sbx;
 
 pub use compilation::{compile, lower_unique_targets, CompilationRequest};
 pub use emitters::lowering::{
