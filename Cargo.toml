@@ -57,10 +57,6 @@ anyhow = "1.0"
 name = "gen_docs"
 path = "src/bin/gen_docs.rs"
 
-[[bin]]
-name = "check-sbx-env"
-path = "src/bin/check_sbx_env.rs"
-
 [workspace.metadata.llvm-cov]
 workspace = true
 fail-under-lines = 75

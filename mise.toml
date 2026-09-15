@@ -37,7 +37,7 @@ run = "cargo test"
 description = "Run all tests"
 
 [tasks."validate-sbx"]
-run = "cargo run --bin check-sbx-env"
+run = "sbx kit validate .sbx/kit && sbx env plan .sbx/sbxenv.yaml && sbx env plan .sbx/sbxenv.agy.yaml"
 description = "Validate Docker Sandbox environment files"
 
 [tasks."check:sbx-env"]
