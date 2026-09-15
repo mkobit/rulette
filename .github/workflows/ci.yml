@@ -79,6 +79,7 @@ jobs:
           gh release download v0.42.1 --repo docker/sbx-releases --pattern "DockerSandboxes-linux-amd64-ubuntu2404.deb" --output /tmp/sbx.deb
           sudo apt-get install -y /tmp/sbx.deb
           rm -f /tmp/sbx.deb
+          sbx daemon start -d
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
