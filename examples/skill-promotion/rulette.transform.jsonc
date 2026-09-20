@@ -1,0 +1,16 @@
+{
+  // Source inputs to compile into the IR graph
+  "inputs": ["."],
+
+  // Multi-target publication targets
+  "targets": [
+    {
+      "target": "claude",
+      "scope": "project"
+    },
+    {
+      "target": "cursor",
+      "scope": "project"
+    }
+  ]
+}

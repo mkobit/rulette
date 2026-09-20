@@ -6,7 +6,7 @@ tools:
   - read_file
   - grep_search
   - list_directory
-model: gemini-2.0-flash-exp
+model: inherit
 temperature: 0.1
 ---
 # Architect
