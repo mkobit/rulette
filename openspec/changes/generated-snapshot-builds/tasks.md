@@ -113,9 +113,9 @@ Acceptance evidence: generated CLI documentation and user-facing references agre
 
 ## 10. Validate the generated snapshot build change
 
-- [ ] 10.1 Run focused input, parser, aggregation, graph-interchange, transform CLI, and staged-publication tests while each implementation task lands.
-- [ ] 10.2 Run `mise run fmt`, `mise run lint`, `mise run test`, and `mise run spec-validate` after the complete change is implemented.
-- [ ] 10.3 Run `mise run build` and perform static-link binary and dependency inspection, without release packaging or publication, to confirm the implementation adds no runtime-loaded code, generator execution, network access, local state, configuration discovery, or direct destination publication path.
-- [ ] 10.4 Record any unimplemented cross-cutting requirement as a follow-up Bead before closing this implementation change.
+- [x] 10.1 Run focused input, parser, aggregation, graph-interchange, transform CLI, and staged-publication tests while each implementation task lands.
+- [x] 10.2 Run `mise run fmt`, `mise run lint`, `mise run test`, and `mise run spec-validate` after the complete change is implemented.
+- [x] 10.3 Run `mise run build` and perform static-link binary and dependency inspection, without release packaging or publication, to confirm the implementation adds no runtime-loaded code, generator execution, network access, local state, configuration discovery, or direct destination publication path.
+- [x] 10.4 Record any unimplemented cross-cutting requirement as a follow-up Bead before closing this implementation change.
 
 Acceptance evidence: the full validation suite passes and focused tests cover every scenario in `generated-snapshot-builds` and its `transform-pipeline` delta.
