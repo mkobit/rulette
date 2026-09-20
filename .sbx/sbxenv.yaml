@@ -3,6 +3,6 @@ name: "rulette-codex"
 agent: codex
 workspace:
   path: ..
-  clone: true
+  clone: false
 kits:
   - ./kit
