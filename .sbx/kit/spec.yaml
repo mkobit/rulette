@@ -18,6 +18,9 @@ permissions:
       - crates.io
       - index.crates.io
       - static.crates.io
+      - archive.ubuntu.com
+      - security.ubuntu.com
+      - ports.ubuntu.com
 
 environment:
   variables:
@@ -25,6 +28,11 @@ environment:
 
 setup:
   install:
+    - command: |
+        apt-get update
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential musl-tools
+        rm -rf /var/lib/apt/lists/*
+      description: "Install native build-essential and musl-tools linkers"
     - command: |
         curl -fsSL https://mise.run | MISE_VERSION=v2026.9.1 MISE_INSTALL_PATH=/usr/local/bin/mise sh
         printf '%s\n' 'export PATH="/home/agent/.local/share/mise/shims:/home/agent/.local/bin:$PATH"' > /etc/profile.d/mise.sh
