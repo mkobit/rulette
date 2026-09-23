@@ -1,0 +1,10 @@
+{
+  "inputs": ["./rules/"],
+  "targets": [
+    { "target": "codex", "scope": "project" },
+    { "target": "claude", "scope": "project" },
+    { "target": "cursor", "scope": "project" },
+    { "target": "opencode", "scope": "project" },
+    { "target": "antigravity", "scope": "project" }
+  ]
+}
