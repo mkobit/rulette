@@ -1,0 +1,13 @@
+{
+  // Canonical inputs
+  "inputs": ["./rules/"],
+
+  // Fan out across all five supported core targets
+  "targets": [
+    { "target": "codex", "scope": "project" },
+    { "target": "claude", "scope": "project" },
+    { "target": "cursor", "scope": "project" },
+    { "target": "opencode", "scope": "project" },
+    { "target": "antigravity", "scope": "project" }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  // Canonical source rules
+  "inputs": ["./rules/"],
+
+  // Target harnesses to maintain in CI
+  "targets": [
+    { "target": "codex", "scope": "project" },
+    { "target": "cursor", "scope": "project" },
+    { "target": "claude", "scope": "project" }
+  ]
+}

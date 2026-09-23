@@ -1,0 +1,8 @@
+{
+  "inputs": ["./rules/"],
+  "targets": [
+    { "target": "cursor", "scope": "project" },
+    { "target": "antigravity", "scope": "project" },
+    { "target": "claude", "scope": "project" }
+  ]
+}
