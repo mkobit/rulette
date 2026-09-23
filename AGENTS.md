@@ -25,6 +25,11 @@ For executable capabilities and specifications, see:
 - [openspec/specs/transform-pipeline/spec.md](openspec/specs/transform-pipeline/spec.md)
 - [openspec/specs/frontends-and-backends/spec.md](openspec/specs/frontends-and-backends/spec.md)
 
+## Docker Sandbox Execution
+
+Execute validation checks within the Docker Sandbox environment by running:
+`sbx env exec .sbx/sbxenv.yaml -- mise run check`
+
 ## Inputs
 
 Single files (path or stdin) and tar archives containing multiple files are both valid inputs.
