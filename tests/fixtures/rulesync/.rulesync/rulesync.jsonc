@@ -1,0 +1,15 @@
+{
+  "$schema": "https://github.com/dyoshikawa/rulesync/releases/latest/download/config-schema.json",
+  // Target AI assistants for multi-tool fan-out.
+  "targets": [
+    "cursor",
+    "claudecode",
+    "codexcli",
+    "opencode",
+    "antigravity"
+  ],
+  // Features synchronized across target harnesses.
+  "features": [
+    "rules"
+  ]
+}
