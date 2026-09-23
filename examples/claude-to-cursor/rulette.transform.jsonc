@@ -1,0 +1,12 @@
+{
+  // Source inputs to compile into the IR graph
+  "inputs": ["."],
+
+  // Native targets to stage
+  "targets": [
+    {
+      "target": "cursor",
+      "scope": "project"
+    }
+  ]
+}

@@ -9,3 +9,7 @@
 *.db
 .beads-credential-key
 .beads/proxieddb/
+
+# Unignore tracked examples
+!examples/**/.antigravity
+!examples/**/.antigravity/**
