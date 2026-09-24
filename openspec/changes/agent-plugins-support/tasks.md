@@ -13,10 +13,10 @@
 
 ## 3. Lowering backend target and rule handling
 
-- [ ] 3.1 Add `NativeArtifactClass::PluginManifest`, `NativeArtifactClass::McpConfig`, and `NativeArtifactClass::ClientExtension` to `src/emitters/lowering.rs`.
-- [ ] 3.2 Add `CapabilityReasonCode::RuleLoweredAsSkill` and `CapabilityReasonCode::SynthesizedManifest`.
-- [ ] 3.3 Implement `lower_agent_plugin` in `src/emitters/lowering.rs` supporting direct skill emission, manifest preservation/synthesis, and same-domain MCP re-aggregation.
-- [ ] 3.4 Enforce strict rule rejection under `allow_lossy: false` and opt-in rule-to-skill lowering under `allow_lossy: true`.
+- [x] 3.1 Add `NativeArtifactClass::PluginManifest`, `NativeArtifactClass::McpConfig`, and `NativeArtifactClass::ClientExtension` to `src/emitters/lowering.rs`.
+- [x] 3.2 Add `CapabilityReasonCode::RuleLoweredAsSkill` and `CapabilityReasonCode::SynthesizedManifest`.
+- [x] 3.3 Implement `lower_agent_plugin` in `src/emitters/lowering.rs` supporting direct skill emission, manifest preservation/synthesis, and same-domain MCP re-aggregation.
+- [x] 3.4 Enforce strict rule rejection under `allow_lossy: false` and opt-in rule-to-skill lowering under `allow_lossy: true`.
 
 ## 4. Publication mapping and per-target configuration
 

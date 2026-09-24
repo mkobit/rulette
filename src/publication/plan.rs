@@ -425,6 +425,9 @@ fn parse_artifact_class(value: &str) -> Result<NativeArtifactClass> {
         "rule" => Ok(NativeArtifactClass::Rule),
         "skill-instruction" => Ok(NativeArtifactClass::SkillInstruction),
         "skill-resource" => Ok(NativeArtifactClass::SkillResource),
+        "plugin-manifest" => Ok(NativeArtifactClass::PluginManifest),
+        "mcp-config" => Ok(NativeArtifactClass::McpConfig),
+        "client-extension" => Ok(NativeArtifactClass::ClientExtension),
         _ => bail!("unsupported native artifact class `{value}`"),
     }
 }
@@ -435,6 +438,9 @@ fn artifact_class_name(class: NativeArtifactClass) -> &'static str {
         NativeArtifactClass::Rule => "rule",
         NativeArtifactClass::SkillInstruction => "skill-instruction",
         NativeArtifactClass::SkillResource => "skill-resource",
+        NativeArtifactClass::PluginManifest => "plugin-manifest",
+        NativeArtifactClass::McpConfig => "mcp-config",
+        NativeArtifactClass::ClientExtension => "client-extension",
     }
 }
 
@@ -465,6 +471,8 @@ fn parse_reason_code(value: &str) -> Result<CapabilityReasonCode> {
         }
         "executable-bit-unrepresentable" => Ok(CapabilityReasonCode::ExecutableBitUnrepresentable),
         "skill-lowered-as-rule" => Ok(CapabilityReasonCode::SkillLoweredAsRule),
+        "rule-lowered-as-skill" => Ok(CapabilityReasonCode::RuleLoweredAsSkill),
+        "synthesized-manifest" => Ok(CapabilityReasonCode::SynthesizedManifest),
         _ => bail!("unsupported capability reason code `{value}`"),
     }
 }
