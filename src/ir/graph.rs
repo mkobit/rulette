@@ -75,7 +75,7 @@ impl SemanticIdentity {
     }
 }
 
-fn validate_skill_name(name: &str) -> Result<()> {
+pub(crate) fn validate_skill_name(name: &str) -> Result<()> {
     let length = name.chars().count();
     if !(1..=64).contains(&length)
         || !name.chars().all(|character| {

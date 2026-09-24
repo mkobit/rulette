@@ -6,10 +6,10 @@
 
 ## 2. Ingestion frontend and package decomposition
 
-- [ ] 2.1 Implement `compile_native` in `src/parsers/agent_plugin/` to decompose plugin directories into skill packages, unsupported manifest packages, and per-server MCP packages.
-- [ ] 2.2 Implement auto-detection and format candidate matching for `plugin.json` in `src/parsers/frontend.rs`.
-- [ ] 2.3 Implement non-fatal diagnostic warning emission for unknown manifest fields and invalid server entries.
-- [ ] 2.4 Enforce path containment rules for relative paths in `mcp.json` and reject symlinks.
+- [x] 2.1 Implement `compile_native` in `src/parsers/agent_plugin/` to decompose plugin directories into skill packages, unsupported manifest packages, and per-server MCP packages.
+- [x] 2.2 Implement auto-detection and format candidate matching for `plugin.json` in `src/parsers/frontend.rs`.
+- [x] 2.3 Implement non-fatal diagnostic warning emission for unknown manifest fields and invalid server entries.
+- [x] 2.4 Enforce path containment rules for relative paths in `mcp.json` and reject symlinks.
 
 ## 3. Lowering backend target and rule handling
 

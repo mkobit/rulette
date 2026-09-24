@@ -65,6 +65,16 @@ impl NativeCompilation {
         packages: Vec<crate::Package>,
         dispositions: Vec<NativeObservationDisposition>,
     ) -> Result<Self> {
+        Self::new_with_diagnostics(frontend, observations, packages, dispositions, Vec::new())
+    }
+
+    pub(crate) fn new_with_diagnostics(
+        frontend: NativeFrontend,
+        observations: &[ArtifactObservation],
+        packages: Vec<crate::Package>,
+        dispositions: Vec<NativeObservationDisposition>,
+        extra_diagnostics: Vec<GraphDiagnostic>,
+    ) -> Result<Self> {
         if dispositions.len() != observations.len() {
             anyhow::bail!(
                 "{} frontend left {} observations without a classification",
@@ -105,6 +115,7 @@ impl NativeCompilation {
                     package_id: None,
                 }),
         );
+        diagnostics.extend(extra_diagnostics);
         diagnostics.sort_by(|left, right| {
             (
                 &left.severity,
@@ -380,6 +391,9 @@ fn native_frontend_candidates(observation: &ArtifactObservation) -> BTreeSet<Nat
     if has_path_component(path, ".codex") || matches!(file_name, Some("AGENTS.md")) {
         candidates.insert(NativeFrontend::Codex);
     }
+    if matches!(file_name, Some("plugin.json")) {
+        candidates.insert(NativeFrontend::AgentPlugin);
+    }
     candidates
 }
 
@@ -551,6 +565,13 @@ mod tests {
                 b"Follow the repository guidance.\n".as_slice(),
                 ".antigravity/settings.json",
                 br#"{}"#.as_slice(),
+            ),
+            (
+                NativeFrontend::AgentPlugin,
+                "skills/release/SKILL.md",
+                b"---\ndescription: Release guidance.\n---\nFollow the repository guidance.\n".as_slice(),
+                "plugin.json",
+                br#"{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"my-plugin"}"#.as_slice(),
             ),
         ];
 
@@ -830,6 +851,29 @@ mod tests {
                 "{path}"
             );
         }
+    }
+
+    #[test]
+    fn graph_compilation_auto_detects_an_agent_plugin_layout() {
+        let observations = [ArtifactObservation::new(
+            br#"{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"sample-plugin"}"#.to_vec(),
+            "plugin.json",
+            false,
+            InputOrigin::Filesystem,
+            "fixtures/agent-plugin-project",
+            None,
+        )
+        .unwrap()];
+
+        let graph = compile_graph(&observations, DecoderSelection::Auto).unwrap();
+
+        assert_eq!(graph.packages.len(), 1);
+        let package = graph.packages.values().next().unwrap();
+        assert_eq!(package.provenance.frontend, "agent-plugin");
+        assert_eq!(
+            package.semantic_identity.as_str(),
+            "unsupported:agent-plugin-manifest/plugin.json"
+        );
     }
 
     #[test]
