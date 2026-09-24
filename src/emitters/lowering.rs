@@ -13,6 +13,7 @@ pub enum NativeTarget {
     Claude,
     Cursor,
     Antigravity,
+    AgentPlugin,
 }
 
 impl NativeTarget {
@@ -23,6 +24,7 @@ impl NativeTarget {
             Self::Claude => "claude",
             Self::Cursor => "cursor",
             Self::Antigravity => "antigravity",
+            Self::AgentPlugin => "agent-plugin",
         }
     }
 }
@@ -560,6 +562,7 @@ fn lower_rule(package: &Package, target: NativeTarget) -> Result<NativeArtifact>
         NativeTarget::Claude => (NativeArtifactClass::Instruction, "CLAUDE.md".to_owned()),
         NativeTarget::Cursor => (NativeArtifactClass::Rule, format!("rules/{name}.mdc")),
         NativeTarget::Antigravity => (NativeArtifactClass::Rule, format!("rules/{name}.md")),
+        NativeTarget::AgentPlugin => (NativeArtifactClass::Rule, format!("rules/{name}.md")),
     };
 
     Ok(NativeArtifact {
@@ -585,9 +588,10 @@ fn render_rule(package: &Package, target: NativeTarget, text: &str) -> Result<Ve
     match target {
         NativeTarget::Cursor => render_cursor_rule(description, activation, text),
         NativeTarget::Antigravity => render_antigravity_rule(description, activation, text),
-        NativeTarget::Codex | NativeTarget::OpenCode | NativeTarget::Claude => {
-            Ok(text.as_bytes().to_vec())
-        }
+        NativeTarget::Codex
+        | NativeTarget::OpenCode
+        | NativeTarget::Claude
+        | NativeTarget::AgentPlugin => Ok(text.as_bytes().to_vec()),
     }
 }
 

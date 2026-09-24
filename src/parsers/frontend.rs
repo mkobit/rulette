@@ -11,16 +11,18 @@ pub enum NativeFrontend {
     CursorMdc,
     Opencode,
     Antigravity,
+    AgentPlugin,
 }
 
 impl NativeFrontend {
-    fn as_str(self) -> &'static str {
+    pub fn as_str(self) -> &'static str {
         match self {
             Self::Codex => "codex",
             Self::Claude => "claude",
             Self::CursorMdc => "cursor-mdc",
             Self::Opencode => "opencode",
             Self::Antigravity => "antigravity",
+            Self::AgentPlugin => "agent-plugin",
         }
     }
 }
@@ -206,6 +208,7 @@ pub fn compile_native_frontend(
         NativeFrontend::CursorMdc => super::cursor::compile_native(observations),
         NativeFrontend::Opencode => super::opencode::compile_native(observations),
         NativeFrontend::Antigravity => super::antigravity::compile_native(observations),
+        NativeFrontend::AgentPlugin => super::agent_plugin::compile_native(observations),
     }?;
     if compilation.candidates.is_empty() {
         anyhow::bail!(

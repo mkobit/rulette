@@ -105,6 +105,9 @@ pub fn mapping_for(
         (NativeTarget::Cursor, PublicationScope::User) => {
             bail!("user mapping is unavailable for target `cursor`")
         }
+        (NativeTarget::AgentPlugin, _) => {
+            bail!("publication mapping is unavailable for target `agent-plugin`")
+        }
     }
 }
 
