@@ -1,3 +1,4 @@
+pub mod agent_plugin;
 pub mod aggregation;
 pub mod antigravity;
 pub mod claude;

@@ -1,8 +1,8 @@
 ## 1. Domain types, wire schemas, and format definitions
 
 - [ ] 1.1 Add `InputFormat::AgentPlugin` and `OutputFormat::AgentPlugin` to `src/cli/formats.rs`.
-- [ ] 1.2 Implement Agent Plugins v1.0.0 wire types and domain models in `src/parsers/agent_plugin/` (`PluginManifestWireV1`, `McpConfigWireV1`, `PluginManifest`, `McpConfiguration`).
-- [ ] 1.3 Add `NativeFrontend::AgentPlugin` and `NativeTarget::AgentPlugin` enums.
+- [x] 1.2 Implement Agent Plugins v1.0.0 wire types and domain models in `src/parsers/agent_plugin/` (`PluginManifestWireV1`, `McpConfigWireV1`, `PluginManifest`, `McpConfiguration`).
+- [x] 1.3 Add `NativeFrontend::AgentPlugin` and `NativeTarget::AgentPlugin` enums.
 
 ## 2. Ingestion frontend and package decomposition
 

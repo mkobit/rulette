@@ -410,6 +410,7 @@ fn parse_target(value: &str) -> Result<NativeTarget> {
         "claude" => Ok(NativeTarget::Claude),
         "cursor" => Ok(NativeTarget::Cursor),
         "antigravity" => Ok(NativeTarget::Antigravity),
+        "agent-plugin" => Ok(NativeTarget::AgentPlugin),
         _ => bail!("unsupported native target `{value}`"),
     }
 }

@@ -14,6 +14,7 @@ pub enum InputFormat {
     Codex,
     Antigravity,
     Opencode,
+    AgentPlugin,
     GraphJson,
     GraphToml,
 }
@@ -27,6 +28,7 @@ impl From<InputFormat> for DecoderSelection {
             InputFormat::CursorMdc => Self::Native(NativeFrontend::CursorMdc),
             InputFormat::Opencode => Self::Native(NativeFrontend::Opencode),
             InputFormat::Antigravity => Self::Native(NativeFrontend::Antigravity),
+            InputFormat::AgentPlugin => Self::Native(NativeFrontend::AgentPlugin),
             InputFormat::GraphJson => Self::GraphJson,
             InputFormat::GraphToml => Self::GraphToml,
         }
@@ -46,6 +48,7 @@ mod tests {
             "cursor-mdc",
             "opencode",
             "antigravity",
+            "agent-plugin",
             "graph-json",
             "graph-toml",
         ] {
