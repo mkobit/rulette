@@ -7,7 +7,9 @@ pub mod parsers;
 pub mod pipeline;
 pub mod publication;
 
-pub use compilation::{compile, lower_unique_targets, CompilationRequest};
+pub use compilation::{
+    compile, lower_unique_targets, lower_unique_targets_with_options, CompilationRequest,
+};
 pub use emitters::lowering::{
     lower, CapabilityFinding, CapabilityReasonCode, CapabilitySeverity, LoweringOptions,
     LoweringPlan, NativeArtifact, NativeArtifactClass, NativeTarget,

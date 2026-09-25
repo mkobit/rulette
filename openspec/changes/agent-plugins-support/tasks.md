@@ -20,9 +20,9 @@
 
 ## 4. Publication mapping and per-target configuration
 
-- [ ] 4.1 Register `AGENT_PLUGIN_PROJECT` candidate mappings in `src/publication/mapping.rs`.
-- [ ] 4.2 Add `allow_lossy: Option<bool>` to `OutputEntry` in transform configuration models.
-- [ ] 4.3 Support per-target `allow_lossy` resolution during lowering and publication staging.
+- [x] 4.1 Register `AGENT_PLUGIN_PROJECT` candidate mappings in `src/publication/mapping.rs`.
+- [x] 4.2 Add `allow_lossy: Option<bool>` to `OutputEntry` in transform configuration models.
+- [x] 4.3 Support per-target `allow_lossy` resolution during lowering and publication staging.
 
 ## 5. CLI integration and diagnostics
 

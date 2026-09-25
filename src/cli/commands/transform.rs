@@ -9,11 +9,13 @@ use crate::publication::{
     PublicationScope, ScopedAcceptedLoss, ScopedLowering, SourceCheckRequest, StageRequest,
     StageRoot,
 };
-use crate::{compile, lower_unique_targets, AggregationRequest, CompilationRequest};
+use crate::{
+    compile, lower_unique_targets_with_options, AggregationRequest, CompilationRequest,
+};
 use anyhow::{Context, Result};
 use clap::Args;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -100,6 +102,7 @@ pub struct TransformArgs {
 struct TargetRequest {
     target: NativeTarget,
     scope: PublicationScope,
+    allow_lossy: Option<bool>,
 }
 
 /// Parsed target syntax that deliberately has not resolved a backend yet.
@@ -111,6 +114,7 @@ struct TargetRequest {
 struct TargetSyntax {
     target_name: String,
     scope: PublicationScope,
+    allow_lossy: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -118,19 +122,23 @@ struct TargetSyntax {
 struct TransformConfigFile {
     #[serde(default)]
     inputs: Vec<String>,
-    #[serde(default)]
+    #[serde(default, alias = "outputs")]
     targets: Vec<TransformConfigTarget>,
     #[serde(default)]
     select: Vec<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
-struct TransformConfigTarget {
-    target: String,
+pub(crate) struct OutputEntry {
+    pub(crate) target: String,
     #[serde(default = "default_scope")]
-    scope: String,
+    pub(crate) scope: String,
+    #[serde(default)]
+    pub(crate) allow_lossy: Option<bool>,
 }
+
+pub(crate) type TransformConfigTarget = OutputEntry;
 
 fn default_scope() -> String {
     "project".to_owned()
@@ -170,7 +178,7 @@ impl TransformArgs {
         let inputs = resolve_inputs(&self.input, &config.inputs)?;
         let selector_strings = resolve_selectors(&self.select, &config.select)?;
         let target_syntax =
-            normalize_target_syntaxes(parse_target_syntaxes(&self.target, &config.targets)?);
+            normalize_target_syntaxes(parse_target_syntaxes(&self.target, &config.targets)?)?;
         let selected_graph = compile(CompilationRequest::new(
             AggregationRequest::new(observe_inputs(&inputs)?, self.from.into()),
             selector_strings,
@@ -182,15 +190,8 @@ impl TransformArgs {
         }
         validate_target_mappings(&targets)?;
 
-        let lowerings = lower_unique_targets(
-            &selected_graph,
-            targets.iter().map(|target| target.target),
-            if self.allow_lossy {
-                LoweringOptions::allow_lossy()
-            } else {
-                LoweringOptions::strict()
-            },
-        )?;
+        let target_options = resolve_lowering_options(&targets, self.allow_lossy)?;
+        let lowerings = lower_unique_targets_with_options(&selected_graph, target_options)?;
 
         if self.check {
             let report = check_sources(SourceCheckRequest {
@@ -217,9 +218,14 @@ impl TransformArgs {
                 accepted_losses: accepted_losses(&targets, &lowerings, self.allow_lossy),
                 stage_dir,
             })?;
-            if self.allow_lossy {
-                for plan in lowerings.values() {
-                    render_accepted_losses(&plan.findings)?;
+            let mut rendered_targets = BTreeSet::new();
+            for target in &targets {
+                if target.allow_lossy.unwrap_or(self.allow_lossy)
+                    && rendered_targets.insert(target.target)
+                {
+                    if let Some(plan) = lowerings.get(&target.target) {
+                        render_accepted_losses(&plan.findings)?;
+                    }
                 }
             }
             eprintln!("plan digest: {}", staged.plan_digest.as_str());
@@ -295,7 +301,12 @@ fn validate_source_mode(args: &TransformArgs, targets: &[TargetRequest]) -> Resu
     if args.check && args.stage.is_some() {
         anyhow::bail!("--check may not be combined with --stage");
     }
-    if args.check && args.allow_lossy {
+    if args.check
+        && (args.allow_lossy
+            || targets
+                .iter()
+                .any(|target| target.allow_lossy == Some(true)))
+    {
         anyhow::bail!("--allow-lossy may not be combined with --check");
     }
     if targets
@@ -499,13 +510,11 @@ fn scoped_lowerings<'a>(
 fn accepted_losses<'a>(
     targets: &'a [TargetRequest],
     lowerings: &'a BTreeMap<NativeTarget, crate::emitters::lowering::LoweringPlan>,
-    allow_lossy: bool,
+    global_allow_lossy: bool,
 ) -> Vec<ScopedAcceptedLoss<'a>> {
-    if !allow_lossy {
-        return Vec::new();
-    }
     targets
         .iter()
+        .filter(|target| target.allow_lossy.unwrap_or(global_allow_lossy))
         .flat_map(|target| {
             lowerings[&target.target]
                 .findings
@@ -564,7 +573,12 @@ fn parse_target_syntaxes(
     if cli_targets.is_empty() {
         config_targets
             .iter()
-            .map(|target| parse_target_syntax(&format!("{}@{}", target.target, target.scope)))
+            .map(|target| {
+                let mut syntax =
+                    parse_target_syntax(&format!("{}@{}", target.target, target.scope))?;
+                syntax.allow_lossy = target.allow_lossy;
+                Ok(syntax)
+            })
             .collect()
     } else {
         cli_targets
@@ -581,16 +595,58 @@ fn resolve_targets(target_syntax: Vec<TargetSyntax>) -> Result<Vec<TargetRequest
             Ok(TargetRequest {
                 target: parse_native_target(&target.target_name)?,
                 scope: target.scope,
+                allow_lossy: target.allow_lossy,
             })
         })
         .collect::<Result<Vec<_>>>()?;
     Ok(targets)
 }
 
-fn normalize_target_syntaxes(mut target_syntaxes: Vec<TargetSyntax>) -> Vec<TargetSyntax> {
+fn normalize_target_syntaxes(mut target_syntaxes: Vec<TargetSyntax>) -> Result<Vec<TargetSyntax>> {
     target_syntaxes.sort_unstable();
+    for window in target_syntaxes.windows(2) {
+        if window[0].target_name == window[1].target_name
+            && window[0].scope == window[1].scope
+            && window[0].allow_lossy != window[1].allow_lossy
+        {
+            anyhow::bail!(
+                "conflicting allow_lossy configuration for target `{}@{}`",
+                window[0].target_name,
+                match window[0].scope {
+                    PublicationScope::Project => "project",
+                    PublicationScope::User => "user",
+                }
+            );
+        }
+    }
     target_syntaxes.dedup();
-    target_syntaxes
+    Ok(target_syntaxes)
+}
+
+fn resolve_lowering_options(
+    targets: &[TargetRequest],
+    global_allow_lossy: bool,
+) -> Result<BTreeMap<NativeTarget, LoweringOptions>> {
+    let mut options_by_target = BTreeMap::new();
+    for target in targets {
+        let allow_lossy = target.allow_lossy.unwrap_or(global_allow_lossy);
+        let options = if allow_lossy {
+            LoweringOptions::allow_lossy()
+        } else {
+            LoweringOptions::strict()
+        };
+        if let Some(&existing) = options_by_target.get(&target.target) {
+            if existing != options {
+                anyhow::bail!(
+                    "conflicting allow_lossy configuration for target `{}` across publication scopes",
+                    target.target.as_str()
+                );
+            }
+        } else {
+            options_by_target.insert(target.target, options);
+        }
+    }
+    Ok(options_by_target)
 }
 
 fn validate_target_mappings(targets: &[TargetRequest]) -> Result<()> {
@@ -619,6 +675,7 @@ fn parse_target_syntax(value: &str) -> Result<TargetSyntax> {
     Ok(TargetSyntax {
         target_name: target.to_owned(),
         scope,
+        allow_lossy: None,
     })
 }
 
@@ -629,8 +686,9 @@ pub(crate) fn parse_native_target(value: &str) -> Result<NativeTarget> {
         "claude" => Ok(NativeTarget::Claude),
         "cursor" => Ok(NativeTarget::Cursor),
         "antigravity" => Ok(NativeTarget::Antigravity),
+        "agent-plugin" => Ok(NativeTarget::AgentPlugin),
         _ => anyhow::bail!(
-            "unsupported v0.1 target `{value}`; expected codex, opencode, claude, cursor, or antigravity"
+            "unsupported v0.1 target `{value}`; expected codex, opencode, claude, cursor, antigravity, or agent-plugin"
         ),
     }
 }
@@ -719,11 +777,85 @@ mod tests {
             parse_target_syntax("opencode@project").unwrap(),
         ];
 
-        let normalized = normalize_target_syntaxes(syntaxes);
+        let normalized = normalize_target_syntaxes(syntaxes).unwrap();
 
         assert_eq!(normalized.len(), 2);
         assert_eq!(normalized[0].target_name, "codex");
         assert_eq!(normalized[1].target_name, "opencode");
+    }
+
+    #[test]
+    fn target_syntaxes_reject_conflicting_allow_lossy_for_same_scope() {
+        let mut first = parse_target_syntax("agent-plugin@project").unwrap();
+        first.allow_lossy = Some(true);
+        let mut second = parse_target_syntax("agent-plugin@project").unwrap();
+        second.allow_lossy = Some(false);
+
+        let err = normalize_target_syntaxes(vec![first, second]).unwrap_err();
+        assert!(err.to_string().contains("conflicting allow_lossy"));
+    }
+
+    #[test]
+    fn transform_config_supports_per_target_allow_lossy_and_outputs_alias() {
+        let toml_content = r#"
+            inputs = ["tests/fixtures/v0_1/codex"]
+            outputs = [
+                { target = "codex", scope = "project", allow_lossy = false },
+                { target = "agent-plugin", scope = "project", allow_lossy = true }
+            ]
+        "#;
+        let config: TransformConfigFile = toml::from_str(toml_content).unwrap();
+        assert_eq!(config.targets.len(), 2);
+        assert_eq!(config.targets[0].target, "codex");
+        assert_eq!(config.targets[0].allow_lossy, Some(false));
+        assert_eq!(config.targets[1].target, "agent-plugin");
+        assert_eq!(config.targets[1].allow_lossy, Some(true));
+    }
+
+    #[test]
+    fn resolve_lowering_options_combines_per_target_and_global_fallback() {
+        use super::{resolve_lowering_options, TargetRequest};
+        use crate::emitters::lowering::NativeTarget;
+
+        let targets = vec![
+            TargetRequest {
+                target: NativeTarget::Codex,
+                scope: PublicationScope::Project,
+                allow_lossy: None,
+            },
+            TargetRequest {
+                target: NativeTarget::AgentPlugin,
+                scope: PublicationScope::Project,
+                allow_lossy: Some(true),
+            },
+        ];
+
+        let options = resolve_lowering_options(&targets, false).unwrap();
+        assert_eq!(options.len(), 2);
+        assert!(!options[&NativeTarget::Codex].allow_lossy);
+        assert!(options[&NativeTarget::AgentPlugin].allow_lossy);
+    }
+
+    #[test]
+    fn resolve_lowering_options_rejects_conflicting_target_options() {
+        use super::{resolve_lowering_options, TargetRequest};
+        use crate::emitters::lowering::NativeTarget;
+
+        let targets = vec![
+            TargetRequest {
+                target: NativeTarget::Codex,
+                scope: PublicationScope::Project,
+                allow_lossy: Some(true),
+            },
+            TargetRequest {
+                target: NativeTarget::Codex,
+                scope: PublicationScope::User,
+                allow_lossy: Some(false),
+            },
+        ];
+
+        let err = resolve_lowering_options(&targets, false).unwrap_err();
+        assert!(err.to_string().contains("conflicting allow_lossy"));
     }
 
     #[test]

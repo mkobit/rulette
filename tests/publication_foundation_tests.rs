@@ -24,6 +24,7 @@ fn every_core_target_has_a_project_mapping() {
         NativeTarget::Claude,
         NativeTarget::Cursor,
         NativeTarget::Antigravity,
+        NativeTarget::AgentPlugin,
     ] {
         let mapping = mapping_for(target, PublicationScope::Project)
             .expect("every core target has a project mapping");
@@ -83,6 +84,40 @@ fn project_mappings_apply_only_their_documented_class_prefixes() {
             ),
             ".agents/skills/review/SKILL.md",
         ),
+        (
+            NativeTarget::AgentPlugin,
+            descriptor(NativeArtifactClass::PluginManifest, "plugin.json"),
+            "plugin.json",
+        ),
+        (
+            NativeTarget::AgentPlugin,
+            descriptor(NativeArtifactClass::McpConfig, "mcp.json"),
+            "mcp.json",
+        ),
+        (
+            NativeTarget::AgentPlugin,
+            descriptor(
+                NativeArtifactClass::SkillInstruction,
+                "skills/review/SKILL.md",
+            ),
+            "skills/review/SKILL.md",
+        ),
+        (
+            NativeTarget::AgentPlugin,
+            descriptor(
+                NativeArtifactClass::SkillResource,
+                "skills/review/scripts/check.sh",
+            ),
+            "skills/review/scripts/check.sh",
+        ),
+        (
+            NativeTarget::AgentPlugin,
+            descriptor(
+                NativeArtifactClass::ClientExtension,
+                "com.example.ext/config.json",
+            ),
+            "com.example.ext/config.json",
+        ),
     ];
 
     for (target, artifact, expected_path) in cases {
@@ -106,6 +141,7 @@ fn user_mappings_are_allowlisted_and_cursor_is_unavailable() {
     }
 
     assert!(mapping_for(NativeTarget::Cursor, PublicationScope::User).is_err());
+    assert!(mapping_for(NativeTarget::AgentPlugin, PublicationScope::User).is_err());
 }
 
 #[test]
@@ -144,6 +180,18 @@ fn registry_rejects_an_artifact_class_or_path_outside_the_mapping_grammar() {
         .is_err());
     assert!(cursor
         .map_artifact(&descriptor(NativeArtifactClass::Rule, "rules/review.md"))
+        .is_err());
+
+    let plugin = mapping_for(NativeTarget::AgentPlugin, PublicationScope::Project)
+        .expect("AgentPlugin project mapping exists");
+    assert!(plugin
+        .map_artifact(&descriptor(NativeArtifactClass::Rule, "rules/review.md"))
+        .is_err());
+    assert!(plugin
+        .map_artifact(&descriptor(
+            NativeArtifactClass::ClientExtension,
+            "invalid_ext/config.json"
+        ))
         .is_err());
 }
 

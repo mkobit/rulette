@@ -458,7 +458,7 @@ fn split_frontmatter(input: &str) -> (Option<&str>, &str) {
     (Some(remainder[..end].trim()), body)
 }
 
-fn is_reverse_domain(dir: &str) -> bool {
+pub(crate) fn is_reverse_domain(dir: &str) -> bool {
     let mut segments = dir.split('.');
     let Some(first) = segments.next() else {
         return false;
