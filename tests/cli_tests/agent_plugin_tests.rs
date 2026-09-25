@@ -88,6 +88,7 @@ fn create_sample_plugin_tree(root: &Path) {
     .unwrap();
 }
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
 fn create_tar_from_dir(dir: &Path) -> Vec<u8> {
     let mut archive = Vec::new();
     let mut builder = tar::Builder::new(&mut archive);
@@ -111,6 +112,7 @@ fn create_tar_from_dir(dir: &Path) -> Vec<u8> {
     archive
 }
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
 fn stage_and_apply(input: &Path, project_root: &Path, allow_lossy: bool) -> String {
     let temporary = tempfile::tempdir().unwrap();
     let stage_dir = temporary.path().join("stage");
@@ -179,6 +181,7 @@ fn strict_mode_rejects_rule_inputs_for_agent_plugin_target() {
 }
 
 #[test]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 fn allow_lossy_lowers_rules_to_skills_and_synthesizes_manifest() {
     let temporary = tempfile::tempdir().unwrap();
     let project_root = temporary.path().join("project");
@@ -231,6 +234,7 @@ fn allow_lossy_lowers_rules_to_skills_and_synthesizes_manifest() {
 }
 
 #[test]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 fn round_trip_agent_plugin_package_losslessly_in_strict_mode() {
     let source_dir = tempfile::tempdir().unwrap();
     create_sample_plugin_tree(source_dir.path());
@@ -305,6 +309,7 @@ fn round_trip_agent_plugin_package_losslessly_in_strict_mode() {
 }
 
 #[test]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 fn round_trip_agent_plugin_from_tar_archive() {
     let source_dir = tempfile::tempdir().unwrap();
     create_sample_plugin_tree(source_dir.path());
@@ -328,6 +333,7 @@ fn round_trip_agent_plugin_from_tar_archive() {
 }
 
 #[test]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 fn round_trip_agent_plugin_from_tar_stdin() {
     let source_dir = tempfile::tempdir().unwrap();
     create_sample_plugin_tree(source_dir.path());
@@ -471,16 +477,74 @@ fn transform_surfaces_invalid_mcp_servers_and_unknown_fields_warnings() {
             .any(|d| d["code"] == "invalid-mcp-server"),
         "graph diagnostics must include invalid-mcp-server"
     );
+}
+
+#[test]
+#[cfg(any(target_os = "linux", target_os = "android"))]
+fn stage_retains_valid_mcp_server_sibling() {
+    let source_dir = tempfile::tempdir().unwrap();
+    let manifest = serde_json::json!({
+        "$schema": PLUGIN_MANIFEST_SCHEMA,
+        "name": "warning-plugin"
+    });
+    fs::write(
+        source_dir.path().join("plugin.json"),
+        serde_json::to_string_pretty(&manifest).unwrap(),
+    )
+    .unwrap();
+
+    let mcp = serde_json::json!({
+        "$schema": MCP_CONFIG_SCHEMA,
+        "mcpServers": {
+            "good-srv": {
+                "type": "stdio",
+                "command": "./bin/good"
+            },
+            "bad-srv": {
+                "type": "stdio",
+                "command": "../escape"
+            }
+        }
+    });
+    fs::write(
+        source_dir.path().join("mcp.json"),
+        serde_json::to_string_pretty(&mcp).unwrap(),
+    )
+    .unwrap();
 
     let out_dir = tempfile::tempdir().unwrap();
     fs::create_dir_all(out_dir.path()).unwrap();
     stage_and_apply(source_dir.path(), out_dir.path(), false);
 
-    // Verify good server was retained in emitted mcp.json
     let mcp_emitted: serde_json::Value = serde_json::from_slice(
         &fs::read(out_dir.path().join("mcp.json")).expect("mcp.json exists"),
     )
     .unwrap();
     assert!(mcp_emitted["mcpServers"].get("good-srv").is_some());
     assert!(mcp_emitted["mcpServers"].get("bad-srv").is_none());
+}
+
+#[test]
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
+fn staging_agent_plugin_is_rejected_on_unsupported_platform() {
+    let temporary = tempfile::tempdir().unwrap();
+    let project_root = temporary.path().join("project");
+    fs::create_dir(&project_root).unwrap();
+    create_sample_plugin_tree(&project_root);
+
+    let mut command = Command::cargo_bin("rulette").unwrap();
+    command
+        .arg("transform")
+        .arg(&project_root)
+        .arg("--target")
+        .arg("agent-plugin@project")
+        .arg("--project-root")
+        .arg(&project_root)
+        .arg("--stage")
+        .arg(temporary.path().join("stage"))
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "publication is unsupported on this platform",
+        ));
 }
