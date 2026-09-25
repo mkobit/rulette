@@ -67,3 +67,70 @@ fn transform_config_requires_a_strictly_sorted_select_array() {
         .failure()
         .stderr(predicate::str::contains("strictly sorted"));
 }
+
+#[test]
+#[cfg(any(target_os = "linux", target_os = "android"))]
+fn per_target_allow_lossy_permits_agent_plugin_rule_lowering_without_global_flag() {
+    let temporary = tempfile::Builder::new().suffix(".toml").tempfile().unwrap();
+    let publication = tempfile::tempdir().unwrap();
+    let project_root = publication.path().join("project");
+    std::fs::create_dir(&project_root).unwrap();
+    let fixture = std::fs::canonicalize("tests/fixtures/v0_1/codex").unwrap();
+
+    // With allow_lossy: true on agent-plugin, rules from the codex fixture are lowered as skills
+    let config = toml::to_string(&serde_json::json!({
+        "inputs": [fixture.to_str().unwrap()],
+        "targets": [
+            { "target": "codex", "scope": "project", "allow_lossy": false },
+            { "target": "agent-plugin", "scope": "project", "allow_lossy": true }
+        ],
+        "select": []
+    }))
+    .unwrap();
+    std::fs::write(temporary.path(), config).unwrap();
+
+    let mut command = Command::cargo_bin("rulette").unwrap();
+    command
+        .arg("transform")
+        .arg("--config")
+        .arg(temporary.path())
+        .arg("--project-root")
+        .arg(project_root)
+        .arg("--stage")
+        .arg(publication.path().join("stage"))
+        .assert()
+        .success();
+}
+
+#[test]
+#[cfg(any(target_os = "linux", target_os = "android"))]
+fn strict_agent_plugin_fails_on_rules_without_allow_lossy() {
+    let temporary = tempfile::Builder::new().suffix(".toml").tempfile().unwrap();
+    let publication = tempfile::tempdir().unwrap();
+    let project_root = publication.path().join("project");
+    std::fs::create_dir(&project_root).unwrap();
+    let fixture = std::fs::canonicalize("tests/fixtures/v0_1/codex").unwrap();
+
+    // With allow_lossy: false on agent-plugin, rules from the codex fixture cause lowering failure
+    let config = toml::to_string(&serde_json::json!({
+        "inputs": [fixture.to_str().unwrap()],
+        "targets": [
+            { "target": "agent-plugin", "scope": "project", "allow_lossy": false }
+        ],
+        "select": []
+    }))
+    .unwrap();
+    std::fs::write(temporary.path(), config).unwrap();
+
+    let mut command = Command::cargo_bin("rulette").unwrap();
+    command
+        .arg("transform")
+        .arg("--config")
+        .arg(temporary.path())
+        .arg("--project-root")
+        .arg(project_root)
+        .arg("--stage")
+        .arg(publication.path().join("stage"))
+        .assert()
+        .failure();
+}

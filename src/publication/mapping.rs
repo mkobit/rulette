@@ -26,6 +26,9 @@ enum ArtifactPathRule {
         mapped_prefix: &'static str,
         required_suffix: Option<&'static str>,
     },
+    ReverseDomainExtension {
+        class: NativeArtifactClass,
+    },
 }
 
 impl TargetMapping {
@@ -69,6 +72,18 @@ impl TargetMapping {
                         }
                     }
                 }
+                ArtifactPathRule::ReverseDomainExtension { class } if artifact.class == class => {
+                    let path = artifact.native_path.as_str();
+                    if let Some((dir, tail)) = path.split_once('/') {
+                        if !dir.is_empty()
+                            && !tail.is_empty()
+                            && crate::parsers::agent_plugin::is_reverse_domain(dir)
+                            && !path.split('/').any(|comp| comp.starts_with('.'))
+                        {
+                            return ResourcePath::parse(path);
+                        }
+                    }
+                }
                 _ => {}
             }
         }
@@ -98,6 +113,7 @@ pub fn mapping_for(
         (NativeTarget::Claude, PublicationScope::Project) => Ok(&CLAUDE_PROJECT),
         (NativeTarget::Cursor, PublicationScope::Project) => Ok(&CURSOR_PROJECT),
         (NativeTarget::Antigravity, PublicationScope::Project) => Ok(&ANTIGRAVITY_PROJECT),
+        (NativeTarget::AgentPlugin, PublicationScope::Project) => Ok(&AGENT_PLUGIN_PROJECT),
         (NativeTarget::Codex, PublicationScope::User) => Ok(&CODEX_USER),
         (NativeTarget::OpenCode, PublicationScope::User) => Ok(&OPENCODE_USER),
         (NativeTarget::Claude, PublicationScope::User) => Ok(&CLAUDE_USER),
@@ -105,8 +121,8 @@ pub fn mapping_for(
         (NativeTarget::Cursor, PublicationScope::User) => {
             bail!("user mapping is unavailable for target `cursor`")
         }
-        (NativeTarget::AgentPlugin, _) => {
-            bail!("publication mapping is unavailable for target `agent-plugin`")
+        (NativeTarget::AgentPlugin, PublicationScope::User) => {
+            bail!("user mapping is unavailable for target `agent-plugin`")
         }
     }
 }
@@ -197,6 +213,34 @@ const ANTIGRAVITY_PROJECT_RULES: &[ArtifactPathRule] = &[
         native_prefix: "skills/",
         mapped_prefix: ".agents/skills/",
         required_suffix: None,
+    },
+];
+
+const AGENT_PLUGIN_PROJECT_RULES: &[ArtifactPathRule] = &[
+    ArtifactPathRule::Exact {
+        class: NativeArtifactClass::PluginManifest,
+        native: "plugin.json",
+        mapped: "plugin.json",
+    },
+    ArtifactPathRule::Exact {
+        class: NativeArtifactClass::McpConfig,
+        native: "mcp.json",
+        mapped: "mcp.json",
+    },
+    ArtifactPathRule::Prefix {
+        class: NativeArtifactClass::SkillInstruction,
+        native_prefix: "skills/",
+        mapped_prefix: "skills/",
+        required_suffix: Some("SKILL.md"),
+    },
+    ArtifactPathRule::Prefix {
+        class: NativeArtifactClass::SkillResource,
+        native_prefix: "skills/",
+        mapped_prefix: "skills/",
+        required_suffix: None,
+    },
+    ArtifactPathRule::ReverseDomainExtension {
+        class: NativeArtifactClass::ClientExtension,
     },
 ];
 
@@ -312,6 +356,12 @@ static ANTIGRAVITY_PROJECT: TargetMapping = TargetMapping {
     version: MappingVersion::V0_1,
     rules: ANTIGRAVITY_PROJECT_RULES,
 };
+static AGENT_PLUGIN_PROJECT: TargetMapping = TargetMapping {
+    target: NativeTarget::AgentPlugin,
+    scope: PublicationScope::Project,
+    version: MappingVersion::V0_1,
+    rules: AGENT_PLUGIN_PROJECT_RULES,
+};
 static CODEX_USER: TargetMapping = TargetMapping {
     target: NativeTarget::Codex,
     scope: PublicationScope::User,
@@ -343,6 +393,9 @@ fn artifact_class_name(class: NativeArtifactClass) -> &'static str {
         NativeArtifactClass::Rule => "rule",
         NativeArtifactClass::SkillInstruction => "skill-instruction",
         NativeArtifactClass::SkillResource => "skill-resource",
+        NativeArtifactClass::PluginManifest => "plugin-manifest",
+        NativeArtifactClass::McpConfig => "mcp-config",
+        NativeArtifactClass::ClientExtension => "client-extension",
     }
 }
 
@@ -350,5 +403,124 @@ fn scope_name(scope: PublicationScope) -> &'static str {
     match scope {
         PublicationScope::Project => "project",
         PublicationScope::User => "user",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn descriptor(class: NativeArtifactClass, path: &str) -> ArtifactDescriptor {
+        ArtifactDescriptor {
+            class,
+            native_path: ResourcePath::parse(path).expect("valid resource path"),
+        }
+    }
+
+    #[test]
+    fn agent_plugin_project_mapping_maps_all_valid_artifact_classes() {
+        let mapping = mapping_for(NativeTarget::AgentPlugin, PublicationScope::Project)
+            .expect("agent-plugin project mapping is available");
+        assert_eq!(mapping.version(), MappingVersion::V0_1);
+
+        let cases = [
+            (
+                descriptor(NativeArtifactClass::PluginManifest, "plugin.json"),
+                "plugin.json",
+            ),
+            (
+                descriptor(NativeArtifactClass::McpConfig, "mcp.json"),
+                "mcp.json",
+            ),
+            (
+                descriptor(
+                    NativeArtifactClass::SkillInstruction,
+                    "skills/my-skill/SKILL.md",
+                ),
+                "skills/my-skill/SKILL.md",
+            ),
+            (
+                descriptor(
+                    NativeArtifactClass::SkillResource,
+                    "skills/my-skill/scripts/run.sh",
+                ),
+                "skills/my-skill/scripts/run.sh",
+            ),
+            (
+                descriptor(
+                    NativeArtifactClass::ClientExtension,
+                    "com.example.my-ext/config.json",
+                ),
+                "com.example.my-ext/config.json",
+            ),
+            (
+                descriptor(
+                    NativeArtifactClass::ClientExtension,
+                    "org.acme.tools/sub/deep/data.yaml",
+                ),
+                "org.acme.tools/sub/deep/data.yaml",
+            ),
+        ];
+
+        for (desc, expected) in cases {
+            let mapped = mapping
+                .map_artifact(&desc)
+                .unwrap_or_else(|e| panic!("failed to map {}: {e}", desc.native_path.as_str()));
+            assert_eq!(mapped.as_str(), expected);
+        }
+    }
+
+    #[test]
+    fn agent_plugin_project_mapping_rejects_invalid_or_unsafe_client_extensions() {
+        let mapping = mapping_for(NativeTarget::AgentPlugin, PublicationScope::Project).unwrap();
+
+        // Not reverse domain (only 1 segment)
+        assert!(mapping
+            .map_artifact(&descriptor(
+                NativeArtifactClass::ClientExtension,
+                "single/config.json",
+            ))
+            .is_err());
+
+        // Hidden directory collision in path
+        assert!(mapping
+            .map_artifact(&descriptor(
+                NativeArtifactClass::ClientExtension,
+                "com.example.ext/.git/config",
+            ))
+            .is_err());
+
+        // Hidden segment inside domain
+        assert!(mapping
+            .map_artifact(&descriptor(
+                NativeArtifactClass::ClientExtension,
+                ".com.example/file.json",
+            ))
+            .is_err());
+
+        // Invalid domain character (uppercase)
+        assert!(mapping
+            .map_artifact(&descriptor(
+                NativeArtifactClass::ClientExtension,
+                "Com.Example/file.json",
+            ))
+            .is_err());
+    }
+
+    #[test]
+    fn agent_plugin_project_mapping_rejects_unpermitted_classes() {
+        let mapping = mapping_for(NativeTarget::AgentPlugin, PublicationScope::Project).unwrap();
+
+        assert!(mapping
+            .map_artifact(&descriptor(NativeArtifactClass::Rule, "rules/foo.md"))
+            .is_err());
+        assert!(mapping
+            .map_artifact(&descriptor(NativeArtifactClass::Instruction, "AGENTS.md"))
+            .is_err());
+    }
+
+    #[test]
+    fn agent_plugin_user_mapping_is_unavailable() {
+        assert!(mapping_for(NativeTarget::AgentPlugin, PublicationScope::User).is_err());
     }
 }

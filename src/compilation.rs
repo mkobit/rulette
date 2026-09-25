@@ -4,8 +4,8 @@ use crate::{
     aggregate, lower, pipeline, AggregationRequest, CompilationGraph, LoweringOptions,
     LoweringPlan, NativeTarget, PackageId,
 };
-use anyhow::Result;
-use std::collections::{BTreeMap, BTreeSet};
+use anyhow::{bail, Result};
+use std::collections::BTreeMap;
 
 /// One source aggregation request and its exact package selections.
 ///
@@ -35,6 +35,44 @@ pub fn compile(request: CompilationRequest) -> Result<CompilationGraph> {
     pipeline::select_packages(&graph, &selectors)
 }
 
+/// Lowers each selected backend exactly once with target-specific lowering options.
+pub fn lower_unique_targets_with_options(
+    graph: &CompilationGraph,
+    targets: impl IntoIterator<Item = (NativeTarget, LoweringOptions)>,
+) -> Result<BTreeMap<NativeTarget, LoweringPlan>> {
+    lower_unique_targets_with_options_internal(graph, targets, |graph, target, options| {
+        lower(graph, target, options)
+    })
+}
+
+fn lower_unique_targets_with_options_internal(
+    graph: &CompilationGraph,
+    targets: impl IntoIterator<Item = (NativeTarget, LoweringOptions)>,
+    mut lower_backend: impl FnMut(
+        &CompilationGraph,
+        NativeTarget,
+        LoweringOptions,
+    ) -> Result<LoweringPlan>,
+) -> Result<BTreeMap<NativeTarget, LoweringPlan>> {
+    let mut resolved = BTreeMap::new();
+    for (target, options) in targets {
+        if let Some(&existing) = resolved.get(&target) {
+            if existing != options {
+                bail!(
+                    "conflicting lowering options for target `{}`",
+                    target.as_str()
+                );
+            }
+        } else {
+            resolved.insert(target, options);
+        }
+    }
+    resolved
+        .into_iter()
+        .map(|(target, options)| lower_backend(graph, target, options).map(|plan| (target, plan)))
+        .collect()
+}
+
 /// Lowers each selected backend exactly once from a complete validated graph.
 ///
 /// Publication scopes intentionally are not part of the key: project and user
@@ -44,27 +82,7 @@ pub fn lower_unique_targets(
     targets: impl IntoIterator<Item = NativeTarget>,
     options: LoweringOptions,
 ) -> Result<BTreeMap<NativeTarget, LoweringPlan>> {
-    lower_unique_targets_with(graph, targets, options, |graph, target, options| {
-        lower(graph, target, options)
-    })
-}
-
-fn lower_unique_targets_with(
-    graph: &CompilationGraph,
-    targets: impl IntoIterator<Item = NativeTarget>,
-    options: LoweringOptions,
-    mut lower_backend: impl FnMut(
-        &CompilationGraph,
-        NativeTarget,
-        LoweringOptions,
-    ) -> Result<LoweringPlan>,
-) -> Result<BTreeMap<NativeTarget, LoweringPlan>> {
-    targets
-        .into_iter()
-        .collect::<BTreeSet<_>>()
-        .into_iter()
-        .map(|target| lower_backend(graph, target, options).map(|plan| (target, plan)))
-        .collect()
+    lower_unique_targets_with_options(graph, targets.into_iter().map(|target| (target, options)))
 }
 
 fn resolve_package_ids(graph: &CompilationGraph, selectors: &[String]) -> Result<Vec<PackageId>> {
@@ -83,7 +101,10 @@ fn resolve_package_ids(graph: &CompilationGraph, selectors: &[String]) -> Result
 
 #[cfg(test)]
 mod tests {
-    use super::{lower_unique_targets, lower_unique_targets_with};
+    use super::{
+        lower_unique_targets, lower_unique_targets_with_options,
+        lower_unique_targets_with_options_internal,
+    };
     use crate::{
         CompilationGraph, LoweringOptions, NativeTarget, Package, Resource, ResourceContent,
         ResourcePath, SemanticIdentity, SourceProvenance,
@@ -129,10 +150,12 @@ mod tests {
         let graph = CompilationGraph::new([package]).unwrap();
         let mut invocations = 0;
 
-        lower_unique_targets_with(
+        lower_unique_targets_with_options_internal(
             &graph,
-            [NativeTarget::Codex, NativeTarget::Codex],
-            LoweringOptions::strict(),
+            [
+                (NativeTarget::Codex, LoweringOptions::strict()),
+                (NativeTarget::Codex, LoweringOptions::strict()),
+            ],
             |graph, target, options| {
                 invocations += 1;
                 crate::lower(graph, target, options)
@@ -141,5 +164,62 @@ mod tests {
         .unwrap();
 
         assert_eq!(invocations, 1);
+    }
+
+    #[test]
+    fn lower_unique_targets_with_options_supports_different_options_per_target() {
+        let package = Package::rule(
+            SemanticIdentity::parse("rule:repository-guidance").unwrap(),
+            SourceProvenance::new("codex", "AGENTS.md").unwrap(),
+            Resource::primary_instruction(
+                ResourcePath::parse("AGENTS.md").unwrap(),
+                ResourceContent::Text("Follow the repository guidance.\n".to_owned()),
+                false,
+            ),
+        )
+        .unwrap();
+        let graph = CompilationGraph::new([package]).unwrap();
+
+        let lowerings = lower_unique_targets_with_options(
+            &graph,
+            [
+                (NativeTarget::Codex, LoweringOptions::strict()),
+                (NativeTarget::AgentPlugin, LoweringOptions::allow_lossy()),
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(lowerings.len(), 2);
+        assert!(lowerings.contains_key(&NativeTarget::Codex));
+        assert!(lowerings.contains_key(&NativeTarget::AgentPlugin));
+    }
+
+    #[test]
+    fn lower_unique_targets_with_options_rejects_conflicting_options() {
+        let package = Package::rule(
+            SemanticIdentity::parse("rule:repository-guidance").unwrap(),
+            SourceProvenance::new("codex", "AGENTS.md").unwrap(),
+            Resource::primary_instruction(
+                ResourcePath::parse("AGENTS.md").unwrap(),
+                ResourceContent::Text("Follow the repository guidance.\n".to_owned()),
+                false,
+            ),
+        )
+        .unwrap();
+        let graph = CompilationGraph::new([package]).unwrap();
+
+        let result = lower_unique_targets_with_options(
+            &graph,
+            [
+                (NativeTarget::Codex, LoweringOptions::strict()),
+                (NativeTarget::Codex, LoweringOptions::allow_lossy()),
+            ],
+        );
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("conflicting lowering options"));
     }
 }
