@@ -181,10 +181,7 @@ impl McpServer {
         })
     }
 
-    pub fn sse(
-        url: impl Into<String>,
-        headers: BTreeMap<String, String>,
-    ) -> Result<Self> {
+    pub fn sse(url: impl Into<String>, headers: BTreeMap<String, String>) -> Result<Self> {
         let url = url.into();
         if url.trim().is_empty() {
             bail!("sse server url cannot be empty");
@@ -390,7 +387,16 @@ mod tests {
         let wire: PluginManifestWireV1 = serde_json::from_value(json).unwrap();
         assert_eq!(wire.name, "sample-plugin");
         assert_eq!(wire.version.as_deref(), Some("1.0.0"));
-        assert_eq!(wire.keywords.as_deref(), Some(&["agent".to_string(), "plugin".to_string(), "tools".to_string()][..]));
+        assert_eq!(
+            wire.keywords.as_deref(),
+            Some(
+                &[
+                    "agent".to_string(),
+                    "plugin".to_string(),
+                    "tools".to_string()
+                ][..]
+            )
+        );
         assert!(wire.extra.is_empty());
 
         let domain = PluginManifest::try_from(wire).unwrap();
@@ -489,7 +495,12 @@ mod tests {
 
         let local_stdio = domain.mcp_servers.get("local-stdio").unwrap();
         match local_stdio.transport() {
-            McpTransport::Stdio { command, args, env, cwd } => {
+            McpTransport::Stdio {
+                command,
+                args,
+                env,
+                cwd,
+            } => {
                 assert_eq!(command, "./bin/server");
                 assert_eq!(args, &["--port", "8080"]);
                 assert_eq!(env.get("DEBUG").map(String::as_str), Some("1"));
@@ -502,7 +513,10 @@ mod tests {
         match remote_http.transport() {
             McpTransport::StreamableHttp { url, headers } => {
                 assert_eq!(url, "https://example.com/mcp");
-                assert_eq!(headers.get("Authorization").map(String::as_str), Some("Bearer secret"));
+                assert_eq!(
+                    headers.get("Authorization").map(String::as_str),
+                    Some("Bearer secret")
+                );
             }
             _ => panic!("expected StreamableHttp transport"),
         }
@@ -553,12 +567,27 @@ mod tests {
         // Invalid commands
         assert!(validate_command("").is_err());
         assert!(validate_command("   ").is_err());
-        assert!(validate_command("bin/server").is_err(), "relative command without leading ./");
+        assert!(
+            validate_command("bin/server").is_err(),
+            "relative command without leading ./"
+        );
         assert!(validate_command("./").is_err(), "empty after ./");
-        assert!(validate_command("./bin/../server").is_err(), "parent traversal ..");
-        assert!(validate_command("../server").is_err(), "parent traversal ..");
-        assert!(validate_command("./bin//server").is_err(), "empty component");
-        assert!(validate_command("./bin/").is_err(), "trailing empty component");
+        assert!(
+            validate_command("./bin/../server").is_err(),
+            "parent traversal .."
+        );
+        assert!(
+            validate_command("../server").is_err(),
+            "parent traversal .."
+        );
+        assert!(
+            validate_command("./bin//server").is_err(),
+            "empty component"
+        );
+        assert!(
+            validate_command("./bin/").is_err(),
+            "trailing empty component"
+        );
     }
 
     #[test]
@@ -574,12 +603,21 @@ mod tests {
 
         // Invalid cwds
         assert!(validate_cwd("").is_err());
-        assert!(validate_cwd("sub/dir").is_err(), "must start with ./, ${{PLUGIN_ROOT}}, or ${{PLUGIN_DATA}}");
+        assert!(
+            validate_cwd("sub/dir").is_err(),
+            "must start with ./, ${{PLUGIN_ROOT}}, or ${{PLUGIN_DATA}}"
+        );
         assert!(validate_cwd("./sub/../dir").is_err(), "parent traversal ..");
         assert!(validate_cwd("./sub//dir").is_err(), "empty component");
         assert!(validate_cwd("./sub/").is_err(), "empty component");
-        assert!(validate_cwd("${PLUGIN_ROOT}/..").is_err(), "parent traversal ..");
-        assert!(validate_cwd("${PLUGIN_ROOT}//foo").is_err(), "empty component");
+        assert!(
+            validate_cwd("${PLUGIN_ROOT}/..").is_err(),
+            "parent traversal .."
+        );
+        assert!(
+            validate_cwd("${PLUGIN_ROOT}//foo").is_err(),
+            "empty component"
+        );
         assert!(validate_cwd("${PLUGIN_ROOT}/").is_err(), "empty component");
     }
 
@@ -615,7 +653,13 @@ mod tests {
         let mut servers = BTreeMap::new();
         servers.insert(
             "stdio-srv".to_string(),
-            McpServer::stdio("./server", vec!["--arg".to_string()], BTreeMap::new(), Some("./".to_string())).unwrap(),
+            McpServer::stdio(
+                "./server",
+                vec!["--arg".to_string()],
+                BTreeMap::new(),
+                Some("./".to_string()),
+            )
+            .unwrap(),
         );
         servers.insert(
             "http-srv".to_string(),

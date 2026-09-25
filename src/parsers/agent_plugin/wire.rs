@@ -3,8 +3,7 @@ use std::collections::BTreeMap;
 
 pub const PLUGIN_MANIFEST_SCHEMA_V1: &str =
     "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json";
-pub const MCP_CONFIG_SCHEMA_V1: &str =
-    "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json";
+pub const MCP_CONFIG_SCHEMA_V1: &str = "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json";
 
 fn validate_manifest_schema<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
@@ -45,10 +44,7 @@ pub struct PluginAuthorWireV1 {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PluginManifestWireV1 {
-    #[serde(
-        rename = "$schema",
-        deserialize_with = "validate_manifest_schema"
-    )]
+    #[serde(rename = "$schema", deserialize_with = "validate_manifest_schema")]
     pub schema: String,
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -119,10 +115,7 @@ pub enum McpServerWireV1 {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct McpConfigWireV1 {
-    #[serde(
-        rename = "$schema",
-        deserialize_with = "validate_mcp_config_schema"
-    )]
+    #[serde(rename = "$schema", deserialize_with = "validate_mcp_config_schema")]
     pub schema: String,
     #[serde(rename = "mcpServers", default)]
     pub mcp_servers: BTreeMap<String, McpServerWireV1>,

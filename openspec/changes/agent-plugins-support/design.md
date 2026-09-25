@@ -74,6 +74,7 @@ The backend lowerer in `src/emitters/lowering.rs` processes the selected graph:
 
 Lowering in the compiler kernel executes per-target: `lower(graph, target, LoweringOptions)`.
 To allow multi-target fan-out pipelines to permit loss on `agent-plugin` without relaxing strictness on other targets:
+
 - `OutputEntry` in `TransformConfigFile` supports `allow_lossy: Option<bool>`.
 - Global CLI `--allow-lossy` acts as the invocation-wide fallback when per-target configuration is absent.
 
@@ -86,22 +87,27 @@ To allow multi-target fan-out pipelines to permit loss on `agent-plugin` without
 ## Adversarial review
 
 **1. Package atomicity and partial selection.**
+
 - *Vulnerability*: If `plugin.json` is an unsupported package, running `--select` on skills leaves the manifest unselected, producing a non-conforming plugin missing `plugin.json`.
 - *Mitigation*: In strict mode, missing manifest fails compilation. Under `--allow-lossy`, the backend synthesizes a valid minimal manifest (`$schema` and package name) and reports a loss finding with `CapabilityReasonCode::SynthesizedManifest`.
 
 **2. MCP server decomposition collisions.**
+
 - *Vulnerability*: If multiple MCP server packages each carry the full `mcp.json` file as a resource, re-aggregating them causes artifact path collisions.
 - *Mitigation*: Each MCP server package contains only its isolated JSON configuration object in its payload and resources. The lowerer re-aggregates these payloads into a single canonical `mcp.json` artifact.
 
 **3. Rule name and description impedance.**
+
 - *Vulnerability*: Rule logical names allow characters forbidden by the Agent Skills name grammar, and rules may lack descriptions (which skills require).
 - *Mitigation*: Under `--allow-lossy`, rule names are sanitized to `^[a-z0-9]+(-[a-z0-9]+)*$`, colliding names are rejected before staging, and missing descriptions fall back to a default descriptive string while reporting `RuleLoweredAsSkill`.
 
 **4. Opaque resource and extension leakage.**
+
 - *Vulnerability*: Malicious or malformed client extensions could attempt to write into protected directories (like `.git` or parent paths).
 - *Mitigation*: Client extension directories must strictly match the reverse-domain grammar (`^[a-z0-9_-]+(\.[a-z0-9_-]+)+/`), and publication mappings reject any hidden directory collisions.
 
 **5. Wire schema conformance vs `deny_unknown_fields`.**
+
 - *Vulnerability*: Agent Plugins requires ignoring unknown fields in `plugin.json` with warnings, whereas Rulette enforces strict schema validation.
 - *Mitigation*: The wire deserializer captures unknown fields via `#[serde(flatten)] extra` and records non-fatal `GraphDiagnostic` warnings, while internal domain types and graph serialization maintain strict schema validation.
 
