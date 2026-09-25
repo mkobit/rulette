@@ -738,4 +738,179 @@ mod tests {
         assert_eq!(warnings.len(), 1);
         assert!(warnings[0].message.contains("invalid-skill"));
     }
+
+    #[test]
+    fn decomposes_all_mcp_server_transports_and_reaggregates() {
+        let manifest = serde_json::json!({
+            "$schema": PLUGIN_MANIFEST_SCHEMA_V1,
+            "name": "mcp-bundle-plugin"
+        });
+        let mcp = serde_json::json!({
+            "$schema": MCP_CONFIG_SCHEMA_V1,
+            "mcpServers": {
+                "stdio-server": {
+                    "type": "stdio",
+                    "command": "./bin/server",
+                    "args": ["--mode", "daemon"],
+                    "env": { "CUSTOM_PORT": "3000" },
+                    "cwd": "${PLUGIN_ROOT}/work"
+                },
+                "http-server": {
+                    "type": "streamable-http",
+                    "url": "https://api.example.com/mcp",
+                    "headers": { "Authorization": "Bearer tok123" }
+                },
+                "sse-server": {
+                    "type": "sse",
+                    "url": "https://sse.example.com/events",
+                    "headers": { "X-Trace": "abc" }
+                }
+            }
+        });
+
+        let graph = compile_agent_plugin_graph(&[
+            observation("plugin.json", serde_json::to_vec(&manifest).unwrap(), false),
+            observation("mcp.json", serde_json::to_vec(&mcp).unwrap(), false),
+        ])
+        .unwrap();
+
+        // 1 manifest + 3 MCP server packages = 4 packages
+        assert_eq!(graph.packages.len(), 4);
+        assert!(
+            !graph
+                .diagnostics
+                .iter()
+                .any(|d| d.severity == DiagnosticSeverity::Warning),
+            "expected no warning diagnostics, got: {:?}",
+            graph.diagnostics
+        );
+
+        for server_name in ["stdio-server", "http-server", "sse-server"] {
+            let pkg_id = format!("unsupported:agent-plugin-mcp-server/{server_name}");
+            let pkg = graph
+                .packages
+                .values()
+                .find(|p| p.semantic_identity.as_str() == pkg_id)
+                .expect("decomposed MCP package exists");
+            assert_eq!(pkg.kind, PackageKind::Unsupported);
+            let payload = pkg.frontend_payload.as_ref().unwrap();
+            assert_eq!(payload.namespace, "agent-plugin.mcp-server");
+            assert_eq!(
+                payload.fields.get("name").unwrap().as_str().unwrap(),
+                server_name
+            );
+        }
+
+        // Test lowering and re-aggregation
+        let plan = crate::emitters::lowering::lower(
+            &graph,
+            crate::emitters::lowering::NativeTarget::AgentPlugin,
+            crate::emitters::lowering::LoweringOptions::strict(),
+        )
+        .unwrap();
+
+        let mcp_art = plan
+            .artifacts
+            .iter()
+            .find(|a| a.path.as_str() == "mcp.json")
+            .expect("reaggregated mcp.json artifact exists");
+        let reaggregated: wire::McpConfigWireV1 =
+            serde_json::from_slice(&mcp_art.bytes).expect("valid mcp.json wire");
+        assert_eq!(reaggregated.schema, MCP_CONFIG_SCHEMA_V1);
+        assert_eq!(reaggregated.mcp_servers.len(), 3);
+        assert!(reaggregated.mcp_servers.contains_key("stdio-server"));
+        assert!(reaggregated.mcp_servers.contains_key("http-server"));
+        assert!(reaggregated.mcp_servers.contains_key("sse-server"));
+    }
+
+    #[test]
+    fn decomposition_rejects_servers_violating_path_containment_and_env_rules() {
+        let manifest = serde_json::json!({
+            "$schema": PLUGIN_MANIFEST_SCHEMA_V1,
+            "name": "safety-plugin"
+        });
+        let mcp = serde_json::json!({
+            "$schema": MCP_CONFIG_SCHEMA_V1,
+            "mcpServers": {
+                "valid-sibling": {
+                    "type": "stdio",
+                    "command": "./bin/good"
+                },
+                "escaping-cmd": {
+                    "type": "stdio",
+                    "command": "../bad"
+                },
+                "no-dot-slash-cmd": {
+                    "type": "stdio",
+                    "command": "bin/bad"
+                },
+                "reserved-env": {
+                    "type": "stdio",
+                    "command": "./bin/good",
+                    "env": { "PLUGIN_ROOT": "/etc" }
+                },
+                "escaping-cwd": {
+                    "type": "stdio",
+                    "command": "./bin/good",
+                    "cwd": "${PLUGIN_ROOT}/.."
+                }
+            }
+        });
+
+        let graph = compile_agent_plugin_graph(&[
+            observation("plugin.json", serde_json::to_vec(&manifest).unwrap(), false),
+            observation("mcp.json", serde_json::to_vec(&mcp).unwrap(), false),
+        ])
+        .unwrap();
+
+        assert!(graph
+            .packages
+            .values()
+            .any(|p| p.semantic_identity.as_str()
+                == "unsupported:agent-plugin-mcp-server/valid-sibling"));
+        assert_eq!(
+            graph
+                .packages
+                .values()
+                .filter(|p| p.semantic_identity.as_str().contains("mcp-server"))
+                .count(),
+            1
+        );
+
+        let invalid_mcp_warnings: Vec<_> = graph
+            .diagnostics
+            .iter()
+            .filter(|d| d.code == "invalid-mcp-server")
+            .collect();
+        assert_eq!(invalid_mcp_warnings.len(), 4);
+    }
+
+    #[test]
+    fn manifest_warnings_for_multiple_unknown_fields() {
+        let manifest = serde_json::json!({
+            "$schema": PLUGIN_MANIFEST_SCHEMA_V1,
+            "name": "multi-extra-plugin",
+            "first_unknown": 1,
+            "second_unknown": "two",
+            "third_unknown": [3]
+        });
+
+        let graph = compile_agent_plugin_graph(&[observation(
+            "plugin.json",
+            serde_json::to_vec(&manifest).unwrap(),
+            false,
+        )])
+        .unwrap();
+
+        let warnings: Vec<_> = graph
+            .diagnostics
+            .iter()
+            .filter(|d| d.code == "unknown-manifest-field")
+            .collect();
+        assert_eq!(warnings.len(), 3);
+        let messages: Vec<_> = warnings.iter().map(|w| w.message.as_str()).collect();
+        assert!(messages.iter().any(|m| m.contains("first_unknown")));
+        assert!(messages.iter().any(|m| m.contains("second_unknown")));
+        assert!(messages.iter().any(|m| m.contains("third_unknown")));
+    }
 }

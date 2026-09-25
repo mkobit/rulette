@@ -1934,6 +1934,106 @@ mod tests {
     }
 
     #[test]
+    fn agent_plugin_duplicate_mcp_server_names_fail_with_collision() {
+        let manifest_bytes = serde_json::to_vec_pretty(
+            &crate::parsers::agent_plugin::PluginManifestWireV1::new("my-plugin"),
+        )
+        .unwrap();
+        let manifest_path = ResourcePath::parse("plugin.json").unwrap();
+        let manifest_pkg = Package::new(
+            PackageKind::Unsupported,
+            SemanticIdentity::parse("unsupported:agent-plugin-manifest/plugin.json").unwrap(),
+            SourceProvenance::new("agent-plugin", "plugin.json").unwrap(),
+            PackageRoot::root(),
+            SemanticItem::Unsupported {
+                native_kind: "manifest".to_owned(),
+            },
+            BTreeMap::from([(
+                manifest_path.clone(),
+                Resource::opaque(manifest_path, ResourceContent::Bytes(manifest_bytes), false),
+            )]),
+            None,
+        )
+        .unwrap();
+
+        let server_wire = crate::parsers::agent_plugin::McpServerWireV1::Stdio {
+            command: "./bin/fetch".to_string(),
+            args: vec![],
+            env: BTreeMap::new(),
+            cwd: None,
+        };
+        let s1_path = ResourcePath::parse("mcp-servers/fetch1.json").unwrap();
+        let mut s1_payload = BTreeMap::new();
+        s1_payload.insert(
+            "name".to_string(),
+            serde_json::Value::String("fetch".to_string()),
+        );
+        s1_payload.insert(
+            "server".to_string(),
+            serde_json::to_value(&server_wire).unwrap(),
+        );
+        let mcp1_pkg = Package::new(
+            PackageKind::Unsupported,
+            SemanticIdentity::parse("unsupported:agent-plugin-mcp-server/fetch-1").unwrap(),
+            SourceProvenance::new("agent-plugin", "mcp.json").unwrap(),
+            PackageRoot::root(),
+            SemanticItem::Unsupported {
+                native_kind: "mcp-server".to_owned(),
+            },
+            BTreeMap::from([(
+                s1_path.clone(),
+                Resource::opaque(
+                    s1_path,
+                    ResourceContent::Bytes(serde_json::to_vec(&server_wire).unwrap()),
+                    false,
+                ),
+            )]),
+            Some(FrontendPayload {
+                namespace: "agent-plugin.mcp-server".to_owned(),
+                fields: s1_payload,
+            }),
+        )
+        .unwrap();
+
+        let s2_path = ResourcePath::parse("mcp-servers/fetch2.json").unwrap();
+        let mut s2_payload = BTreeMap::new();
+        s2_payload.insert(
+            "name".to_string(),
+            serde_json::Value::String("fetch".to_string()),
+        );
+        s2_payload.insert(
+            "server".to_string(),
+            serde_json::to_value(&server_wire).unwrap(),
+        );
+        let mcp2_pkg = Package::new(
+            PackageKind::Unsupported,
+            SemanticIdentity::parse("unsupported:agent-plugin-mcp-server/fetch-2").unwrap(),
+            SourceProvenance::new("agent-plugin", "mcp.json").unwrap(),
+            PackageRoot::root(),
+            SemanticItem::Unsupported {
+                native_kind: "mcp-server".to_owned(),
+            },
+            BTreeMap::from([(
+                s2_path.clone(),
+                Resource::opaque(
+                    s2_path,
+                    ResourceContent::Bytes(serde_json::to_vec(&server_wire).unwrap()),
+                    false,
+                ),
+            )]),
+            Some(FrontendPayload {
+                namespace: "agent-plugin.mcp-server".to_owned(),
+                fields: s2_payload,
+            }),
+        )
+        .unwrap();
+
+        let graph = CompilationGraph::new([manifest_pkg, mcp1_pkg, mcp2_pkg]).unwrap();
+        let err = lower(&graph, NativeTarget::AgentPlugin, LoweringOptions::strict()).unwrap_err();
+        assert!(err.to_string().contains("duplicate MCP server `fetch`"));
+    }
+
+    #[test]
     fn agent_plugin_foreign_mcp_servers_dropped_with_opaque_cross_domain() {
         let manifest_bytes = serde_json::to_vec_pretty(
             &crate::parsers::agent_plugin::PluginManifestWireV1::new("my-plugin"),

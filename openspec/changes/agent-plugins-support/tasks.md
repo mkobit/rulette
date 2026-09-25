@@ -31,8 +31,8 @@
 
 ## 6. Testing and verification
 
-- [ ] 6.1 Add unit tests for manifest wire parsing, unknown field warnings, and schema validation.
-- [ ] 6.2 Add unit tests for MCP server decomposition and same-domain re-aggregation.
-- [ ] 6.3 Add integration tests verifying strict rule rejection and opt-in rule-to-skill conversion under `--allow-lossy`.
-- [ ] 6.4 Add round-trip tests for Agent Plugins v1.0.0 packages.
-- [ ] 6.5 Run `cargo test`, `cargo clippy`, and `mise run spec-validate`.
+- [x] 6.1 Add unit tests for manifest wire parsing, unknown field warnings, and schema validation.
+- [x] 6.2 Add unit tests for MCP server decomposition and same-domain re-aggregation.
+- [x] 6.3 Add integration tests verifying strict rule rejection and opt-in rule-to-skill conversion under `--allow-lossy`.
+- [x] 6.4 Add round-trip tests for Agent Plugins v1.0.0 packages.
+- [x] 6.5 Run `cargo test`, `cargo clippy`, and `mise run spec-validate`.
