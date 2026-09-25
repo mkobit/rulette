@@ -25,6 +25,14 @@ For executable capabilities and specifications, see:
 - [openspec/specs/transform-pipeline/spec.md](openspec/specs/transform-pipeline/spec.md)
 - [openspec/specs/frontends-and-backends/spec.md](openspec/specs/frontends-and-backends/spec.md)
 
+## Build and test
+
+```bash
+mise run check         # Run markdown linting, cargo fmt, clippy, unit and integration tests
+mise run spec-validate # Validate all OpenSpec specifications strictly
+mise run bd-check      # Verify beads database health and unblocked work
+```
+
 ## Docker Sandbox Execution
 
 Execute validation checks within the Docker Sandbox environment by running:
