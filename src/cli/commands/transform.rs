@@ -9,9 +9,7 @@ use crate::publication::{
     PublicationScope, ScopedAcceptedLoss, ScopedLowering, SourceCheckRequest, StageRequest,
     StageRoot,
 };
-use crate::{
-    compile, lower_unique_targets_with_options, AggregationRequest, CompilationRequest,
-};
+use crate::{compile, lower_unique_targets_with_options, AggregationRequest, CompilationRequest};
 use anyhow::{Context, Result};
 use clap::Args;
 use serde::{Deserialize, Serialize};
