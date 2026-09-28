@@ -33,10 +33,37 @@ mise run spec-validate # Validate all OpenSpec specifications strictly
 mise run bd-check      # Verify beads database health and unblocked work
 ```
 
-## Docker Sandbox Execution
+## Docker sandbox execution
 
 Execute validation checks within the Docker Sandbox environment by running:
-`sbx env exec .sbx/sbxenv.yaml -- mise run check`
+
+```bash
+sbx env exec .sbx/sbxenv.yaml -- mise run check
+```
+
+Execute non-interactive tasks using Antigravity (`agy`):
+
+```bash
+sbx env exec .sbx/sbxenv.agy.yaml -- sh -c 'agy --print "<prompt>" < /dev/null'
+```
+
+Execute non-interactive tasks using Codex:
+
+```bash
+sbx env exec .sbx/sbxenv.yaml -- sh -c 'codex exec "<prompt>" < /dev/null'
+```
+
+Create and run an isolated per-task named sandbox:
+
+```bash
+# Antigravity (agy)
+sbx env create --name rulette-task-<id> .sbx/sbxenv.agy.yaml
+sbx run --name rulette-task-<id>
+
+# Codex
+sbx env create --name rulette-task-<id> .sbx/sbxenv.yaml
+sbx run --name rulette-task-<id>
+```
 
 ## Inputs
 
