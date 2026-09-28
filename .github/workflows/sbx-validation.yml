@@ -19,6 +19,7 @@ concurrency:
 
 env:
   MISE_VERSION: "v2026.9.1"
+  SBX_VERSION: "v0.45.1"
 
 permissions: {}
 
@@ -40,15 +41,24 @@ jobs:
         env:
           MISE_USE_VERSIONS_HOST: 1
 
-      - name: Install sbx CLI
-        run: |
-          gh release download v0.45.1 --repo docker/sbx-releases --pattern "DockerSandboxes-linux-amd64-ubuntu2404.deb" --output /tmp/sbx.deb
-          sudo apt-get update
-          sudo apt-get install -y /tmp/sbx.deb
-          rm -f /tmp/sbx.deb
-          sbx daemon start -d
+      - name: Cache sbx deb package
+        uses: actions/cache@v6.1.0
+        id: sbx-deb-cache
+        with:
+          path: /tmp/sbx.deb
+          key: sbx-${{ env.SBX_VERSION }}-deb
+
+      - name: Download sbx CLI
+        if: steps.sbx-deb-cache.outputs.cache-hit != 'true'
+        run: gh release download "${SBX_VERSION}" --repo docker/sbx-releases --pattern "DockerSandboxes-linux-amd64-ubuntu2404.deb" --output /tmp/sbx.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install and start sbx CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y /tmp/sbx.deb
+          sbx daemon start -d
 
       - name: Validate Docker Sandbox environments
         run: mise run validate-sbx
