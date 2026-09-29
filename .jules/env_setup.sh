@@ -4,11 +4,6 @@
 
 set -euo pipefail
 
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    echo "Error: This script must be sourced, not executed. Run 'source .jules/env_setup.sh'"
-    exit 1
-fi
-
 echo "Setting up environment..."
 echo "--- Diagnostic Information ---"
 echo "User: $(whoami)"
@@ -18,7 +13,7 @@ echo "------------------------------"
 # Install mise if missing
 if ! command -v mise &> /dev/null; then
     echo "Installing mise..."
-    MISE_VERSION="v2026.5.15"
+    MISE_VERSION="v2026.9.1"
     mkdir -p ~/.local/bin
     curl -L "https://github.com/jdx/mise/releases/download/${MISE_VERSION}/mise-${MISE_VERSION}-linux-x64" > ~/.local/bin/mise
     chmod +x ~/.local/bin/mise
