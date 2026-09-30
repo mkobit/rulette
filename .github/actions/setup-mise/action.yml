@@ -1,0 +1,23 @@
+name: Setup mise
+description: Install mise and the project's configured tools
+
+inputs:
+  version:
+    description: The mise version to install
+    required: true
+  github_token:
+    description: GitHub token used by mise when installing tools
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Setup mise
+      uses: jdx/mise-action@v4
+      with:
+        version: ${{ inputs.version }}
+        install: true
+        github_token: ${{ inputs.github_token }}
+      env:
+        MISE_USE_VERSIONS_HOST: 1
+        MISE_RUST_DOWNLOAD: 1

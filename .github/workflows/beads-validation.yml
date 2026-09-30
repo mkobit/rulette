@@ -26,13 +26,10 @@ jobs:
           fetch-depth: 0
 
       - name: Setup mise
-        uses: jdx/mise-action@v4
+        uses: ./.github/actions/setup-mise
         with:
           version: ${{ env.MISE_VERSION }}
-          install: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          MISE_USE_VERSIONS_HOST: 1
 
       - name: Bootstrap beads database from git remote
         # The Dolt database (.beads/embeddeddolt/) is gitignored and lives on

@@ -33,13 +33,10 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v7
 
-      - uses: jdx/mise-action@v4
+      - uses: ./.github/actions/setup-mise
         with:
           version: ${{ env.MISE_VERSION }}
-          install: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          MISE_USE_VERSIONS_HOST: 1
 
       - name: Cache sbx deb package
         uses: actions/cache@v6.1.0
