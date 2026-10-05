@@ -18,7 +18,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - uses: ./.github/actions/setup-mise
         with:
@@ -54,7 +54,7 @@ jobs:
         run: cargo llvm-cov
 
       - name: Install security audit tool
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0
         with:
           tool: cargo-audit
 
@@ -74,7 +74,7 @@ jobs:
           RELEASE_ARCHIVE="${archive}" VERIFIED_RELEASE_DIR=verified-release mise run release:smoke
 
       - name: Upload verified release artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: verified-static-release
           path: |
@@ -90,7 +90,7 @@ jobs:
       contents: write
     steps:
       - name: Download verified release artifact
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: verified-static-release
           path: verified-release
