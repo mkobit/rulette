@@ -359,6 +359,7 @@ fn smoke_script_exports_the_verified_snapshot_even_if_the_source_changes_after_s
     let path = format!("{}:{}", tools.display(), std::env::var("PATH").unwrap());
     let output = Command::new(verifier_script())
         .arg(&source)
+        .env_remove("BASH_ENV")
         .env("PATH", path)
         .env("TAMPER_ARCHIVE", &source)
         .env("VERIFIED_RELEASE_DIR", &verified)
@@ -444,6 +445,7 @@ fn smoke_script_accepts_static_pie_and_rejects_an_elf_interpreter() {
         let path = format!("{}:{}", tools.display(), std::env::var("PATH").unwrap());
         let output = Command::new(verifier_script())
             .arg(&archive)
+            .env_remove("BASH_ENV")
             .env("PATH", path)
             .output()
             .unwrap();
@@ -616,6 +618,7 @@ chmod 0644 target/x86_64-unknown-linux-musl/release/rulette
     let output = Command::new("bash")
         .arg(&script_path)
         .current_dir(&caller)
+        .env_remove("BASH_ENV")
         .env("PATH", &path)
         .env("EXPECTED_REPOSITORY", &repository)
         .output()
@@ -680,6 +683,7 @@ chmod 0644 target/x86_64-unknown-linux-musl/release/rulette
     let output = Command::new("bash")
         .arg(&script_path)
         .current_dir(&caller)
+        .env_remove("BASH_ENV")
         .env("PATH", &path)
         .env("EXPECTED_REPOSITORY", &repository)
         .output()
@@ -729,6 +733,7 @@ fn package_script_rejects_a_malformed_cargo_package_identifier() {
     let path = format!("{}:{}", tools.display(), std::env::var("PATH").unwrap());
     let output = Command::new("bash")
         .arg(&script_path)
+        .env_remove("BASH_ENV")
         .env("PATH", path)
         .output()
         .unwrap();
@@ -791,6 +796,7 @@ fn cargo_package_version_script_accepts_only_cargo_compatible_semver_identifiers
         let path = format!("{}:{}", tools.display(), std::env::var("PATH").unwrap());
         let output = Command::new("bash")
             .arg(&script_path)
+            .env_remove("BASH_ENV")
             .env("PACKAGE_VERSION", version)
             .env("PATH", path)
             .output()
