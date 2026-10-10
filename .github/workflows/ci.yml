@@ -23,15 +23,11 @@ jobs:
     name: Lint markdown
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: jdx/mise-action@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: ./.github/actions/setup-mise
         with:
           version: ${{ env.MISE_VERSION }}
-          install: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          MISE_USE_VERSIONS_HOST: 1
-          MISE_RUST_DOWNLOAD: 1
       - name: Run markdown lint
         run: bun x markdownlint-cli2
 
@@ -40,22 +36,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - uses: jdx/mise-action@v4
+      - uses: ./.github/actions/setup-mise
         with:
           version: ${{ env.MISE_VERSION }}
-          install: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          MISE_USE_VERSIONS_HOST: 1
-          MISE_RUST_DOWNLOAD: 1
 
       - name: Set up rust cache
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
 
       - name: Cache fixtures
-        uses: actions/cache@v6.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: target/fixtures
           key: fixtures-${{ runner.os }}-${{ hashFiles('build.rs') }}
@@ -79,22 +71,18 @@ jobs:
         os: [ubuntu-latest, macos-15, windows-latest]
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - uses: jdx/mise-action@v4
+      - uses: ./.github/actions/setup-mise
         with:
           version: ${{ env.MISE_VERSION }}
-          install: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          MISE_USE_VERSIONS_HOST: 1
-          MISE_RUST_DOWNLOAD: 1
 
       - name: Set up rust cache
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
 
       - name: Cache fixtures
-        uses: actions/cache@v6.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: target/fixtures
           key: fixtures-${{ runner.os }}-${{ hashFiles('build.rs') }}
@@ -109,7 +97,7 @@ jobs:
 
       - name: Install cargo-llvm-cov
         if: matrix.os == 'ubuntu-latest'
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0
         with:
           tool: cargo-llvm-cov
 
@@ -124,19 +112,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - uses: jdx/mise-action@v4
+      - uses: ./.github/actions/setup-mise
         with:
           version: ${{ env.MISE_VERSION }}
-          install: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          MISE_USE_VERSIONS_HOST: 1
-          MISE_RUST_DOWNLOAD: 1
 
       - name: Install cargo-audit
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0
         with:
           tool: cargo-audit
 

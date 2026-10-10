@@ -21,18 +21,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
 
       - name: Setup mise
-        uses: jdx/mise-action@v4
+        uses: ./.github/actions/setup-mise
         with:
           version: ${{ env.MISE_VERSION }}
-          install: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          MISE_USE_VERSIONS_HOST: 1
 
       - name: Bootstrap beads database from git remote
         # The Dolt database (.beads/embeddeddolt/) is gitignored and lives on

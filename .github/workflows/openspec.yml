@@ -29,13 +29,10 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v7
-      - uses: jdx/mise-action@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: ./.github/actions/setup-mise
         with:
           version: ${{ env.MISE_VERSION }}
-          install: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          MISE_USE_VERSIONS_HOST: 1
       - name: Validate OpenSpec specs and changes
         run: mise run spec-validate

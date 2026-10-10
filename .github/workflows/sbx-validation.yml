@@ -31,18 +31,15 @@ jobs:
       contents: read
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - uses: jdx/mise-action@v4
+      - uses: ./.github/actions/setup-mise
         with:
           version: ${{ env.MISE_VERSION }}
-          install: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          MISE_USE_VERSIONS_HOST: 1
 
       - name: Cache sbx deb package
-        uses: actions/cache@v6.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         id: sbx-deb-cache
         with:
           path: /tmp/sbx.deb
