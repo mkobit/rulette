@@ -1,0 +1,83 @@
+{
+  "release": "v29.0.0",
+  "commit": "4efba24d515ff2214214d8b1c1616b89178fae7d",
+  "retrieved": "2026-10-10",
+  "published": "2026-10-08T23:08:29Z",
+  "sandbox": "rulette-l8r-skills",
+  "runtime": {
+    "node": "v22.22.1",
+    "python": "3.14.4"
+  },
+  "observed": [
+    "official npm latest version 29.0.0; gitHead absent; engines node >=22.0.0",
+    "GitHub tag reference resolves to commit",
+    "release assets include standalone binaries and SHA256SUMS"
+  ],
+  "methods": [
+    "curl -fsSL https://registry.npmjs.org/rulesync/latest",
+    "curl -fsSL https://api.github.com/repos/dyoshikawa/rulesync/git/ref/tags/v29.0.0",
+    "curl -fsSL https://api.github.com/repos/dyoshikawa/rulesync/releases/tags/v29.0.0",
+    "curl -fsSL https://codeload.github.com/dyoshikawa/rulesync/tar.gz/refs/tags/v29.0.0",
+    "tar -xzf source.tar.gz",
+    "read official tagged documentation; no CLI lifecycle execution"
+  ],
+  "source_archive_sha256": "caf0caccbc069cdf923b5e6319a2d97a9152c3d32907d15b64c0c9daa501489b",
+  "sources": [
+    {
+      "path": "README.md",
+      "url": "https://github.com/dyoshikawa/rulesync/blob/4efba24d515ff2214214d8b1c1616b89178fae7d/README.md",
+      "sha256": "b022d71ac108c7834acbb935ac90915fd7daa5e97bdf722f06ee008fc367d1d7",
+      "lines": 188
+    },
+    {
+      "path": "docs/guide/configuration.md",
+      "url": "https://github.com/dyoshikawa/rulesync/blob/4efba24d515ff2214214d8b1c1616b89178fae7d/docs/guide/configuration.md",
+      "sha256": "d3badc4ac22e8b49c32bc6db020ec1bdd978e53893a97c1f1273510da7a07e1f",
+      "lines": 316
+    },
+    {
+      "path": "docs/guide/declarative-sources.md",
+      "url": "https://github.com/dyoshikawa/rulesync/blob/4efba24d515ff2214214d8b1c1616b89178fae7d/docs/guide/declarative-sources.md",
+      "sha256": "8933415a7a2fe390a4610a936fad99e308d41c3e59515998259896189ad27a5f",
+      "lines": 335
+    },
+    {
+      "path": "docs/guide/dry-run.md",
+      "url": "https://github.com/dyoshikawa/rulesync/blob/4efba24d515ff2214214d8b1c1616b89178fae7d/docs/guide/dry-run.md",
+      "sha256": "ea215c134a45cb0d8b71a91aadc08b7b3f9f8032aa0b52d7b4c6667081106326",
+      "lines": 24
+    },
+    {
+      "path": "docs/guide/global-mode.md",
+      "url": "https://github.com/dyoshikawa/rulesync/blob/4efba24d515ff2214214d8b1c1616b89178fae7d/docs/guide/global-mode.md",
+      "sha256": "4aeeb1a3822d792b51c984d0108678c2932fd76e7334838d07070639007c74ca",
+      "lines": 52
+    },
+    {
+      "path": "docs/guide/simulated-features.md",
+      "url": "https://github.com/dyoshikawa/rulesync/blob/4efba24d515ff2214214d8b1c1616b89178fae7d/docs/guide/simulated-features.md",
+      "sha256": "3917b132f062bc3619cfd953a34ad6e67a2e83fe10925a930d6dfff134d4124b",
+      "lines": 29
+    },
+    {
+      "path": "docs/guide/separate-input-root.md",
+      "url": "https://github.com/dyoshikawa/rulesync/blob/4efba24d515ff2214214d8b1c1616b89178fae7d/docs/guide/separate-input-root.md",
+      "sha256": "eae0568c3f841b8de3441d774829c913c0ddc68a983dab25ed3aa256eba046fe",
+      "lines": 117
+    },
+    {
+      "path": "docs/reference/cli-commands.md",
+      "url": "https://github.com/dyoshikawa/rulesync/blob/4efba24d515ff2214214d8b1c1616b89178fae7d/docs/reference/cli-commands.md",
+      "sha256": "1dd3653bc8acbeffb687a971d3676c7dcebc6aff655b044d3e60d4b5f3cc9201",
+      "lines": 892
+    },
+    {
+      "path": "docs/reference/supported-tools.md",
+      "url": "https://github.com/dyoshikawa/rulesync/blob/4efba24d515ff2214214d8b1c1616b89178fae7d/docs/reference/supported-tools.md",
+      "sha256": "944bc4590898a9bb82f8c5a17e0fb1a0516c1dc425999a7bb7779631d7436e0a",
+      "lines": 122
+    }
+  ],
+  "experiments": [],
+  "reuse": "rulette-um4 hand-translated fixtures/tests unchanged, not competitor parity"
+}

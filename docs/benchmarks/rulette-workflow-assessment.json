@@ -1,0 +1,957 @@
+{
+  "binary": "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+  "temporary_root": "/tmp/rulette-ka2-moea32nb",
+  "binary_sha256": "a48127f3c7a87bdb0902d050765c94b5d89853ec2d5b979772a7e2fd32528d0c",
+  "binary_version": "rulette 0.1.0",
+  "timing": "Agent execution proxy; excludes source editing, review and tool overhead.",
+  "records": [
+    {
+      "journey": "preview/publication",
+      "label": "inspect-help",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "inspect",
+        "--help"
+      ],
+      "exit": 0,
+      "stdout": "Pretty-print the IR for debugging\n\nUsage: rulette inspect [OPTIONS] [INPUT]...\n\nArguments:\n  [INPUT]...  Native input files or directories, or `-` for standard input [default: -]\n\nOptions:\n      --from <FROM>            Source frontend, auto-detected when omitted [default: auto] [possible values: auto, claude, cursor-mdc, codex, antigravity, opencode, agent-plugin, graph-json, graph-toml]\n  -q, --quiet                  Suppress non-error output\n      --no-color               Disable colored output\n  -t, --to <TO>                Analyze one core target without publishing native artifacts\n      --coverage               Compute the core-target capability matrix for observed package kinds\n      --log-level <LOG_LEVEL>  Log verbosity (error, warn, info, debug, trace)\n      --json                   Render coverage as JSON\n      --strict                 Fail coverage when any observed package kind is lossy or dropped\n  -h, --help                   Print help\n",
+      "stderr": "",
+      "elapsed_seconds": 0.08246408599999988,
+      "before": {
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "journey": "preview/publication",
+      "label": "transform-help",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "transform",
+        "--help"
+      ],
+      "exit": 0,
+      "stdout": "Compile graphs and stage or apply native publication plans\n\nUsage: rulette transform [OPTIONS] [INPUT]...\n\nArguments:\n  [INPUT]...\n          Explicit snapshot files, directories, tar archives, or gzip-compressed tar archives.\n          \n          Use `-` for one explicitly selected tar, gzip-compressed tar, graph JSON, or graph TOML stream. Plain native stdin is rejected because it has no naming and layout contract.\n\nOptions:\n      --from <FROM>\n          Select one homogeneous source decoder; `auto` accepts only one unambiguous native frontend. Graph JSON and TOML require explicit selection\n          \n          [default: auto]\n          [possible values: auto, claude, cursor-mdc, codex, antigravity, opencode, agent-plugin, graph-json, graph-toml]\n\n  -q, --quiet\n          Suppress non-error output\n\n      --no-color\n          Disable colored output\n\n      --select <SELECT>\n          Select one package by its exact graph package ID\n\n      --log-level <LOG_LEVEL>\n          Log verbosity (error, warn, info, debug, trace)\n\n      --target <TARGET>\n          Stage one or more unique native targets as `format@scope`; repeated spellings are deduplicated\n\n      --allow-lossy\n          Accept reported representational loss for requested native targets\n\n      --stage <STAGE>\n          Write a self-contained publication plan to this new directory\n\n      --project-root <PROJECT_ROOT>\n          Explicitly authorize the live project root for all project targets\n\n      --user-root <USER_ROOT>\n          Explicitly authorize one user target root as `target=path`\n\n      --check\n          Check destinations without creating a stage or applying a plan\n\n      --apply <STAGE_DIR/rulette.plan.json>\n          Apply the plan at `stage-dir/rulette.plan.json`\n\n      --expect-plan-sha256 <EXPECT_PLAN_SHA256>\n          Require this SHA-256 digest before checking or applying a staged plan\n\n      --allow-project-root <ALLOW_PROJECT_ROOT>\n          Explicitly authorize the live project root for plan operations\n\n      --allow-user-root <ALLOW_USER_ROOT>\n          Explicitly authorize one plan user target root as `target=path`\n\n      --replace\n          Allow an apply operation to replace conflicting destinations\n\n      --config <CONFIG>\n          Load one explicit selection-and-target-only transform configuration file\n\n  -h, --help\n          Print help (see a summary with '-h')\n",
+      "stderr": "",
+      "elapsed_seconds": 0.013929867999999956,
+      "before": {
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "journey": "preview/publication",
+      "label": "preview",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "inspect",
+        "/tmp/rulette-ka2-moea32nb/source",
+        "--from",
+        "codex",
+        "--to",
+        "codex"
+      ],
+      "exit": 0,
+      "stdout": "=== Compilation graph ===\n{\n  \"graph_version\": \"0.1\",\n  \"packages\": {\n    \"pkg_ead3c4c6bc839b99af6956a787dc42ee1377582be37c2b0c53b31befd943b38b\": {\n      \"id\": \"pkg_ead3c4c6bc839b99af6956a787dc42ee1377582be37c2b0c53b31befd943b38b\",\n      \"kind\": \"rule\",\n      \"semantic_identity\": \"rule:AGENTS.md\",\n      \"provenance\": {\n        \"frontend\": \"codex\",\n        \"input_label\": \"input_5e5f727365ff04db6a69c8695c4d581d999561d7db1f44c22e2d6d0fc3187d78\"\n      },\n      \"package_root\": \".\",\n      \"semantic_item\": {\n        \"kind\": \"rule\",\n        \"primary_instruction\": \"AGENTS.md\"\n      },\n      \"resources\": {\n        \"AGENTS.md\": {\n          \"path\": \"AGENTS.md\",\n          \"role\": \"primary-instruction\",\n          \"content\": {\n            \"encoding\": \"utf-8\",\n            \"content\": \"# Guidance\\n\\nUse explicit inputs.\\n\"\n          },\n          \"executable\": false\n        }\n      }\n    }\n  }\n}\n=== Capability findings for codex ===\n{\"target\":\"codex\",\"package_id\":\"pkg_ead3c4c6bc839b99af6956a787dc42ee1377582be37c2b0c53b31befd943b38b\",\"provenance\":{\"frontend\":\"codex\",\"input_label\":\"input_5e5f727365ff04db6a69c8695c4d581d999561d7db1f44c22e2d6d0fc3187d78\"},\"resource_path\":\"AGENTS.md\",\"status\":\"supported\",\"reason_code\":\"representable\",\"reason\":\"resource is represented by a native artifact\"}\n{\"target\":\"codex\",\"package_id\":\"pkg_ead3c4c6bc839b99af6956a787dc42ee1377582be37c2b0c53b31befd943b38b\",\"provenance\":{\"frontend\":\"codex\",\"input_label\":\"input_5e5f727365ff04db6a69c8695c4d581d999561d7db1f44c22e2d6d0fc3187d78\"},\"status\":\"supported\",\"reason_code\":\"representable\",\"reason\":\"package outcome: resource is represented by a native artifact\"}\n",
+      "stderr": "",
+      "elapsed_seconds": 0.09242190000000017,
+      "before": {
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "journey": "preview/publication",
+      "label": "first-stage",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "transform",
+        "/tmp/rulette-ka2-moea32nb/source",
+        "--from",
+        "codex",
+        "--project-root",
+        "/tmp/rulette-ka2-moea32nb/live",
+        "--stage",
+        "/tmp/rulette-ka2-moea32nb/first-stage",
+        "--target",
+        "codex@project"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"graph_version\": \"0.1\",\n  \"packages\": {\n    \"pkg_ead3c4c6bc839b99af6956a787dc42ee1377582be37c2b0c53b31befd943b38b\": {\n      \"id\": \"pkg_ead3c4c6bc839b99af6956a787dc42ee1377582be37c2b0c53b31befd943b38b\",\n      \"kind\": \"rule\",\n      \"semantic_identity\": \"rule:AGENTS.md\",\n      \"provenance\": {\n        \"frontend\": \"codex\",\n        \"input_label\": \"input_5e5f727365ff04db6a69c8695c4d581d999561d7db1f44c22e2d6d0fc3187d78\"\n      },\n      \"package_root\": \".\",\n      \"semantic_item\": {\n        \"kind\": \"rule\",\n        \"primary_instruction\": \"AGENTS.md\"\n      },\n      \"resources\": {\n        \"AGENTS.md\": {\n          \"path\": \"AGENTS.md\",\n          \"role\": \"primary-instruction\",\n          \"content\": {\n            \"encoding\": \"utf-8\",\n            \"content\": \"# Guidance\\n\\nUse explicit inputs.\\n\"\n          },\n          \"executable\": false\n        }\n      }\n    }\n  }\n}\n",
+      "stderr": "plan digest: sha256_735f8411ca024b286016aa0442c42c4f2beb1dcf618d919a41d7f6954516c1fe\n",
+      "elapsed_seconds": 0.036245623000000116,
+      "before": {
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "journey": "preview/publication",
+      "label": "first-apply",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "transform",
+        "--apply",
+        "/tmp/rulette-ka2-moea32nb/first-stage/rulette.plan.json",
+        "--expect-plan-sha256",
+        "sha256_735f8411ca024b286016aa0442c42c4f2beb1dcf618d919a41d7f6954516c1fe",
+        "--allow-project-root",
+        "/tmp/rulette-ka2-moea32nb/live"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": "created entry_7a52b9b9441fd565d8915640fd8afb262f3e102a14d55233ce50b8f515d45b3c\n",
+      "elapsed_seconds": 0.01292631399999955,
+      "before": {
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "AGENTS.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "journey": "multi-target",
+      "label": "multi-stage",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "transform",
+        "/tmp/rulette-ka2-moea32nb/source",
+        "--from",
+        "codex",
+        "--project-root",
+        "/tmp/rulette-ka2-moea32nb/live",
+        "--stage",
+        "/tmp/rulette-ka2-moea32nb/multi-stage",
+        "--target",
+        "codex@project",
+        "--target",
+        "claude@project",
+        "--target",
+        "codex@project"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"graph_version\": \"0.1\",\n  \"packages\": {\n    \"pkg_ead3c4c6bc839b99af6956a787dc42ee1377582be37c2b0c53b31befd943b38b\": {\n      \"id\": \"pkg_ead3c4c6bc839b99af6956a787dc42ee1377582be37c2b0c53b31befd943b38b\",\n      \"kind\": \"rule\",\n      \"semantic_identity\": \"rule:AGENTS.md\",\n      \"provenance\": {\n        \"frontend\": \"codex\",\n        \"input_label\": \"input_5e5f727365ff04db6a69c8695c4d581d999561d7db1f44c22e2d6d0fc3187d78\"\n      },\n      \"package_root\": \".\",\n      \"semantic_item\": {\n        \"kind\": \"rule\",\n        \"primary_instruction\": \"AGENTS.md\"\n      },\n      \"resources\": {\n        \"AGENTS.md\": {\n          \"path\": \"AGENTS.md\",\n          \"role\": \"primary-instruction\",\n          \"content\": {\n            \"encoding\": \"utf-8\",\n            \"content\": \"# Guidance\\n\\nUse explicit inputs.\\n\"\n          },\n          \"executable\": false\n        }\n      }\n    }\n  }\n}\n",
+      "stderr": "plan digest: sha256_a975ed79633b56dbc02839c3ebae25c8793113770530f1cdfafef8286788e2e1\n",
+      "elapsed_seconds": 0.020936092999999545,
+      "before": {
+        "AGENTS.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "AGENTS.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "journey": "multi-target",
+      "label": "multi-apply",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "transform",
+        "--apply",
+        "/tmp/rulette-ka2-moea32nb/multi-stage/rulette.plan.json",
+        "--expect-plan-sha256",
+        "sha256_a975ed79633b56dbc02839c3ebae25c8793113770530f1cdfafef8286788e2e1",
+        "--allow-project-root",
+        "/tmp/rulette-ka2-moea32nb/live"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": "unchanged entry_7a52b9b9441fd565d8915640fd8afb262f3e102a14d55233ce50b8f515d45b3c\ncreated entry_ccc0d2db0435dd7aac2eff5dae0b79b912f2a678d3ee1c15551211bddf37dbf0\n",
+      "elapsed_seconds": 0.022142971000000067,
+      "before": {
+        "AGENTS.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "AGENTS.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "journey": "CI drift/coverage",
+      "label": "unchanged-check",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "transform",
+        "/tmp/rulette-ka2-moea32nb/source",
+        "--from",
+        "codex",
+        "--target",
+        "codex@project",
+        "--target",
+        "claude@project",
+        "--project-root",
+        "/tmp/rulette-ka2-moea32nb/live",
+        "--check"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"graph_version\": \"0.1\",\n  \"packages\": {\n    \"pkg_ead3c4c6bc839b99af6956a787dc42ee1377582be37c2b0c53b31befd943b38b\": {\n      \"id\": \"pkg_ead3c4c6bc839b99af6956a787dc42ee1377582be37c2b0c53b31befd943b38b\",\n      \"kind\": \"rule\",\n      \"semantic_identity\": \"rule:AGENTS.md\",\n      \"provenance\": {\n        \"frontend\": \"codex\",\n        \"input_label\": \"input_5e5f727365ff04db6a69c8695c4d581d999561d7db1f44c22e2d6d0fc3187d78\"\n      },\n      \"package_root\": \".\",\n      \"semantic_item\": {\n        \"kind\": \"rule\",\n        \"primary_instruction\": \"AGENTS.md\"\n      },\n      \"resources\": {\n        \"AGENTS.md\": {\n          \"path\": \"AGENTS.md\",\n          \"role\": \"primary-instruction\",\n          \"content\": {\n            \"encoding\": \"utf-8\",\n            \"content\": \"# Guidance\\n\\nUse explicit inputs.\\n\"\n          },\n          \"executable\": false\n        }\n      }\n    }\n  }\n}\n",
+      "stderr": "entry_7a52b9b9441fd565d8915640fd8afb262f3e102a14d55233ce50b8f515d45b3c unchanged\nentry_ccc0d2db0435dd7aac2eff5dae0b79b912f2a678d3ee1c15551211bddf37dbf0 unchanged\n",
+      "elapsed_seconds": 0.008507857999999757,
+      "before": {
+        "AGENTS.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "AGENTS.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "journey": "CI drift/coverage",
+      "label": "coverage",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "inspect",
+        "/tmp/rulette-ka2-moea32nb/source",
+        "--from",
+        "codex",
+        "--coverage",
+        "--json",
+        "--strict"
+      ],
+      "exit": 0,
+      "stdout": "[\n  {\n    \"target\": \"codex\",\n    \"package_kind\": \"rule\",\n    \"status\": \"supported\",\n    \"package_id\": \"pkg_ead3c4c6bc839b99af6956a787dc42ee1377582be37c2b0c53b31befd943b38b\",\n    \"provenance\": {\n      \"frontend\": \"codex\",\n      \"input_label\": \"input_5e5f727365ff04db6a69c8695c4d581d999561d7db1f44c22e2d6d0fc3187d78\"\n    },\n    \"resource_path\": \"AGENTS.md\",\n    \"reason_code\": \"representable\",\n    \"reason\": \"resource is represented by a native artifact\"\n  },\n  {\n    \"target\": \"opencode\",\n    \"package_kind\": \"rule\",\n    \"status\": \"supported\",\n    \"package_id\": \"pkg_ead3c4c6bc839b99af6956a787dc42ee1377582be37c2b0c53b31befd943b38b\",\n    \"provenance\": {\n      \"frontend\": \"codex\",\n      \"input_label\": \"input_5e5f727365ff04db6a69c8695c4d581d999561d7db1f44c22e2d6d0fc3187d78\"\n    },\n    \"resource_path\": \"AGENTS.md\",\n    \"reason_code\": \"representable\",\n    \"reason\": \"resource is represented by a native artifact\"\n  },\n  {\n    \"target\": \"claude\",\n    \"package_kind\": \"rule\",\n    \"status\": \"supported\",\n    \"package_id\": \"pkg_ead3c4c6bc839b99af6956a787dc42ee1377582be37c2b0c53b31befd943b38b\",\n    \"provenance\": {\n      \"frontend\": \"codex\",\n      \"input_label\": \"input_5e5f727365ff04db6a69c8695c4d581d999561d7db1f44c22e2d6d0fc3187d78\"\n    },\n    \"resource_path\": \"AGENTS.md\",\n    \"reason_code\": \"representable\",\n    \"reason\": \"resource is represented by a native artifact\"\n  },\n  {\n    \"target\": \"cursor\",\n    \"package_kind\": \"rule\",\n    \"status\": \"supported\",\n    \"package_id\": \"pkg_ead3c4c6bc839b99af6956a787dc42ee1377582be37c2b0c53b31befd943b38b\",\n    \"provenance\": {\n      \"frontend\": \"codex\",\n      \"input_label\": \"input_5e5f727365ff04db6a69c8695c4d581d999561d7db1f44c22e2d6d0fc3187d78\"\n    },\n    \"resource_path\": \"AGENTS.md\",\n    \"reason_code\": \"representable\",\n    \"reason\": \"resource is represented by a native artifact\"\n  },\n  {\n    \"target\": \"antigravity\",\n    \"package_kind\": \"rule\",\n    \"status\": \"supported\",\n    \"package_id\": \"pkg_ead3c4c6bc839b99af6956a787dc42ee1377582be37c2b0c53b31befd943b38b\",\n    \"provenance\": {\n      \"frontend\": \"codex\",\n      \"input_label\": \"input_5e5f727365ff04db6a69c8695c4d581d999561d7db1f44c22e2d6d0fc3187d78\"\n    },\n    \"resource_path\": \"AGENTS.md\",\n    \"reason_code\": \"representable\",\n    \"reason\": \"resource is represented by a native artifact\"\n  }\n]\n",
+      "stderr": "",
+      "elapsed_seconds": 0.004912852000000356,
+      "before": {
+        "AGENTS.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "AGENTS.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "journey": "CI drift/coverage",
+      "label": "changed-check",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "transform",
+        "/tmp/rulette-ka2-moea32nb/source",
+        "--from",
+        "codex",
+        "--target",
+        "codex@project",
+        "--project-root",
+        "/tmp/rulette-ka2-moea32nb/live",
+        "--check"
+      ],
+      "exit": 1,
+      "stdout": "{\n  \"graph_version\": \"0.1\",\n  \"packages\": {\n    \"pkg_1789636aa4e773131875196dbb14f88991df351a1f85575486d1243503101389\": {\n      \"id\": \"pkg_1789636aa4e773131875196dbb14f88991df351a1f85575486d1243503101389\",\n      \"kind\": \"rule\",\n      \"semantic_identity\": \"rule:AGENTS.md\",\n      \"provenance\": {\n        \"frontend\": \"codex\",\n        \"input_label\": \"input_5e5f727365ff04db6a69c8695c4d581d999561d7db1f44c22e2d6d0fc3187d78\"\n      },\n      \"package_root\": \".\",\n      \"semantic_item\": {\n        \"kind\": \"rule\",\n        \"primary_instruction\": \"AGENTS.md\"\n      },\n      \"resources\": {\n        \"AGENTS.md\": {\n          \"path\": \"AGENTS.md\",\n          \"role\": \"primary-instruction\",\n          \"content\": {\n            \"encoding\": \"utf-8\",\n            \"content\": \"# Guidance\\n\\nUse revised explicit inputs.\\n\"\n          },\n          \"executable\": false\n        }\n      }\n    }\n  }\n}\n",
+      "stderr": "entry_b18cd266b270ee7aaa8a0f8d262b941452fd4e5b2f5555b68b351e728c6889df conflict\n",
+      "elapsed_seconds": 0.01044983999999971,
+      "before": {
+        "AGENTS.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "AGENTS.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "journey": "update/migration",
+      "label": "update-stage",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "transform",
+        "/tmp/rulette-ka2-moea32nb/source",
+        "--from",
+        "codex",
+        "--project-root",
+        "/tmp/rulette-ka2-moea32nb/live",
+        "--stage",
+        "/tmp/rulette-ka2-moea32nb/update-stage",
+        "--target",
+        "codex@project"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"graph_version\": \"0.1\",\n  \"packages\": {\n    \"pkg_1789636aa4e773131875196dbb14f88991df351a1f85575486d1243503101389\": {\n      \"id\": \"pkg_1789636aa4e773131875196dbb14f88991df351a1f85575486d1243503101389\",\n      \"kind\": \"rule\",\n      \"semantic_identity\": \"rule:AGENTS.md\",\n      \"provenance\": {\n        \"frontend\": \"codex\",\n        \"input_label\": \"input_5e5f727365ff04db6a69c8695c4d581d999561d7db1f44c22e2d6d0fc3187d78\"\n      },\n      \"package_root\": \".\",\n      \"semantic_item\": {\n        \"kind\": \"rule\",\n        \"primary_instruction\": \"AGENTS.md\"\n      },\n      \"resources\": {\n        \"AGENTS.md\": {\n          \"path\": \"AGENTS.md\",\n          \"role\": \"primary-instruction\",\n          \"content\": {\n            \"encoding\": \"utf-8\",\n            \"content\": \"# Guidance\\n\\nUse revised explicit inputs.\\n\"\n          },\n          \"executable\": false\n        }\n      }\n    }\n  }\n}\n",
+      "stderr": "plan digest: sha256_72aa86e1fb6833c458f1125219009cd9830cd7362f30ca1e8dce4237d4d793d2\n",
+      "elapsed_seconds": 0.03187774199999982,
+      "before": {
+        "AGENTS.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "AGENTS.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "journey": "update/migration",
+      "label": "update-conflict",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "transform",
+        "--apply",
+        "/tmp/rulette-ka2-moea32nb/update-stage/rulette.plan.json",
+        "--expect-plan-sha256",
+        "sha256_72aa86e1fb6833c458f1125219009cd9830cd7362f30ca1e8dce4237d4d793d2",
+        "--allow-project-root",
+        "/tmp/rulette-ka2-moea32nb/live"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Error: publication conflicts require explicit replacement permission: entry_b18cd266b270ee7aaa8a0f8d262b941452fd4e5b2f5555b68b351e728c6889df\n",
+      "elapsed_seconds": 0.008599455000000589,
+      "before": {
+        "AGENTS.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "AGENTS.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "journey": "update/migration",
+      "label": "update-replace",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "transform",
+        "--apply",
+        "/tmp/rulette-ka2-moea32nb/update-stage/rulette.plan.json",
+        "--expect-plan-sha256",
+        "sha256_72aa86e1fb6833c458f1125219009cd9830cd7362f30ca1e8dce4237d4d793d2",
+        "--allow-project-root",
+        "/tmp/rulette-ka2-moea32nb/live",
+        "--replace"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": "replaced entry_b18cd266b270ee7aaa8a0f8d262b941452fd4e5b2f5555b68b351e728c6889df\n",
+      "elapsed_seconds": 0.012141093000000325,
+      "before": {
+        "AGENTS.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "AGENTS.md": {
+          "sha256": "e693d240acc1da69159b285f9af10377e904d2d9b7fe0c7cec9cc89d15211b6f",
+          "bytes": "# Guidance\n\nUse revised explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "journey": "failure recovery",
+      "label": "wrong-digest",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "transform",
+        "--apply",
+        "/tmp/rulette-ka2-moea32nb/update-stage/rulette.plan.json",
+        "--expect-plan-sha256",
+        "sha256_0000000000000000000000000000000000000000000000000000000000000000",
+        "--allow-project-root",
+        "/tmp/rulette-ka2-moea32nb/live",
+        "--replace"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Error: expected plan digest `sha256_0000000000000000000000000000000000000000000000000000000000000000`, got `sha256_72aa86e1fb6833c458f1125219009cd9830cd7362f30ca1e8dce4237d4d793d2`\n",
+      "elapsed_seconds": 0.010179706999999816,
+      "before": {
+        "AGENTS.md": {
+          "sha256": "e693d240acc1da69159b285f9af10377e904d2d9b7fe0c7cec9cc89d15211b6f",
+          "bytes": "# Guidance\n\nUse revised explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "AGENTS.md": {
+          "sha256": "e693d240acc1da69159b285f9af10377e904d2d9b7fe0c7cec9cc89d15211b6f",
+          "bytes": "# Guidance\n\nUse revised explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "journey": "failure recovery",
+      "label": "missing-input",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "inspect",
+        "/tmp/rulette-ka2-moea32nb/missing",
+        "--from",
+        "codex"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Error: could not inspect input path /tmp/rulette-ka2-moea32nb/missing: No such file or directory (os error 2)\n",
+      "elapsed_seconds": 0.013697080000000028,
+      "before": {
+        "AGENTS.md": {
+          "sha256": "e693d240acc1da69159b285f9af10377e904d2d9b7fe0c7cec9cc89d15211b6f",
+          "bytes": "# Guidance\n\nUse revised explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "AGENTS.md": {
+          "sha256": "e693d240acc1da69159b285f9af10377e904d2d9b7fe0c7cec9cc89d15211b6f",
+          "bytes": "# Guidance\n\nUse revised explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "journey": "failure recovery",
+      "label": "source-collision",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "transform",
+        "/tmp/rulette-ka2-moea32nb/source",
+        "/tmp/rulette-ka2-moea32nb/other-source",
+        "--from",
+        "codex",
+        "--target",
+        "codex@project",
+        "--project-root",
+        "/tmp/rulette-ka2-moea32nb/live",
+        "--stage",
+        "/tmp/rulette-ka2-moea32nb/collision-stage"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Error: aggregate package collisions:\n- semantic identity `rule:AGENTS.md`:\n  - package ID `pkg_1789636aa4e773131875196dbb14f88991df351a1f85575486d1243503101389`; provenance `codex:input_5e5f727365ff04db6a69c8695c4d581d999561d7db1f44c22e2d6d0fc3187d78`; outer input `input_5e5f727365ff04db6a69c8695c4d581d999561d7db1f44c22e2d6d0fc3187d78`\n  - package ID `pkg_6ffeb4d0c78156b7dc1be0d6efbefa9d8dc731f2a60a1e986cf368bbcbccf75c`; provenance `codex:input_ae0b2520577c59e1e2d49fa2dffab5c2e084c856a6f310bd6843cd07c1311930`; outer input `input_ae0b2520577c59e1e2d49fa2dffab5c2e084c856a6f310bd6843cd07c1311930`\n\n",
+      "elapsed_seconds": 0.020353322000000063,
+      "before": {
+        "AGENTS.md": {
+          "sha256": "e693d240acc1da69159b285f9af10377e904d2d9b7fe0c7cec9cc89d15211b6f",
+          "bytes": "# Guidance\n\nUse revised explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "AGENTS.md": {
+          "sha256": "e693d240acc1da69159b285f9af10377e904d2d9b7fe0c7cec9cc89d15211b6f",
+          "bytes": "# Guidance\n\nUse revised explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "journey": "failure recovery",
+      "label": "unsupported-scope",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "transform",
+        "/tmp/rulette-ka2-moea32nb/source",
+        "--from",
+        "codex",
+        "--target",
+        "cursor@user",
+        "--user-root",
+        "cursor=/tmp/rulette-ka2-moea32nb/user",
+        "--stage",
+        "/tmp/rulette-ka2-moea32nb/unsupported"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Error: user mapping is unavailable for target `cursor`\n",
+      "elapsed_seconds": 0.012733517000000028,
+      "before": {
+        "AGENTS.md": {
+          "sha256": "e693d240acc1da69159b285f9af10377e904d2d9b7fe0c7cec9cc89d15211b6f",
+          "bytes": "# Guidance\n\nUse revised explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "AGENTS.md": {
+          "sha256": "e693d240acc1da69159b285f9af10377e904d2d9b7fe0c7cec9cc89d15211b6f",
+          "bytes": "# Guidance\n\nUse revised explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "journey": "failure recovery",
+      "label": "corrected-check",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "transform",
+        "--apply",
+        "/tmp/rulette-ka2-moea32nb/update-stage/rulette.plan.json",
+        "--expect-plan-sha256",
+        "sha256_72aa86e1fb6833c458f1125219009cd9830cd7362f30ca1e8dce4237d4d793d2",
+        "--allow-project-root",
+        "/tmp/rulette-ka2-moea32nb/live",
+        "--check"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": "entry_b18cd266b270ee7aaa8a0f8d262b941452fd4e5b2f5555b68b351e728c6889df unchanged\n",
+      "elapsed_seconds": 0.01351139800000034,
+      "before": {
+        "AGENTS.md": {
+          "sha256": "e693d240acc1da69159b285f9af10377e904d2d9b7fe0c7cec9cc89d15211b6f",
+          "bytes": "# Guidance\n\nUse revised explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "AGENTS.md": {
+          "sha256": "e693d240acc1da69159b285f9af10377e904d2d9b7fe0c7cec9cc89d15211b6f",
+          "bytes": "# Guidance\n\nUse revised explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "journey": "retirement/shared destinations",
+      "label": "omit-claude-stage",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "transform",
+        "/tmp/rulette-ka2-moea32nb/source",
+        "--from",
+        "codex",
+        "--project-root",
+        "/tmp/rulette-ka2-moea32nb/live",
+        "--stage",
+        "/tmp/rulette-ka2-moea32nb/omit-stage",
+        "--target",
+        "codex@project"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"graph_version\": \"0.1\",\n  \"packages\": {\n    \"pkg_1789636aa4e773131875196dbb14f88991df351a1f85575486d1243503101389\": {\n      \"id\": \"pkg_1789636aa4e773131875196dbb14f88991df351a1f85575486d1243503101389\",\n      \"kind\": \"rule\",\n      \"semantic_identity\": \"rule:AGENTS.md\",\n      \"provenance\": {\n        \"frontend\": \"codex\",\n        \"input_label\": \"input_5e5f727365ff04db6a69c8695c4d581d999561d7db1f44c22e2d6d0fc3187d78\"\n      },\n      \"package_root\": \".\",\n      \"semantic_item\": {\n        \"kind\": \"rule\",\n        \"primary_instruction\": \"AGENTS.md\"\n      },\n      \"resources\": {\n        \"AGENTS.md\": {\n          \"path\": \"AGENTS.md\",\n          \"role\": \"primary-instruction\",\n          \"content\": {\n            \"encoding\": \"utf-8\",\n            \"content\": \"# Guidance\\n\\nUse revised explicit inputs.\\n\"\n          },\n          \"executable\": false\n        }\n      }\n    }\n  }\n}\n",
+      "stderr": "plan digest: sha256_72aa86e1fb6833c458f1125219009cd9830cd7362f30ca1e8dce4237d4d793d2\n",
+      "elapsed_seconds": 0.020013813999999464,
+      "before": {
+        "AGENTS.md": {
+          "sha256": "e693d240acc1da69159b285f9af10377e904d2d9b7fe0c7cec9cc89d15211b6f",
+          "bytes": "# Guidance\n\nUse revised explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "AGENTS.md": {
+          "sha256": "e693d240acc1da69159b285f9af10377e904d2d9b7fe0c7cec9cc89d15211b6f",
+          "bytes": "# Guidance\n\nUse revised explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "journey": "retirement/shared destinations",
+      "label": "omit-claude-apply",
+      "argv": [
+        "/home/mkobit/workspace/mkobit/rulette/target/debug/rulette",
+        "transform",
+        "--apply",
+        "/tmp/rulette-ka2-moea32nb/omit-stage/rulette.plan.json",
+        "--expect-plan-sha256",
+        "sha256_72aa86e1fb6833c458f1125219009cd9830cd7362f30ca1e8dce4237d4d793d2",
+        "--allow-project-root",
+        "/tmp/rulette-ka2-moea32nb/live"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": "unchanged entry_b18cd266b270ee7aaa8a0f8d262b941452fd4e5b2f5555b68b351e728c6889df\n",
+      "elapsed_seconds": 0.0074980579999994745,
+      "before": {
+        "AGENTS.md": {
+          "sha256": "e693d240acc1da69159b285f9af10377e904d2d9b7fe0c7cec9cc89d15211b6f",
+          "bytes": "# Guidance\n\nUse revised explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      },
+      "after": {
+        "AGENTS.md": {
+          "sha256": "e693d240acc1da69159b285f9af10377e904d2d9b7fe0c7cec9cc89d15211b6f",
+          "bytes": "# Guidance\n\nUse revised explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "CLAUDE.md": {
+          "sha256": "d2d4027639549b78e721a2b886b94acf5852e7802d4e6d64e75e936119eab9e3",
+          "bytes": "# Guidance\n\nUse explicit inputs.\n",
+          "mode": "0o600"
+        },
+        "unrelated.txt": {
+          "sha256": "cd643ca230db87d803edef1ea8dc1c17bb08e369a9af6437b55684bf7abc740c",
+          "bytes": "caller owned\n",
+          "mode": "0o644"
+        }
+      }
+    }
+  ]
+}

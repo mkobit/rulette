@@ -1,0 +1,2336 @@
+{
+  "date": "2026-10-10T12:16:48.585Z",
+  "version": "1.7.2",
+  "commit": "671e8c320810d36fed80fac5f1a2c1bf7e82d812",
+  "node": "v22.22.1",
+  "npm": "9.2.0",
+  "kernel": "Linux 7.0.14",
+  "platform": "linux",
+  "arch": "x64",
+  "hostname": "rulette-l8r-skills",
+  "telemetry": "DO_NOT_TRACK=1",
+  "records": [
+    {
+      "id": "version",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "--version"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 4777,
+      "stdout": "1.7.2\n",
+      "stderr": "",
+      "files": {}
+    },
+    {
+      "id": "help",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "--help"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 2634,
+      "stdout": "\nUsage: skills <command> [options]\n\nManage Skills:\n  add <package>        Add a skill package (alias: a)\n                       e.g. vercel-labs/agent-skills\n                            notion\n                            https://notion.so/<skill-page>\n                            https://github.com/vercel-labs/agent-skills\n  use <package>@<skill>\n                       Generate a prompt for using one skill without installing it\n  remove [skills]      Remove installed skills\n  list, ls             List installed skills\n  find [query]         Search for skills interactively\n\nFind Options:\n  --owner <owner>        Search only repositories from a GitHub owner\n\nUpdates:\n  update [skills...]   Update skills to latest versions (alias: upgrade)\n\nUpdate Options:\n  -g, --global           Update global skills only\n  -p, --project          Update project skills only\n  -y, --yes              Skip scope prompt (auto-detect: project if in a project, else global)\n\nProject:\n  experimental_install Restore skills from skills-lock.json\n  init [name]          Initialize a skill (creates <name>/SKILL.md or ./SKILL.md)\n  experimental_sync    Sync skills from node_modules into agent directories\n\nAdd Options:\n  -g, --global           Install skill globally (user-level) instead of project-level\n  -a, --agent <agents>   Specify agents to install to (use '*' for all agents)\n  -s, --skill <skills>   Specify skill names to install (use '*' for all skills)\n  -l, --list             List available skills in the repository without installing\n  -y, --yes              Skip confirmation prompts\n  --copy                 Copy files instead of symlinking to agent directories\n  --metadata <json>      Attach valid JSON to the install telemetry event\n  --subagent <names>     Install to Eve subagents (use 'root' for the root agent)\n  --all                  Shorthand for --skill '*' --agent '*' -y\n  --full-depth           Search all subdirectories even when a root SKILL.md exists\n  --json                 Output results as JSON (machine-readable, no ANSI codes)\n\nUse Options:\n  -s, --skill <skill>    Specify the skill to use\n  -a, --agent <agent>    Start one supported agent interactively\n  --full-depth           Search all subdirectories even when a root SKILL.md exists\n\nRemove Options:\n  -g, --global           Remove from global scope\n  -a, --agent <agents>   Remove from specific agents (omit to clean all agent links)\n  -s, --skill <skills>   Specify skills to remove (use '*' for all skills)\n  -y, --yes              Skip confirmation prompts\n  --all                  Remove every installed skill (-y implied). Do not combine with named skills.\n  \nExperimental Sync Options:\n  -a, --agent <agents>   Specify agents to install to (use '*' for all agents)\n  -y, --yes              Skip confirmation prompts\n  --copy                 Copy skills instead of linking them to node_modules\n  --dry-run              Show what would change without changing anything\n  --no-cleanup           Keep skills whose package no longer ships them\n  --no-remote            Skip git sources listed in package.json skills fields\n  -r, --recursive        Also sync the dependencies of each workspace package\n  --include <patterns>   Only sync matching packages (<pkg>) or skills (<pkg>#<skill>)\n  --exclude <patterns>   Skip matching packages (<pkg>) or skills (<pkg>#<skill>)\n\nList Options:\n  -g, --global           List global skills (default: project)\n  -a, --agent <agents>   Filter by specific agents\n  --json                 Output as JSON (machine-readable, no ANSI codes)\n\nOptions:\n  --help, -h        Show this help message\n  --version, -v     Show version number\n\nExamples:\n  $ skills add vercel-labs/agent-skills\n  $ skills use vercel-labs/agent-skills@vercel-optimize | claude\n  $ skills use vercel-labs/agent-skills --skill vercel-optimize --agent claude-code\n  $ skills add vercel-labs/agent-skills -g\n  $ skills add vercel-labs/agent-skills --agent claude-code cursor\n  $ skills add vercel-labs/agent-skills --skill pr-review commit\n  $ skills add vercel-labs/agent-skills --json -y # JSON output\n  $ skills remove                        # interactive remove\n  $ skills remove web-design             # remove by name\n  $ skills rm --global frontend-design\n  $ skills list                          # list project skills\n  $ skills ls -g                         # list global skills\n  $ skills ls -a claude-code             # filter by agent\n  $ skills ls --json                      # JSON output\n  $ skills find                          # interactive search\n  $ skills find typescript               # search by keyword\n  $ skills find react --owner vercel     # search within an owner\n  $ skills update\n  $ skills update my-skill             # update a single skill\n  $ skills update -g                    # update global skills only\n  $ skills experimental_install            # restore from skills-lock.json\n  $ skills init my-skill\n  $ skills experimental_sync              # sync from node_modules\n  $ skills experimental_sync -y           # sync without prompts\n\nDiscover more skills at https://skills.sh/\n\n",
+      "stderr": "",
+      "files": {}
+    },
+    {
+      "id": "find",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "find",
+        "typescript"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 2765,
+      "stdout": "\n███████╗██╗  ██╗██╗██╗     ██╗     ███████╗\n██╔════╝██║ ██╔╝██║██║     ██║     ██╔════╝\n███████╗█████╔╝ ██║██║     ██║     ███████╗\n╚════██║██╔═██╗ ██║██║     ██║     ╚════██║\n███████║██║  ██╗██║███████╗███████╗███████║\n╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚══════╝\n\nInstall with npx skills add <owner/repo@skill>\n\nmattpocock/skills@migrate-to-shoehorn 427.2K installs\n└ https://skills.sh/mattpocock/skills/migrate-to-shoehorn\n\nmattpocock/skills@setup-ts-deep-modules 318.8K installs\n└ https://skills.sh/mattpocock/skills/setup-ts-deep-modules\n\nanthropics/skills@mcp-builder 124.4K installs\n└ https://skills.sh/anthropics/skills/mcp-builder\n\nbetter-auth/skills@better-auth-best-practices 120K installs\n└ https://skills.sh/better-auth/skills/better-auth-best-practices\n\nget-convex/agent-skills@convex 102.3K installs\n└ https://skills.sh/get-convex/agent-skills/convex\n\nwshobson/agents@typescript-advanced-types 85.5K installs\n└ https://skills.sh/wshobson/agents/typescript-advanced-types\n\nmastra-ai/skills@mastra 70.2K installs\n└ https://skills.sh/mastra-ai/skills/mastra\n\nmcollina/skills@fastify-best-practices 69.6K installs\n└ https://skills.sh/mcollina/skills/fastify-best-practices\n\nexpo/skills@expo-module 41.2K installs\n└ https://skills.sh/expo/skills/expo-module\n\nmcp-use/mcp-use@mcp-apps-builder 31K installs\n└ https://skills.sh/mcp-use/mcp-use/mcp-apps-builder\n\nbetter-auth/skills@create-auth 29.3K installs\n└ https://skills.sh/better-auth/skills/create-auth-skill\n\ngoogle-gemini/gemini-skills@gemini-api-dev 23.6K installs\n└ https://skills.sh/google-gemini/gemini-skills/gemini-api-dev\n\nupstash/skills@upstash-redis-js 17.7K installs\n└ https://skills.sh/upstash/skills/upstash-redis-js\n\nupstash/skills@upstash-ratelimit-js 17.3K installs\n└ https://skills.sh/upstash/skills/upstash-ratelimit-js\n\nexpo/skills@expo-migrate-module 16K installs\n└ https://skills.sh/expo/skills/expo-migrate-module\n\nlangchain-ai/langchain-skills@langchain-dependencies 15.2K installs\n└ https://skills.sh/langchain-ai/langchain-skills/langchain-dependencies\n\ngithub/awesome-copilot@javascript-typescript-jest 12.8K installs\n└ https://skills.sh/github/awesome-copilot/javascript-typescript-jest\n\nsickn33/agentic-awesome-skills@typescript-expert 12.4K installs\n└ https://skills.sh/sickn33/agentic-awesome-skills/typescript-expert\n\ngithub/awesome-copilot@typescript-mcp-server-generator 12K installs\n└ https://skills.sh/github/awesome-copilot/typescript-mcp-server-generator\n\njeffallan/claude-skills@typescript-pro 10.6K installs\n└ https://skills.sh/jeffallan/claude-skills/typescript-pro\n\n",
+      "stderr": "",
+      "files": {}
+    },
+    {
+      "id": "inspect-missing-command",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "inspect",
+        "$WORKSPACE/source"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 1,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 2052,
+      "stdout": "Unknown command: inspect\nRun skills --help for usage.\n",
+      "stderr": "",
+      "files": {}
+    },
+    {
+      "id": "json-without-confirmation",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "add",
+        "$WORKSPACE/source",
+        "--list",
+        "--json"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 1,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 2029,
+      "stdout": "[\n  {\n    \"status\": \"failed\",\n    \"error\": \"The --json flag requires --yes (or --all) to run non-interactively.\"\n  }\n]\n",
+      "stderr": "The --json flag requires --yes (or --all) to run non-interactively.\n",
+      "files": {}
+    },
+    {
+      "id": "json-preview-rejected",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "add",
+        "$WORKSPACE/source",
+        "--list",
+        "--json",
+        "-y"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 1,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1887,
+      "stdout": "[\n  {\n    \"status\": \"failed\",\n    \"error\": \"The --json flag cannot be combined with --list.\"\n  }\n]\n",
+      "stderr": "The --json flag cannot be combined with --list.\n",
+      "files": {}
+    },
+    {
+      "id": "source-preview",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "add",
+        "$WORKSPACE/source",
+        "--list"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1761,
+      "stdout": "\n███████╗██╗  ██╗██╗██╗     ██╗     ███████╗\n██╔════╝██║ ██╔╝██║██║     ██║     ██╔════╝\n███████╗█████╔╝ ██║██║     ██║     ███████╗\n╚════██║██╔═██╗ ██║██║     ██║     ╚════██║\n███████║██║  ██╗██║███████╗███████╗███████║\n╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚══════╝\n\n┌   skills \n│\n│  Tip: use the --yes (-y) and --global (-g) flags to install without prompts.\n│\n◇  Source: $WORKSPACE/source\n│\n◇  Local path validated\n│\n◇  Found 2 skills\n\n│\n◇  Available Skills\n│\n│    benchmark-alpha\n│\n│      Controlled benchmark fixture.\n│\n│    benchmark-beta\n│\n│      Controlled benchmark fixture.\n\n│\n└  Use --skill <name> to install specific skills\n\n",
+      "stderr": "",
+      "files": {}
+    },
+    {
+      "id": "empty-list",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "list",
+        "--json"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 2206,
+      "stdout": "[]\n",
+      "stderr": "",
+      "files": {}
+    },
+    {
+      "id": "agent-detection",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "add",
+        "$WORKSPACE/source",
+        "-s",
+        "benchmark-beta",
+        "-y",
+        "--json"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 3397,
+      "stdout": "[\n  {\n    \"name\": \"benchmark-beta\",\n    \"status\": \"installed\",\n    \"source\": \"$WORKSPACE/source\",\n    \"ref\": null,\n    \"hash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\",\n    \"path\": \"$WORKSPACE/project/.agents/skills/benchmark-beta\",\n    \"scope\": \"project\",\n    \"agents\": [\n      \"Claude Code\",\n      \"Codex\",\n      \"Amp\",\n      \"Antigravity\",\n      \"Antigravity CLI\",\n      \"Cline\",\n      \"Cursor\",\n      \"Deep Agents\",\n      \"Dexto\",\n      \"Droid\",\n      \"Firebender\",\n      \"Gemini CLI\",\n      \"GitHub Copilot\",\n      \"Kilo Code\",\n      \"Kimi Code CLI\",\n      \"Loaf\",\n      \"OpenCode\",\n      \"Pi\",\n      \"Sarvam Code\",\n      \"Warp\",\n      \"Zed\",\n      \"PromptScript\"\n    ],\n    \"mode\": \"symlink\",\n    \"security\": null\n  }\n]\n",
+      "stderr": "\n┌   skills \n│\n│  Tip: use the --yes (-y) and --global (-g) flags to install without prompts.\n│\n●  Selected 1 skill: benchmark-beta\n│\n●  Installing to: Claude Code, Codex\n\n│\n◇  Installation Summary ──────────────────────────────────────────────────╮\n│                                                                         │\n│  ./.agents/skills/benchmark-beta                                        │\n│    universal: Codex, Amp, Antigravity, Antigravity CLI, Cline +16 more  │\n│    symlink → Claude Code                                                │\n│                                                                         │\n├─────────────────────────────────────────────────────────────────────────╯\n\n",
+      "files": {
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-beta": {
+          "link": "../../.agents/skills/benchmark-beta"
+        },
+        "skills-lock.json": {
+          "sha256": "2588c84349477f64063d13a94c1ff74a72aa364474f6fa5d7ba0120771a53ecd",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "selective-symlink",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "add",
+        "$WORKSPACE/source",
+        "-s",
+        "benchmark-alpha",
+        "-a",
+        "codex",
+        "claude-code",
+        "cursor",
+        "-y",
+        "--json"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 4036,
+      "stdout": "[\n  {\n    \"name\": \"benchmark-alpha\",\n    \"status\": \"installed\",\n    \"source\": \"$WORKSPACE/source\",\n    \"ref\": null,\n    \"hash\": \"4ddd55fc80bd435795bd3a8e0554471408237c553c6ae615eedc937cb48a62a6\",\n    \"path\": \"$WORKSPACE/project/.agents/skills/benchmark-alpha\",\n    \"scope\": \"project\",\n    \"agents\": [\n      \"Codex\",\n      \"Claude Code\",\n      \"Cursor\"\n    ],\n    \"mode\": \"symlink\",\n    \"security\": null\n  }\n]\n",
+      "stderr": "\n┌   skills \n│\n│  Tip: use the --yes (-y) and --global (-g) flags to install without prompts.\n│\n●  Selected 1 skill: benchmark-alpha\n\n│\n◇  Installation Summary ─────────────╮\n│                                    │\n│  ./.agents/skills/benchmark-alpha  │\n│    universal: Codex, Cursor        │\n│    symlink → Claude Code           │\n│                                    │\n├────────────────────────────────────╯\n\n",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "c16d361c435dbe0590acfa459be135c4a12da458fec6807e734bb45d698b9752",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Controlled benchmark fixture.\n---\n\nFirst source, version one.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-alpha": {
+          "link": "../../.agents/skills/benchmark-alpha"
+        },
+        ".claude/skills/benchmark-beta": {
+          "link": "../../.agents/skills/benchmark-beta"
+        },
+        "skills-lock.json": {
+          "sha256": "7a5a7f9956ed6d324ff8f72fd9c3e91b75808258f257cdc2f9302e86354a4811",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"4ddd55fc80bd435795bd3a8e0554471408237c553c6ae615eedc937cb48a62a6\"\n    },\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "installed-list",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "list",
+        "--json"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 10092,
+      "stdout": "[\n  {\n    \"name\": \"benchmark-alpha\",\n    \"path\": \"$WORKSPACE/project/.agents/skills/benchmark-alpha\",\n    \"scope\": \"project\",\n    \"agents\": [\n      \"Claude Code\",\n      \"Codex\"\n    ],\n    \"source\": \"$WORKSPACE/source\",\n    \"sourceUrl\": null,\n    \"sourceType\": \"local\"\n  },\n  {\n    \"name\": \"benchmark-beta\",\n    \"path\": \"$WORKSPACE/project/.agents/skills/benchmark-beta\",\n    \"scope\": \"project\",\n    \"agents\": [\n      \"Claude Code\",\n      \"Codex\"\n    ],\n    \"source\": \"$WORKSPACE/source\",\n    \"sourceUrl\": null,\n    \"sourceType\": \"local\"\n  }\n]\n",
+      "stderr": "",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "c16d361c435dbe0590acfa459be135c4a12da458fec6807e734bb45d698b9752",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Controlled benchmark fixture.\n---\n\nFirst source, version one.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-alpha": {
+          "link": "../../.agents/skills/benchmark-alpha"
+        },
+        ".claude/skills/benchmark-beta": {
+          "link": "../../.agents/skills/benchmark-beta"
+        },
+        "skills-lock.json": {
+          "sha256": "7a5a7f9956ed6d324ff8f72fd9c3e91b75808258f257cdc2f9302e86354a4811",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"4ddd55fc80bd435795bd3a8e0554471408237c553c6ae615eedc937cb48a62a6\"\n    },\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "use",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "use",
+        "$WORKSPACE/source",
+        "-s",
+        "benchmark-alpha"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 5781,
+      "stdout": "You are being given a Skill to execute for the user's next request.\n\nUse the following SKILL.md as your instructions:\n\n<SKILL.md>\n---\nname: benchmark-alpha\ndescription: Controlled benchmark fixture.\n---\n\nFirst source, version one.\n\n</SKILL.md>\n\nSupporting files for this skill were downloaded to:\n/tmp/skills-use-yIxfnK/benchmark-alpha\n\nWhen the SKILL.md references relative paths, read them from that directory.\n",
+      "stderr": "",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "c16d361c435dbe0590acfa459be135c4a12da458fec6807e734bb45d698b9752",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Controlled benchmark fixture.\n---\n\nFirst source, version one.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-alpha": {
+          "link": "../../.agents/skills/benchmark-alpha"
+        },
+        ".claude/skills/benchmark-beta": {
+          "link": "../../.agents/skills/benchmark-beta"
+        },
+        "skills-lock.json": {
+          "sha256": "7a5a7f9956ed6d324ff8f72fd9c3e91b75808258f257cdc2f9302e86354a4811",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"4ddd55fc80bd435795bd3a8e0554471408237c553c6ae615eedc937cb48a62a6\"\n    },\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      },
+      "temporaryResources": {
+        "SKILL.md": {
+          "sha256": "c16d361c435dbe0590acfa459be135c4a12da458fec6807e734bb45d698b9752",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Controlled benchmark fixture.\n---\n\nFirst source, version one.\n"
+        },
+        "references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        "scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        }
+      }
+    },
+    {
+      "id": "invalid-agent",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "add",
+        "$WORKSPACE/source",
+        "-s",
+        "benchmark-beta",
+        "-a",
+        "not-an-agent",
+        "-y",
+        "--json"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 1,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 4021,
+      "stdout": "[\n  {\n    \"status\": \"failed\",\n    \"error\": \"Invalid agents: not-an-agent\"\n  }\n]\n",
+      "stderr": "\n┌   skills \n│\n│  Tip: use the --yes (-y) and --global (-g) flags to install without prompts.\n│\n●  Selected 1 skill: benchmark-beta\n│\n■  Invalid agents: not-an-agent\n│\n●  Valid agents: aider-desk, amp, antigravity, antigravity-cli, astrbot, autohand-code, augment, bob, claude-code, openclaw, cline, codearts-agent, codebuddy, codemaker, codestudio, codex, command-code, continue, cortex, crush, cursor, deepagents, devin, dexto, droid, eve, firebender, forgecode, fx, gemini-cli, github-copilot, goose, grok, hermes-agent, inference-sh, jazz, junie, iflow-cli, kilo, kimchi, kimi-code-cli, kiro-cli, kode, lingma, loaf, mcpjam, minimax-code, mistral-vibe, moxby, mux, opencode, openhands, ona, pi, posit-assistant, qoder, qoder-cn, qwen-code, replit, reasonix, rovodev, roo, sarvam-code, tabnine-cli, terramind, tinycloud, trae, trae-cn, warp, windsurf, zed, zcode, zencoder, zenflow, neovate, pochi, promptscript, adal, universal\nInvalid agents: not-an-agent\n",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "c16d361c435dbe0590acfa459be135c4a12da458fec6807e734bb45d698b9752",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Controlled benchmark fixture.\n---\n\nFirst source, version one.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-alpha": {
+          "link": "../../.agents/skills/benchmark-alpha"
+        },
+        ".claude/skills/benchmark-beta": {
+          "link": "../../.agents/skills/benchmark-beta"
+        },
+        "skills-lock.json": {
+          "sha256": "7a5a7f9956ed6d324ff8f72fd9c3e91b75808258f257cdc2f9302e86354a4811",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"4ddd55fc80bd435795bd3a8e0554471408237c553c6ae615eedc937cb48a62a6\"\n    },\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "missing-skill",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "add",
+        "$WORKSPACE/source",
+        "-s",
+        "missing",
+        "-a",
+        "codex",
+        "-y",
+        "--json"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 1,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 4407,
+      "stdout": "[\n  {\n    \"name\": \"missing\",\n    \"status\": \"skipped\",\n    \"reason\": \"No matching skill found in source\"\n  }\n]\n",
+      "stderr": "\n┌   skills \n│\n│  Tip: use the --yes (-y) and --global (-g) flags to install without prompts.\n│\n■  No matching skills found for: missing\n│\n●  Available skills:\n│\n│    - benchmark-alpha\n│\n│    - benchmark-beta\nNo matching skills found for: missing\n",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "c16d361c435dbe0590acfa459be135c4a12da458fec6807e734bb45d698b9752",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Controlled benchmark fixture.\n---\n\nFirst source, version one.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-alpha": {
+          "link": "../../.agents/skills/benchmark-alpha"
+        },
+        ".claude/skills/benchmark-beta": {
+          "link": "../../.agents/skills/benchmark-beta"
+        },
+        "skills-lock.json": {
+          "sha256": "7a5a7f9956ed6d324ff8f72fd9c3e91b75808258f257cdc2f9302e86354a4811",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"4ddd55fc80bd435795bd3a8e0554471408237c553c6ae615eedc937cb48a62a6\"\n    },\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "invalid-path",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "add",
+        "$WORKSPACE/absent",
+        "-a",
+        "codex",
+        "-y",
+        "--json"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 1,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 4727,
+      "stdout": "[\n  {\n    \"status\": \"failed\",\n    \"error\": \"Local path does not exist: $WORKSPACE/absent\"\n  }\n]\n",
+      "stderr": "\n┌   skills \n│\n│  Tip: use the --yes (-y) and --global (-g) flags to install without prompts.\n│\n└  Local path does not exist: $WORKSPACE/absent\n\nLocal path does not exist: $WORKSPACE/absent\n",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "c16d361c435dbe0590acfa459be135c4a12da458fec6807e734bb45d698b9752",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Controlled benchmark fixture.\n---\n\nFirst source, version one.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-alpha": {
+          "link": "../../.agents/skills/benchmark-alpha"
+        },
+        ".claude/skills/benchmark-beta": {
+          "link": "../../.agents/skills/benchmark-beta"
+        },
+        "skills-lock.json": {
+          "sha256": "7a5a7f9956ed6d324ff8f72fd9c3e91b75808258f257cdc2f9302e86354a4811",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"4ddd55fc80bd435795bd3a8e0554471408237c553c6ae615eedc937cb48a62a6\"\n    },\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "nested-default",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "add",
+        "$WORKSPACE/nested/benchmark-root",
+        "--list"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 6440,
+      "stdout": "\n███████╗██╗  ██╗██╗██╗     ██╗     ███████╗\n██╔════╝██║ ██╔╝██║██║     ██║     ██╔════╝\n███████╗█████╔╝ ██║██║     ██║     ███████╗\n╚════██║██╔═██╗ ██║██║     ██║     ╚════██║\n███████║██║  ██╗██║███████╗███████╗███████║\n╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚══════╝\n\n┌   skills \n│\n│  Tip: use the --yes (-y) and --global (-g) flags to install without prompts.\n│\n◇  Source: $WORKSPACE/nested/benchmark-root\n│\n◇  Local path validated\n│\n◒  Discovering skills…◇  Found 1 skill\n\n│\n◇  Available Skills\n│\n│    benchmark-root\n│\n│      Controlled benchmark fixture.\n\n│\n└  Use --skill <name> to install specific skills\n\n",
+      "stderr": "",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "c16d361c435dbe0590acfa459be135c4a12da458fec6807e734bb45d698b9752",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Controlled benchmark fixture.\n---\n\nFirst source, version one.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-alpha": {
+          "link": "../../.agents/skills/benchmark-alpha"
+        },
+        ".claude/skills/benchmark-beta": {
+          "link": "../../.agents/skills/benchmark-beta"
+        },
+        "skills-lock.json": {
+          "sha256": "7a5a7f9956ed6d324ff8f72fd9c3e91b75808258f257cdc2f9302e86354a4811",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"4ddd55fc80bd435795bd3a8e0554471408237c553c6ae615eedc937cb48a62a6\"\n    },\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "nested-full-depth",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "add",
+        "$WORKSPACE/nested/benchmark-root",
+        "--list",
+        "--full-depth"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1741,
+      "stdout": "\n███████╗██╗  ██╗██╗██╗     ██╗     ███████╗\n██╔════╝██║ ██╔╝██║██║     ██║     ██╔════╝\n███████╗█████╔╝ ██║██║     ██║     ███████╗\n╚════██║██╔═██╗ ██║██║     ██║     ╚════██║\n███████║██║  ██╗██║███████╗███████╗███████║\n╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚══════╝\n\n┌   skills \n│\n│  Tip: use the --yes (-y) and --global (-g) flags to install without prompts.\n│\n◇  Source: $WORKSPACE/nested/benchmark-root\n│\n◇  Local path validated\n│\n◇  Found 2 skills\n\n│\n◇  Available Skills\n│\n│    benchmark-root\n│\n│      Controlled benchmark fixture.\n│\n│    benchmark-child\n│\n│      Controlled benchmark fixture.\n\n│\n└  Use --skill <name> to install specific skills\n\n",
+      "stderr": "",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "c16d361c435dbe0590acfa459be135c4a12da458fec6807e734bb45d698b9752",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Controlled benchmark fixture.\n---\n\nFirst source, version one.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-alpha": {
+          "link": "../../.agents/skills/benchmark-alpha"
+        },
+        ".claude/skills/benchmark-beta": {
+          "link": "../../.agents/skills/benchmark-beta"
+        },
+        "skills-lock.json": {
+          "sha256": "7a5a7f9956ed6d324ff8f72fd9c3e91b75808258f257cdc2f9302e86354a4811",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"4ddd55fc80bd435795bd3a8e0554471408237c553c6ae615eedc937cb48a62a6\"\n    },\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "local-update",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "update",
+        "-p",
+        "-y"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 2456,
+      "stdout": "Checking for skill updates…\n\nNo project skills to update.\nInstall project skills with npx skills add <package>\n\n\n",
+      "stderr": "",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "c16d361c435dbe0590acfa459be135c4a12da458fec6807e734bb45d698b9752",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Controlled benchmark fixture.\n---\n\nFirst source, version one.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-alpha": {
+          "link": "../../.agents/skills/benchmark-alpha"
+        },
+        ".claude/skills/benchmark-beta": {
+          "link": "../../.agents/skills/benchmark-beta"
+        },
+        "skills-lock.json": {
+          "sha256": "7a5a7f9956ed6d324ff8f72fd9c3e91b75808258f257cdc2f9302e86354a4811",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"4ddd55fc80bd435795bd3a8e0554471408237c553c6ae615eedc937cb48a62a6\"\n    },\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "local-update-after-change",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "update",
+        "-p",
+        "-y"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 2287,
+      "stdout": "Checking for skill updates…\n\nNo project skills to update.\nInstall project skills with npx skills add <package>\n\n\n",
+      "stderr": "",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "c16d361c435dbe0590acfa459be135c4a12da458fec6807e734bb45d698b9752",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Controlled benchmark fixture.\n---\n\nFirst source, version one.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-alpha": {
+          "link": "../../.agents/skills/benchmark-alpha"
+        },
+        ".claude/skills/benchmark-beta": {
+          "link": "../../.agents/skills/benchmark-beta"
+        },
+        "skills-lock.json": {
+          "sha256": "7a5a7f9956ed6d324ff8f72fd9c3e91b75808258f257cdc2f9302e86354a4811",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"4ddd55fc80bd435795bd3a8e0554471408237c553c6ae615eedc937cb48a62a6\"\n    },\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "local-reinstall",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "add",
+        "$WORKSPACE/source",
+        "-s",
+        "benchmark-alpha",
+        "-a",
+        "codex",
+        "claude-code",
+        "cursor",
+        "-y",
+        "--json"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 2150,
+      "stdout": "[\n  {\n    \"name\": \"benchmark-alpha\",\n    \"status\": \"installed\",\n    \"source\": \"$WORKSPACE/source\",\n    \"ref\": null,\n    \"hash\": \"90adbd821b0f7de9d2eed46888a86163fd3b573079130a1372c602181eba3a27\",\n    \"path\": \"$WORKSPACE/project/.agents/skills/benchmark-alpha\",\n    \"scope\": \"project\",\n    \"agents\": [\n      \"Codex\",\n      \"Claude Code\",\n      \"Cursor\"\n    ],\n    \"mode\": \"symlink\",\n    \"security\": null\n  }\n]\n",
+      "stderr": "\n┌   skills \n│\n│  Tip: use the --yes (-y) and --global (-g) flags to install without prompts.\n│\n●  Selected 1 skill: benchmark-alpha\n\n│\n◇  Installation Summary ─────────────────────╮\n│                                            │\n│  ./.agents/skills/benchmark-alpha          │\n│    universal: Codex, Cursor                │\n│    symlink → Claude Code                   │\n│    overwrites: Codex, Claude Code, Cursor  │\n│                                            │\n├────────────────────────────────────────────╯\n\n",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "fba4bbff8f14f2d872fc1c6711e2a7f9a60e8f0dc5d0adcc6af7cbdc1443956b",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Changed fixture.\n---\nChanged source.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-alpha": {
+          "link": "../../.agents/skills/benchmark-alpha"
+        },
+        ".claude/skills/benchmark-beta": {
+          "link": "../../.agents/skills/benchmark-beta"
+        },
+        "skills-lock.json": {
+          "sha256": "048e3dd8c6f656c4b99fd93852aa2171aaaa79ab0459d412973cf4fc47b4c9e9",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"90adbd821b0f7de9d2eed46888a86163fd3b573079130a1372c602181eba3a27\"\n    },\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "copy",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "add",
+        "$WORKSPACE/source",
+        "-s",
+        "benchmark-beta",
+        "-a",
+        "claude-code",
+        "cursor",
+        "-y",
+        "--copy",
+        "--json"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 2172,
+      "stdout": "[\n  {\n    \"name\": \"benchmark-beta\",\n    \"status\": \"installed\",\n    \"source\": \"$WORKSPACE/source\",\n    \"ref\": null,\n    \"hash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\",\n    \"path\": \"$WORKSPACE/project/.claude/skills/benchmark-beta\",\n    \"scope\": \"project\",\n    \"agents\": [\n      \"Claude Code\",\n      \"Cursor\"\n    ],\n    \"mode\": \"copy\",\n    \"security\": null\n  }\n]\n",
+      "stderr": "\n┌   skills \n│\n│  Tip: use the --yes (-y) and --global (-g) flags to install without prompts.\n│\n●  Selected 1 skill: benchmark-beta\n\n│\n◇  Installation Summary ──────────────╮\n│                                     │\n│  ./.agents/skills/benchmark-beta    │\n│    copy → Claude Code, Cursor       │\n│    overwrites: Claude Code, Cursor  │\n│                                     │\n├─────────────────────────────────────╯\n\n",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "fba4bbff8f14f2d872fc1c6711e2a7f9a60e8f0dc5d0adcc6af7cbdc1443956b",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Changed fixture.\n---\nChanged source.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/outside-link.txt": {
+          "sha256": "c429a97d019c1ba5ebf68abd35745b36a5028b55bebc46bee30a68024d244de2",
+          "mode": "644",
+          "text": "Controlled file outside the skill directory.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-alpha": {
+          "link": "../../.agents/skills/benchmark-alpha"
+        },
+        ".claude/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".claude/skills/benchmark-beta/outside-link.txt": {
+          "sha256": "c429a97d019c1ba5ebf68abd35745b36a5028b55bebc46bee30a68024d244de2",
+          "mode": "644",
+          "text": "Controlled file outside the skill directory.\n"
+        },
+        ".claude/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".claude/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        "skills-lock.json": {
+          "sha256": "048e3dd8c6f656c4b99fd93852aa2171aaaa79ab0459d412973cf4fc47b4c9e9",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"90adbd821b0f7de9d2eed46888a86163fd3b573079130a1372c602181eba3a27\"\n    },\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "collision",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "add",
+        "$WORKSPACE/other",
+        "-s",
+        "benchmark-alpha",
+        "-a",
+        "codex",
+        "claude-code",
+        "cursor",
+        "-y",
+        "--json"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1839,
+      "stdout": "[\n  {\n    \"name\": \"benchmark-alpha\",\n    \"status\": \"installed\",\n    \"source\": \"$WORKSPACE/other\",\n    \"ref\": null,\n    \"hash\": \"a11ee843309619a3ecba478e06cf224c843743c3e842ca58ed93c9ab0cb35db5\",\n    \"path\": \"$WORKSPACE/project/.agents/skills/benchmark-alpha\",\n    \"scope\": \"project\",\n    \"agents\": [\n      \"Codex\",\n      \"Claude Code\",\n      \"Cursor\"\n    ],\n    \"mode\": \"symlink\",\n    \"security\": null\n  }\n]\n",
+      "stderr": "\n┌   skills \n│\n│  Tip: use the --yes (-y) and --global (-g) flags to install without prompts.\n│\n●  Selected 1 skill: benchmark-alpha\n\n│\n◇  Installation Summary ─────────────────────╮\n│                                            │\n│  ./.agents/skills/benchmark-alpha          │\n│    universal: Codex, Cursor                │\n│    symlink → Claude Code                   │\n│    overwrites: Codex, Claude Code, Cursor  │\n│                                            │\n├────────────────────────────────────────────╯\n\n",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "4eadac4e11827b5c7d9317178ffb3685449296526ebf32b3b82833ee214591c4",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Controlled benchmark fixture.\n---\n\nColliding source, version two.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/outside-link.txt": {
+          "sha256": "c429a97d019c1ba5ebf68abd35745b36a5028b55bebc46bee30a68024d244de2",
+          "mode": "644",
+          "text": "Controlled file outside the skill directory.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-alpha": {
+          "link": "../../.agents/skills/benchmark-alpha"
+        },
+        ".claude/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".claude/skills/benchmark-beta/outside-link.txt": {
+          "sha256": "c429a97d019c1ba5ebf68abd35745b36a5028b55bebc46bee30a68024d244de2",
+          "mode": "644",
+          "text": "Controlled file outside the skill directory.\n"
+        },
+        ".claude/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".claude/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        "skills-lock.json": {
+          "sha256": "63535c372a2ad44549a5b72cc043aad361b1c03977eb4c4ef4a170854f7dc35e",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../other\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"a11ee843309619a3ecba478e06cf224c843743c3e842ca58ed93c9ab0cb35db5\"\n    },\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "partial-target-failure",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "add",
+        "$WORKSPACE/source",
+        "-s",
+        "benchmark-alpha",
+        "-a",
+        "codex",
+        "claude-code",
+        "-y",
+        "--json"
+      ],
+      "cwd": "$WORKSPACE/partial",
+      "code": 1,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1528,
+      "stdout": "[\n  {\n    \"name\": \"benchmark-alpha\",\n    \"status\": \"failed\",\n    \"error\": \"ENOTDIR: not a directory, mkdir '$WORKSPACE/partial/.claude/skills/benchmark-alpha'\"\n  }\n]\n",
+      "stderr": "\n┌   skills \n│\n│  Tip: use the --yes (-y) and --global (-g) flags to install without prompts.\n│\n●  Selected 1 skill: benchmark-alpha\n\n│\n◇  Installation Summary ─────────────╮\n│                                    │\n│  ./.agents/skills/benchmark-alpha  │\n│    universal: Codex                │\n│    symlink → Claude Code           │\n│                                    │\n├────────────────────────────────────╯\n\n",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "fba4bbff8f14f2d872fc1c6711e2a7f9a60e8f0dc5d0adcc6af7cbdc1443956b",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Changed fixture.\n---\nChanged source.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude": {
+          "sha256": "7a1593686e10b27510415f80b374d011096cca41c3c325fad8b6beffa32b93bc",
+          "mode": "644",
+          "text": "This regular file deliberately blocks an agent directory.\n"
+        },
+        "skills-lock.json": {
+          "sha256": "63d549fc07eb6c02807babe427bc62d8bc7c905893c6e8f703634307e71ee40e",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"90adbd821b0f7de9d2eed46888a86163fd3b573079130a1372c602181eba3a27\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "partial-recovery",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "add",
+        "$WORKSPACE/source",
+        "-s",
+        "benchmark-alpha",
+        "-a",
+        "codex",
+        "claude-code",
+        "-y",
+        "--json"
+      ],
+      "cwd": "$WORKSPACE/partial",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1721,
+      "stdout": "[\n  {\n    \"name\": \"benchmark-alpha\",\n    \"status\": \"installed\",\n    \"source\": \"$WORKSPACE/source\",\n    \"ref\": null,\n    \"hash\": \"90adbd821b0f7de9d2eed46888a86163fd3b573079130a1372c602181eba3a27\",\n    \"path\": \"$WORKSPACE/partial/.agents/skills/benchmark-alpha\",\n    \"scope\": \"project\",\n    \"agents\": [\n      \"Codex\",\n      \"Claude Code\"\n    ],\n    \"mode\": \"symlink\",\n    \"security\": null\n  }\n]\n",
+      "stderr": "\n┌   skills \n│\n│  Tip: use the --yes (-y) and --global (-g) flags to install without prompts.\n│\n●  Selected 1 skill: benchmark-alpha\n\n│\n◇  Installation Summary ─────────────╮\n│                                    │\n│  ./.agents/skills/benchmark-alpha  │\n│    universal: Codex                │\n│    symlink → Claude Code           │\n│    overwrites: Codex               │\n│                                    │\n├────────────────────────────────────╯\n\n",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "fba4bbff8f14f2d872fc1c6711e2a7f9a60e8f0dc5d0adcc6af7cbdc1443956b",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Changed fixture.\n---\nChanged source.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-alpha": {
+          "link": "../../.agents/skills/benchmark-alpha"
+        },
+        "skills-lock.json": {
+          "sha256": "63d549fc07eb6c02807babe427bc62d8bc7c905893c6e8f703634307e71ee40e",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"90adbd821b0f7de9d2eed46888a86163fd3b573079130a1372c602181eba3a27\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "restore-local",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "experimental_install",
+        "-a",
+        "claude-code",
+        "-y"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 2139,
+      "stdout": "\n███████╗██╗  ██╗██╗██╗     ██╗     ███████╗\n██╔════╝██║ ██╔╝██║██║     ██║     ██╔════╝\n███████╗█████╔╝ ██║██║     ██║     ███████╗\n╚════██║██╔═██╗ ██║██║     ██║     ╚════██║\n███████║██║  ██╗██║███████╗███████╗███████║\n╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚══════╝\n│\n●  Restoring 2 skills from skills-lock.json into .agents/skills/\n│\n◇  Found 1 skill\n│\n◆  Restored benchmark-alpha\n│\n◇  Found 1 skill\n│\n◆  Restored benchmark-beta\n",
+      "stderr": "",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "4eadac4e11827b5c7d9317178ffb3685449296526ebf32b3b82833ee214591c4",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Controlled benchmark fixture.\n---\n\nColliding source, version two.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/outside-link.txt": {
+          "sha256": "c429a97d019c1ba5ebf68abd35745b36a5028b55bebc46bee30a68024d244de2",
+          "mode": "644",
+          "text": "Controlled file outside the skill directory.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-alpha": {
+          "link": "../../.agents/skills/benchmark-alpha"
+        },
+        ".claude/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".claude/skills/benchmark-beta/outside-link.txt": {
+          "sha256": "c429a97d019c1ba5ebf68abd35745b36a5028b55bebc46bee30a68024d244de2",
+          "mode": "644",
+          "text": "Controlled file outside the skill directory.\n"
+        },
+        ".claude/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".claude/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        "skills-lock.json": {
+          "sha256": "63535c372a2ad44549a5b72cc043aad361b1c03977eb4c4ef4a170854f7dc35e",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../other\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"a11ee843309619a3ecba478e06cf224c843743c3e842ca58ed93c9ab0cb35db5\"\n    },\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "global-add",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "add",
+        "$WORKSPACE/source",
+        "-s",
+        "benchmark-alpha",
+        "-a",
+        "claude-code",
+        "-g",
+        "-y",
+        "--copy",
+        "--json"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1542,
+      "stdout": "[\n  {\n    \"name\": \"benchmark-alpha\",\n    \"status\": \"installed\",\n    \"source\": \"$WORKSPACE/source\",\n    \"ref\": null,\n    \"hash\": \"90adbd821b0f7de9d2eed46888a86163fd3b573079130a1372c602181eba3a27\",\n    \"path\": \"$SANDBOX_HOME/.claude/skills/benchmark-alpha\",\n    \"scope\": \"global\",\n    \"agents\": [\n      \"Claude Code\"\n    ],\n    \"mode\": \"copy\",\n    \"security\": null\n  }\n]\n",
+      "stderr": "\n┌   skills \n│\n│  Tip: use the --yes (-y) and --global (-g) flags to install without prompts.\n│\n●  Selected 1 skill: benchmark-alpha\n\n│\n◇  Installation Summary ─────────────╮\n│                                    │\n│  ~/.agents/skills/benchmark-alpha  │\n│    copy → Claude Code              │\n│                                    │\n├────────────────────────────────────╯\n\n",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "4eadac4e11827b5c7d9317178ffb3685449296526ebf32b3b82833ee214591c4",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Controlled benchmark fixture.\n---\n\nColliding source, version two.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/outside-link.txt": {
+          "sha256": "c429a97d019c1ba5ebf68abd35745b36a5028b55bebc46bee30a68024d244de2",
+          "mode": "644",
+          "text": "Controlled file outside the skill directory.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-alpha": {
+          "link": "../../.agents/skills/benchmark-alpha"
+        },
+        ".claude/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".claude/skills/benchmark-beta/outside-link.txt": {
+          "sha256": "c429a97d019c1ba5ebf68abd35745b36a5028b55bebc46bee30a68024d244de2",
+          "mode": "644",
+          "text": "Controlled file outside the skill directory.\n"
+        },
+        ".claude/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".claude/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        "skills-lock.json": {
+          "sha256": "63535c372a2ad44549a5b72cc043aad361b1c03977eb4c4ef4a170854f7dc35e",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../other\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"a11ee843309619a3ecba478e06cf224c843743c3e842ca58ed93c9ab0cb35db5\"\n    },\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "global-list",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "list",
+        "-g",
+        "--json"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1486,
+      "stdout": "[\n  {\n    \"name\": \"benchmark-alpha\",\n    \"path\": \"$SANDBOX_HOME/.claude/skills/benchmark-alpha\",\n    \"scope\": \"global\",\n    \"agents\": [\n      \"Claude Code\"\n    ],\n    \"source\": \"$WORKSPACE/source\",\n    \"sourceUrl\": \"$WORKSPACE/source\",\n    \"sourceType\": \"local\"\n  }\n]\n",
+      "stderr": "",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "4eadac4e11827b5c7d9317178ffb3685449296526ebf32b3b82833ee214591c4",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Controlled benchmark fixture.\n---\n\nColliding source, version two.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/outside-link.txt": {
+          "sha256": "c429a97d019c1ba5ebf68abd35745b36a5028b55bebc46bee30a68024d244de2",
+          "mode": "644",
+          "text": "Controlled file outside the skill directory.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-alpha": {
+          "link": "../../.agents/skills/benchmark-alpha"
+        },
+        ".claude/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".claude/skills/benchmark-beta/outside-link.txt": {
+          "sha256": "c429a97d019c1ba5ebf68abd35745b36a5028b55bebc46bee30a68024d244de2",
+          "mode": "644",
+          "text": "Controlled file outside the skill directory.\n"
+        },
+        ".claude/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".claude/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        "skills-lock.json": {
+          "sha256": "63535c372a2ad44549a5b72cc043aad361b1c03977eb4c4ef4a170854f7dc35e",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../other\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"a11ee843309619a3ecba478e06cf224c843743c3e842ca58ed93c9ab0cb35db5\"\n    },\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "global-update",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "update",
+        "-g",
+        "-y"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1261,
+      "stdout": "Checking for skill updates…\n\n\n1 skill(s) cannot be checked automatically:\n  • benchmark-alpha (Local path)\n    To update: npx skills add $WORKSPACE/source -g -y\n\n\n",
+      "stderr": "",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "4eadac4e11827b5c7d9317178ffb3685449296526ebf32b3b82833ee214591c4",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Controlled benchmark fixture.\n---\n\nColliding source, version two.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/outside-link.txt": {
+          "sha256": "c429a97d019c1ba5ebf68abd35745b36a5028b55bebc46bee30a68024d244de2",
+          "mode": "644",
+          "text": "Controlled file outside the skill directory.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-alpha": {
+          "link": "../../.agents/skills/benchmark-alpha"
+        },
+        ".claude/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".claude/skills/benchmark-beta/outside-link.txt": {
+          "sha256": "c429a97d019c1ba5ebf68abd35745b36a5028b55bebc46bee30a68024d244de2",
+          "mode": "644",
+          "text": "Controlled file outside the skill directory.\n"
+        },
+        ".claude/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".claude/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        "skills-lock.json": {
+          "sha256": "63535c372a2ad44549a5b72cc043aad361b1c03977eb4c4ef4a170854f7dc35e",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../other\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"a11ee843309619a3ecba478e06cf224c843743c3e842ca58ed93c9ab0cb35db5\"\n    },\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "global-remove",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "remove",
+        "benchmark-alpha",
+        "-g",
+        "-a",
+        "claude-code",
+        "-y"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1618,
+      "stdout": "│\n◇  Found 1 unique installed skill(s)\n│\n◇  Removal process complete\n│\n◆  Successfully removed 1 skill(s)\n\n│\n└  Done!\n\n",
+      "stderr": "",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "4eadac4e11827b5c7d9317178ffb3685449296526ebf32b3b82833ee214591c4",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Controlled benchmark fixture.\n---\n\nColliding source, version two.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/outside-link.txt": {
+          "sha256": "c429a97d019c1ba5ebf68abd35745b36a5028b55bebc46bee30a68024d244de2",
+          "mode": "644",
+          "text": "Controlled file outside the skill directory.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-alpha": {
+          "link": "../../.agents/skills/benchmark-alpha"
+        },
+        ".claude/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".claude/skills/benchmark-beta/outside-link.txt": {
+          "sha256": "c429a97d019c1ba5ebf68abd35745b36a5028b55bebc46bee30a68024d244de2",
+          "mode": "644",
+          "text": "Controlled file outside the skill directory.\n"
+        },
+        ".claude/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".claude/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        "skills-lock.json": {
+          "sha256": "63535c372a2ad44549a5b72cc043aad361b1c03977eb4c4ef4a170854f7dc35e",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../other\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"a11ee843309619a3ecba478e06cf224c843743c3e842ca58ed93c9ab0cb35db5\"\n    },\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "remove-one-agent",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "remove",
+        "benchmark-alpha",
+        "-a",
+        "claude-code",
+        "-y"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1583,
+      "stdout": "│\n◒  Scanning for installed skills…◇  Found 2 unique installed skill(s)\n│\n◇  Removal process complete\n│\n◆  Successfully removed 1 skill(s)\n\n│\n└  Done!\n\n",
+      "stderr": "",
+      "files": {
+        ".agents/skills/benchmark-alpha/SKILL.md": {
+          "sha256": "4eadac4e11827b5c7d9317178ffb3685449296526ebf32b3b82833ee214591c4",
+          "mode": "644",
+          "text": "---\nname: benchmark-alpha\ndescription: Controlled benchmark fixture.\n---\n\nColliding source, version two.\n"
+        },
+        ".agents/skills/benchmark-alpha/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-alpha/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".agents/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".agents/skills/benchmark-beta/outside-link.txt": {
+          "sha256": "c429a97d019c1ba5ebf68abd35745b36a5028b55bebc46bee30a68024d244de2",
+          "mode": "644",
+          "text": "Controlled file outside the skill directory.\n"
+        },
+        ".agents/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".agents/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".claude/skills/benchmark-beta/outside-link.txt": {
+          "sha256": "c429a97d019c1ba5ebf68abd35745b36a5028b55bebc46bee30a68024d244de2",
+          "mode": "644",
+          "text": "Controlled file outside the skill directory.\n"
+        },
+        ".claude/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".claude/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        "skills-lock.json": {
+          "sha256": "63535c372a2ad44549a5b72cc043aad361b1c03977eb4c4ef4a170854f7dc35e",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"../other\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"a11ee843309619a3ecba478e06cf224c843743c3e842ca58ed93c9ab0cb35db5\"\n    },\n    \"benchmark-beta\": {\n      \"source\": \"../source\",\n      \"sourceType\": \"local\",\n      \"computedHash\": \"5d043b5b3c04983e69449e633a8e2f7b02749878d39b23811fde838a7c4f2a3a\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "remove-project",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "remove",
+        "benchmark-alpha",
+        "benchmark-beta",
+        "-y"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1650,
+      "stdout": "│\n◇  Found 2 unique installed skill(s)\n│\n◒  Removing skills…◇  Removal process complete\n│\n◆  Successfully removed 2 skill(s)\n\n│\n└  Done!\n\n",
+      "stderr": "",
+      "files": {
+        "skills-lock.json": {
+          "sha256": "6d57406a7c5268c5c99442d2874449bd59ca8bbdec340ead8d6e7e5605b657d2",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {}\n}\n"
+        }
+      }
+    },
+    {
+      "id": "list-after-remove",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "list",
+        "--json"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1461,
+      "stdout": "[]\n",
+      "stderr": "",
+      "files": {
+        "skills-lock.json": {
+          "sha256": "6d57406a7c5268c5c99442d2874449bd59ca8bbdec340ead8d6e7e5605b657d2",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {}\n}\n"
+        }
+      }
+    },
+    {
+      "id": "sync-preview",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "experimental_sync",
+        "-a",
+        "claude-code",
+        "-y",
+        "--dry-run",
+        "--no-remote"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1238,
+      "stdout": "\n███████╗██╗  ██╗██╗██╗     ██╗     ███████╗\n██╔════╝██║ ██╔╝██║██║     ██║     ██╔════╝\n███████╗█████╔╝ ██║██║     ██║     ███████╗\n╚════██║██╔═██╗ ██║██║     ██║     ╚════██║\n███████║██║  ██╗██║███████╗███████╗███████║\n╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚══════╝\n\n┌   skills experimental_sync \n│\n◇  Found 1 skill in node_modules\n│\n●  benchmark-sync from benchmark-package\n│\n│    Controlled benchmark fixture.\n\n│\n◇  Sync Summary ───────────────────────────────────────────╮\n│                                                          │\n│  benchmark-sync ← benchmark-package                      │\n│    ./.agents/skills/benchmark-sync →                     │\n│  ./node_modules/benchmark-package/skills/benchmark-sync  │\n│                                                          │\n├──────────────────────────────────────────────────────────╯\n│\n└  Dry run — nothing changed.\n\n",
+      "stderr": "",
+      "files": {
+        "node_modules/benchmark-package/package.json": {
+          "sha256": "25bf2e441b3c63964536f0e91e2a4064e256b5c66b8cb0291c3ef84a8351b61d",
+          "mode": "644",
+          "text": "{\"name\":\"benchmark-package\",\"version\":\"1.0.0\"}"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/SKILL.md": {
+          "sha256": "ebe7602881650fd637c5984808ac2efff76c0e3e3788d3d9fca05e9ef22e816f",
+          "mode": "644",
+          "text": "---\nname: benchmark-sync\ndescription: Controlled benchmark fixture.\n---\n\nDependency skill.\n"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        "package.json": {
+          "sha256": "68f155259a0d7ff1c30e35bbc67d0e79d172879c250ccd821e3536a06572b024",
+          "mode": "644",
+          "text": "{\"name\":\"benchmark-project\",\"private\":true,\"dependencies\":{\"benchmark-package\":\"1.0.0\"}}"
+        },
+        "skills-lock.json": {
+          "sha256": "6d57406a7c5268c5c99442d2874449bd59ca8bbdec340ead8d6e7e5605b657d2",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {}\n}\n"
+        }
+      }
+    },
+    {
+      "id": "sync",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "experimental_sync",
+        "-a",
+        "claude-code",
+        "-y",
+        "--no-remote"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1496,
+      "stdout": "\n███████╗██╗  ██╗██╗██╗     ██╗     ███████╗\n██╔════╝██║ ██╔╝██║██║     ██║     ██╔════╝\n███████╗█████╔╝ ██║██║     ██║     ███████╗\n╚════██║██╔═██╗ ██║██║     ██║     ╚════██║\n███████║██║  ██╗██║███████╗███████╗███████║\n╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚══════╝\n\n┌   skills experimental_sync \n│\n◇  Found 1 skill in node_modules\n│\n●  benchmark-sync from benchmark-package\n│\n│    Controlled benchmark fixture.\n\n│\n◇  Sync Summary ───────────────────────────────────────────╮\n│                                                          │\n│  benchmark-sync ← benchmark-package                      │\n│    ./.agents/skills/benchmark-sync →                     │\n│  ./node_modules/benchmark-package/skills/benchmark-sync  │\n│                                                          │\n├──────────────────────────────────────────────────────────╯\n│\n◇  Sync complete\n\n│\n◇  Synced 1 skill ───────────────────────╮\n│                                        │\n│  ✓ benchmark-sync ← benchmark-package  │\n│    ./.agents/skills/benchmark-sync     │\n│                                        │\n├────────────────────────────────────────╯\n\n│\n└  Done!  Review skills before use; they run with full agent permissions.\n\n",
+      "stderr": "",
+      "files": {
+        ".agents/skills/benchmark-sync": {
+          "link": "../../node_modules/benchmark-package/skills/benchmark-sync"
+        },
+        ".claude/skills/benchmark-sync": {
+          "link": "../../.agents/skills/benchmark-sync"
+        },
+        "node_modules/benchmark-package/package.json": {
+          "sha256": "25bf2e441b3c63964536f0e91e2a4064e256b5c66b8cb0291c3ef84a8351b61d",
+          "mode": "644",
+          "text": "{\"name\":\"benchmark-package\",\"version\":\"1.0.0\"}"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/SKILL.md": {
+          "sha256": "ebe7602881650fd637c5984808ac2efff76c0e3e3788d3d9fca05e9ef22e816f",
+          "mode": "644",
+          "text": "---\nname: benchmark-sync\ndescription: Controlled benchmark fixture.\n---\n\nDependency skill.\n"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        "package.json": {
+          "sha256": "68f155259a0d7ff1c30e35bbc67d0e79d172879c250ccd821e3536a06572b024",
+          "mode": "644",
+          "text": "{\"name\":\"benchmark-project\",\"private\":true,\"dependencies\":{\"benchmark-package\":\"1.0.0\"}}"
+        },
+        "skills-lock.json": {
+          "sha256": "84f8c23654eca9f51bf36d612d07a01b2758c892e025ea67f45aa26a8ef12f9b",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-sync\": {\n      \"source\": \"benchmark-package\",\n      \"sourceType\": \"node_modules\",\n      \"skillPath\": \"skills/benchmark-sync/SKILL.md\",\n      \"version\": \"1.0.0\",\n      \"computedHash\": \"227d768a7c07e8526643fd95e6544ec60b19faf530745cac05f79d995171b79c\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "download-json",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "add",
+        "http://127.0.0.1:34049/SKILL.md",
+        "-a",
+        "claude-code",
+        "-y",
+        "--json"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 1,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1299,
+      "stdout": "[\n  {\n    \"status\": \"failed\",\n    \"error\": \"--json is not yet supported for well-known skill sources.\"\n  }\n]\n",
+      "stderr": "\n┌   skills \n│\n│  Tip: use the --yes (-y) and --global (-g) flags to install without prompts.\n--json is not yet supported for well-known skill sources.\n",
+      "files": {
+        ".agents/skills/benchmark-sync": {
+          "link": "../../node_modules/benchmark-package/skills/benchmark-sync"
+        },
+        ".claude/skills/benchmark-sync": {
+          "link": "../../.agents/skills/benchmark-sync"
+        },
+        "node_modules/benchmark-package/package.json": {
+          "sha256": "25bf2e441b3c63964536f0e91e2a4064e256b5c66b8cb0291c3ef84a8351b61d",
+          "mode": "644",
+          "text": "{\"name\":\"benchmark-package\",\"version\":\"1.0.0\"}"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/SKILL.md": {
+          "sha256": "ebe7602881650fd637c5984808ac2efff76c0e3e3788d3d9fca05e9ef22e816f",
+          "mode": "644",
+          "text": "---\nname: benchmark-sync\ndescription: Controlled benchmark fixture.\n---\n\nDependency skill.\n"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        "package.json": {
+          "sha256": "68f155259a0d7ff1c30e35bbc67d0e79d172879c250ccd821e3536a06572b024",
+          "mode": "644",
+          "text": "{\"name\":\"benchmark-project\",\"private\":true,\"dependencies\":{\"benchmark-package\":\"1.0.0\"}}"
+        },
+        "skills-lock.json": {
+          "sha256": "84f8c23654eca9f51bf36d612d07a01b2758c892e025ea67f45aa26a8ef12f9b",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-sync\": {\n      \"source\": \"benchmark-package\",\n      \"sourceType\": \"node_modules\",\n      \"skillPath\": \"skills/benchmark-sync/SKILL.md\",\n      \"version\": \"1.0.0\",\n      \"computedHash\": \"227d768a7c07e8526643fd95e6544ec60b19faf530745cac05f79d995171b79c\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "direct-download",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "add",
+        "http://127.0.0.1:34049/SKILL.md",
+        "-a",
+        "claude-code",
+        "-y"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1528,
+      "stdout": "\n███████╗██╗  ██╗██╗██╗     ██╗     ███████╗\n██╔════╝██║ ██╔╝██║██║     ██║     ██╔════╝\n███████╗█████╔╝ ██║██║     ██║     ███████╗\n╚════██║██╔═██╗ ██║██║     ██║     ╚════██║\n███████║██║  ██╗██║███████╗███████╗███████║\n╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚══════╝\n\n┌   skills \n│\n│  Tip: use the --yes (-y) and --global (-g) flags to install without prompts.\n│\n◇  Source: http://127.0.0.1:34049/SKILL.md\n│\n◇  No well-known skills found; trying direct download...\n│\n◇  Downloaded SKILL.md file\n│\n◇  Found 1 skill\n│\n●  Skill: benchmark-download\n│\n│  Direct HTTP fixture.\n\n│\n◇  Installation Summary ────────────────╮\n│                                       │\n│  ./.agents/skills/benchmark-download  │\n│    copy → Claude Code                 │\n│                                       │\n├───────────────────────────────────────╯\n│\n◇  Installation complete\n\n│\n◇  Installed 1 skill ───────────────────────╮\n│                                           │\n│  ✓ benchmark-download (copied)            │\n│    → ./.claude/skills/benchmark-download  │\n│                                           │\n├───────────────────────────────────────────╯\n\n│\n└  Done!  Review skills before use; they run with full agent permissions.\n\n",
+      "stderr": "",
+      "files": {
+        ".agents/skills/benchmark-sync": {
+          "link": "../../node_modules/benchmark-package/skills/benchmark-sync"
+        },
+        ".claude/skills/benchmark-download/SKILL.md": {
+          "sha256": "653596b0cb156df994f124fa04c322fcc644beac0b93c17786f927dc73da73f8",
+          "mode": "644",
+          "text": "---\nname: benchmark-download\ndescription: Direct HTTP fixture.\n---\nDownloaded instruction.\n"
+        },
+        ".claude/skills/benchmark-sync": {
+          "link": "../../.agents/skills/benchmark-sync"
+        },
+        "node_modules/benchmark-package/package.json": {
+          "sha256": "25bf2e441b3c63964536f0e91e2a4064e256b5c66b8cb0291c3ef84a8351b61d",
+          "mode": "644",
+          "text": "{\"name\":\"benchmark-package\",\"version\":\"1.0.0\"}"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/SKILL.md": {
+          "sha256": "ebe7602881650fd637c5984808ac2efff76c0e3e3788d3d9fca05e9ef22e816f",
+          "mode": "644",
+          "text": "---\nname: benchmark-sync\ndescription: Controlled benchmark fixture.\n---\n\nDependency skill.\n"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        "package.json": {
+          "sha256": "68f155259a0d7ff1c30e35bbc67d0e79d172879c250ccd821e3536a06572b024",
+          "mode": "644",
+          "text": "{\"name\":\"benchmark-project\",\"private\":true,\"dependencies\":{\"benchmark-package\":\"1.0.0\"}}"
+        },
+        "skills-lock.json": {
+          "sha256": "84f8c23654eca9f51bf36d612d07a01b2758c892e025ea67f45aa26a8ef12f9b",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-sync\": {\n      \"source\": \"benchmark-package\",\n      \"sourceType\": \"node_modules\",\n      \"skillPath\": \"skills/benchmark-sync/SKILL.md\",\n      \"version\": \"1.0.0\",\n      \"computedHash\": \"227d768a7c07e8526643fd95e6544ec60b19faf530745cac05f79d995171b79c\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "archive-download",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "add",
+        "http://127.0.0.1:34049/fixture.tgz",
+        "-s",
+        "benchmark-beta",
+        "-a",
+        "claude-code",
+        "-y"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1985,
+      "stdout": "\n███████╗██╗  ██╗██╗██╗     ██╗     ███████╗\n██╔════╝██║ ██╔╝██║██║     ██║     ██╔════╝\n███████╗█████╔╝ ██║██║     ██║     ███████╗\n╚════██║██╔═██╗ ██║██║     ██║     ╚════██║\n███████║██║  ██╗██║███████╗███████╗███████║\n╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚══════╝\n\n┌   skills \n│\n│  Tip: use the --yes (-y) and --global (-g) flags to install without prompts.\n│\n◇  Source: http://127.0.0.1:34049/fixture.tgz\n│\n◒  Discovering skills from well-known endpoint◇  No well-known skills found; trying direct download...\n│\n◒  Downloading source◇  Downloaded archive\n│\n◇  Found 1 skill\n│\n●  Selected 1 skill: benchmark-beta\n\n│\n◇  Installation Summary ────────────╮\n│                                   │\n│  ./.agents/skills/benchmark-beta  │\n│    copy → Claude Code             │\n│                                   │\n├───────────────────────────────────╯\n│\n◇  Installation complete\n\n│\n◇  Installed 1 skill ───────────────────╮\n│                                       │\n│  ✓ benchmark-beta (copied)            │\n│    → ./.claude/skills/benchmark-beta  │\n│                                       │\n├───────────────────────────────────────╯\n\n│\n└  Done!  Review skills before use; they run with full agent permissions.\n\n",
+      "stderr": "",
+      "files": {
+        ".agents/skills/benchmark-sync": {
+          "link": "../../node_modules/benchmark-package/skills/benchmark-sync"
+        },
+        ".claude/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".claude/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".claude/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-download/SKILL.md": {
+          "sha256": "653596b0cb156df994f124fa04c322fcc644beac0b93c17786f927dc73da73f8",
+          "mode": "644",
+          "text": "---\nname: benchmark-download\ndescription: Direct HTTP fixture.\n---\nDownloaded instruction.\n"
+        },
+        ".claude/skills/benchmark-sync": {
+          "link": "../../.agents/skills/benchmark-sync"
+        },
+        "node_modules/benchmark-package/package.json": {
+          "sha256": "25bf2e441b3c63964536f0e91e2a4064e256b5c66b8cb0291c3ef84a8351b61d",
+          "mode": "644",
+          "text": "{\"name\":\"benchmark-package\",\"version\":\"1.0.0\"}"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/SKILL.md": {
+          "sha256": "ebe7602881650fd637c5984808ac2efff76c0e3e3788d3d9fca05e9ef22e816f",
+          "mode": "644",
+          "text": "---\nname: benchmark-sync\ndescription: Controlled benchmark fixture.\n---\n\nDependency skill.\n"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        "package.json": {
+          "sha256": "68f155259a0d7ff1c30e35bbc67d0e79d172879c250ccd821e3536a06572b024",
+          "mode": "644",
+          "text": "{\"name\":\"benchmark-project\",\"private\":true,\"dependencies\":{\"benchmark-package\":\"1.0.0\"}}"
+        },
+        "skills-lock.json": {
+          "sha256": "84f8c23654eca9f51bf36d612d07a01b2758c892e025ea67f45aa26a8ef12f9b",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-sync\": {\n      \"source\": \"benchmark-package\",\n      \"sourceType\": \"node_modules\",\n      \"skillPath\": \"skills/benchmark-sync/SKILL.md\",\n      \"version\": \"1.0.0\",\n      \"computedHash\": \"227d768a7c07e8526643fd95e6544ec60b19faf530745cac05f79d995171b79c\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "download-update",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "update",
+        "-p",
+        "-y"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1847,
+      "stdout": "Checking for skill updates…\n\nNo project skills to update.\nInstall project skills with npx skills add <package>\n\n\n",
+      "stderr": "",
+      "files": {
+        ".agents/skills/benchmark-sync": {
+          "link": "../../node_modules/benchmark-package/skills/benchmark-sync"
+        },
+        ".claude/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".claude/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".claude/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-download/SKILL.md": {
+          "sha256": "653596b0cb156df994f124fa04c322fcc644beac0b93c17786f927dc73da73f8",
+          "mode": "644",
+          "text": "---\nname: benchmark-download\ndescription: Direct HTTP fixture.\n---\nDownloaded instruction.\n"
+        },
+        ".claude/skills/benchmark-sync": {
+          "link": "../../.agents/skills/benchmark-sync"
+        },
+        "node_modules/benchmark-package/package.json": {
+          "sha256": "25bf2e441b3c63964536f0e91e2a4064e256b5c66b8cb0291c3ef84a8351b61d",
+          "mode": "644",
+          "text": "{\"name\":\"benchmark-package\",\"version\":\"1.0.0\"}"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/SKILL.md": {
+          "sha256": "ebe7602881650fd637c5984808ac2efff76c0e3e3788d3d9fca05e9ef22e816f",
+          "mode": "644",
+          "text": "---\nname: benchmark-sync\ndescription: Controlled benchmark fixture.\n---\n\nDependency skill.\n"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        "package.json": {
+          "sha256": "68f155259a0d7ff1c30e35bbc67d0e79d172879c250ccd821e3536a06572b024",
+          "mode": "644",
+          "text": "{\"name\":\"benchmark-project\",\"private\":true,\"dependencies\":{\"benchmark-package\":\"1.0.0\"}}"
+        },
+        "skills-lock.json": {
+          "sha256": "84f8c23654eca9f51bf36d612d07a01b2758c892e025ea67f45aa26a8ef12f9b",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-sync\": {\n      \"source\": \"benchmark-package\",\n      \"sourceType\": \"node_modules\",\n      \"skillPath\": \"skills/benchmark-sync/SKILL.md\",\n      \"version\": \"1.0.0\",\n      \"computedHash\": \"227d768a7c07e8526643fd95e6544ec60b19faf530745cac05f79d995171b79c\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "find-http-failure",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "find",
+        "typescript"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1326,
+      "stdout": "\n███████╗██╗  ██╗██╗██╗     ██╗     ███████╗\n██╔════╝██║ ██╔╝██║██║     ██║     ██╔════╝\n███████╗█████╔╝ ██║██║     ██║     ███████╗\n╚════██║██╔═██╗ ██║██║     ██║     ╚════██║\n███████║██║  ██╗██║███████╗███████╗███████║\n╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚══════╝\n\nNo skills found for \"typescript\"\n",
+      "stderr": "",
+      "files": {
+        ".agents/skills/benchmark-sync": {
+          "link": "../../node_modules/benchmark-package/skills/benchmark-sync"
+        },
+        ".claude/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".claude/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".claude/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-download/SKILL.md": {
+          "sha256": "653596b0cb156df994f124fa04c322fcc644beac0b93c17786f927dc73da73f8",
+          "mode": "644",
+          "text": "---\nname: benchmark-download\ndescription: Direct HTTP fixture.\n---\nDownloaded instruction.\n"
+        },
+        ".claude/skills/benchmark-sync": {
+          "link": "../../.agents/skills/benchmark-sync"
+        },
+        "node_modules/benchmark-package/package.json": {
+          "sha256": "25bf2e441b3c63964536f0e91e2a4064e256b5c66b8cb0291c3ef84a8351b61d",
+          "mode": "644",
+          "text": "{\"name\":\"benchmark-package\",\"version\":\"1.0.0\"}"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/SKILL.md": {
+          "sha256": "ebe7602881650fd637c5984808ac2efff76c0e3e3788d3d9fca05e9ef22e816f",
+          "mode": "644",
+          "text": "---\nname: benchmark-sync\ndescription: Controlled benchmark fixture.\n---\n\nDependency skill.\n"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        "package.json": {
+          "sha256": "68f155259a0d7ff1c30e35bbc67d0e79d172879c250ccd821e3536a06572b024",
+          "mode": "644",
+          "text": "{\"name\":\"benchmark-project\",\"private\":true,\"dependencies\":{\"benchmark-package\":\"1.0.0\"}}"
+        },
+        "skills-lock.json": {
+          "sha256": "84f8c23654eca9f51bf36d612d07a01b2758c892e025ea67f45aa26a8ef12f9b",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-sync\": {\n      \"source\": \"benchmark-package\",\n      \"sourceType\": \"node_modules\",\n      \"skillPath\": \"skills/benchmark-sync/SKILL.md\",\n      \"version\": \"1.0.0\",\n      \"computedHash\": \"227d768a7c07e8526643fd95e6544ec60b19faf530745cac05f79d995171b79c\"\n    }\n  }\n}\n"
+        }
+      }
+    },
+    {
+      "id": "unknown-command",
+      "command": [
+        "npx",
+        "--yes",
+        "skills@1.7.2",
+        "not-a-command"
+      ],
+      "cwd": "$WORKSPACE/project",
+      "code": 1,
+      "signal": null,
+      "timedOut": false,
+      "elapsedMs": 1491,
+      "stdout": "Unknown command: not-a-command\nRun skills --help for usage.\n",
+      "stderr": "",
+      "files": {
+        ".agents/skills/benchmark-sync": {
+          "link": "../../node_modules/benchmark-package/skills/benchmark-sync"
+        },
+        ".claude/skills/benchmark-beta/SKILL.md": {
+          "sha256": "d07c6c1854bc7daa1945fb6d617bc2e3d473654a3702429f3b2f76e05431a6c5",
+          "mode": "644",
+          "text": "---\nname: benchmark-beta\ndescription: Controlled benchmark fixture.\n---\n\nSecond skill.\n"
+        },
+        ".claude/skills/benchmark-beta/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        ".claude/skills/benchmark-beta/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        ".claude/skills/benchmark-download/SKILL.md": {
+          "sha256": "653596b0cb156df994f124fa04c322fcc644beac0b93c17786f927dc73da73f8",
+          "mode": "644",
+          "text": "---\nname: benchmark-download\ndescription: Direct HTTP fixture.\n---\nDownloaded instruction.\n"
+        },
+        ".claude/skills/benchmark-sync": {
+          "link": "../../.agents/skills/benchmark-sync"
+        },
+        "node_modules/benchmark-package/package.json": {
+          "sha256": "25bf2e441b3c63964536f0e91e2a4064e256b5c66b8cb0291c3ef84a8351b61d",
+          "mode": "644",
+          "text": "{\"name\":\"benchmark-package\",\"version\":\"1.0.0\"}"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/SKILL.md": {
+          "sha256": "ebe7602881650fd637c5984808ac2efff76c0e3e3788d3d9fca05e9ef22e816f",
+          "mode": "644",
+          "text": "---\nname: benchmark-sync\ndescription: Controlled benchmark fixture.\n---\n\nDependency skill.\n"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/references/note.txt": {
+          "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+          "mode": "644",
+          "text": "opaque companion\n"
+        },
+        "node_modules/benchmark-package/skills/benchmark-sync/scripts/sample.sh": {
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+          "mode": "755",
+          "text": "#!/bin/sh\nexit 0\n"
+        },
+        "package.json": {
+          "sha256": "68f155259a0d7ff1c30e35bbc67d0e79d172879c250ccd821e3536a06572b024",
+          "mode": "644",
+          "text": "{\"name\":\"benchmark-project\",\"private\":true,\"dependencies\":{\"benchmark-package\":\"1.0.0\"}}"
+        },
+        "skills-lock.json": {
+          "sha256": "84f8c23654eca9f51bf36d612d07a01b2758c892e025ea67f45aa26a8ef12f9b",
+          "mode": "644",
+          "text": "{\n  \"version\": 1,\n  \"skills\": {\n    \"benchmark-sync\": {\n      \"source\": \"benchmark-package\",\n      \"sourceType\": \"node_modules\",\n      \"skillPath\": \"skills/benchmark-sync/SKILL.md\",\n      \"version\": \"1.0.0\",\n      \"computedHash\": \"227d768a7c07e8526643fd95e6544ec60b19faf530745cac05f79d995171b79c\"\n    }\n  }\n}\n"
+        }
+      }
+    }
+  ],
+  "searchApiProbe": {
+    "status": 200,
+    "url": "https://skills.sh/api/search?q=typescript&limit=20",
+    "body": "{\"query\":\"typescript\",\"searchType\":\"fuzzy\",\"searchVersion\":\"algolia\",\"skills\":[{\"id\":\"wshobson/agents/typescript-advanced-types\",\"source\":\"wshobson/agents\",\"skillId\":\"typescript-advanced-types\",\"name\":\"typescript-advanced-types\",\"installs\":85548},{\"id\":\"github/awesome-copilot/javascript-typescript-jest\",\"source\":\"github/awesome-copilot\",\"skillId\":\"javascript-typescript-jest\",\"name\":\"javascript-typescript-jest\",\"installs\":12801},{\"id\":\"github/awesome-copilot/typescript-mcp-server-generator\",\"sour"
+  },
+  "globalAfterAdd": {
+    ".skill-lock.json": {
+      "sha256": "3bbbc8682ef12fad2b448fbdbdc5cda504f1eb49c103b6cec2ee9edad95295ab",
+      "mode": "644",
+      "text": "{\n  \"version\": 3,\n  \"skills\": {\n    \"benchmark-alpha\": {\n      \"source\": \"$WORKSPACE/source\",\n      \"sourceType\": \"local\",\n      \"sourceUrl\": \"$WORKSPACE/source\",\n      \"skillFolderHash\": \"90adbd821b0f7de9d2eed46888a86163fd3b573079130a1372c602181eba3a27\",\n      \"installedAt\": \"2026-10-10T12:18:14.062Z\",\n      \"updatedAt\": \"2026-10-10T12:18:14.062Z\"\n    }\n  },\n  \"dismissed\": {}\n}"
+    }
+  },
+  "globalClaudeAfterAdd": {
+    "SKILL.md": {
+      "sha256": "fba4bbff8f14f2d872fc1c6711e2a7f9a60e8f0dc5d0adcc6af7cbdc1443956b",
+      "mode": "644",
+      "text": "---\nname: benchmark-alpha\ndescription: Changed fixture.\n---\nChanged source.\n"
+    },
+    "references/note.txt": {
+      "sha256": "37275d677500aed7ab53b52c7bbbf926a0a3003ec47055240e747b4187a2cff7",
+      "mode": "644",
+      "text": "opaque companion\n"
+    },
+    "scripts/sample.sh": {
+      "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb",
+      "mode": "755",
+      "text": "#!/bin/sh\nexit 0\n"
+    }
+  },
+  "globalAfterRemove": {
+    ".skill-lock.json": {
+      "sha256": "c758df0ec3336eecf0903b45708ed2dbacb1829d358cf95845eb1639b0996807",
+      "mode": "644",
+      "text": "{\n  \"version\": 3,\n  \"skills\": {},\n  \"dismissed\": {}\n}"
+    }
+  }
+}
