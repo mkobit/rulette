@@ -4,8 +4,16 @@
 
 Rulette SHALL automatically detect Agent Plugins v1.0.0 packages and parse plugin manifests, skills, MCP configurations, and client extensions into the compilation graph.
 Rulette SHALL validate that the root manifest `$schema` conforms to the v1.0.0 specification URI.
-Unknown top-level fields in `plugin.json` SHALL be recorded as non-fatal warning diagnostics without failing package compilation.
-Non-conforming skill directories SHALL be skipped with a warning diagnostic without invalidating conforming sibling skills.
+
+#### Scenario: Preserving compilation with unknown manifest fields
+
+- **WHEN** an Agent Plugins manifest contains unknown top-level fields
+- **THEN** Unknown top-level fields in `plugin.json` SHALL be recorded as non-fatal warning diagnostics without failing package compilation.
+
+#### Scenario: Skipping non-conforming skill directories
+
+- **WHEN** an Agent Plugins package contains non-conforming skill directories
+- **THEN** Non-conforming skill directories SHALL be skipped with a warning diagnostic without invalidating conforming sibling skills.
 
 #### Scenario: Parsing valid Agent Plugin package
 

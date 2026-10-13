@@ -29,11 +29,16 @@ If the file extension does not match any of the four known extensions, Rulette S
 
 ### Requirement: Transform-config schema
 
-A transform-config file SHALL declare three top-level keys: `inputs` (a list of input paths), `pipeline` (an ordered list of transformation steps), and `outputs` (a list of output destinations). All three keys SHALL be optional and SHALL default to an empty list when omitted.
-Each `pipeline` entry SHALL be a single-key object naming one of `filter`, `exclude`, `rename`, or `set`, with the same expression syntax as the corresponding CLI flag.
-Each `outputs` entry SHALL be an object with a required `target` (an output format token) and `path`, and optional `scope`, `entities`, `drop`, and `strict` fields.
-An `outputs` entry's `path` value of `"-"` SHALL mean standard output, identical to the CLI's `-o <format>:-` convention, rather than a literal path.
+A transform-config file SHALL declare three top-level keys: `inputs` (a list of input paths), `pipeline` (an ordered list of transformation steps), and `outputs` (a list of output destinations).
+All three keys SHALL be optional and SHALL default to an empty list when omitted.
 Rulette SHALL reject a transform-config file containing any top-level key other than `inputs`, `pipeline`, or `outputs` with a parse error naming the unrecognized key.
+
+#### Scenario: Validating pipeline and output entries
+
+- **WHEN** Rulette parses a transform-config file
+- **THEN** Each `pipeline` entry SHALL be a single-key object naming one of `filter`, `exclude`, `rename`, or `set`, with the same expression syntax as the corresponding CLI flag.
+- **AND** Each `outputs` entry SHALL be an object with a required `target` (an output format token) and `path`, and optional `scope`, `entities`, `drop`, and `strict` fields.
+- **AND** An `outputs` entry's `path` value of `"-"` SHALL mean standard output, identical to the CLI's `-o <format>:-` convention, rather than a literal path.
 
 #### Scenario: Ordered pipeline steps apply in file order
 
@@ -53,11 +58,19 @@ Rulette SHALL reject a transform-config file containing any top-level key other 
 
 ### Requirement: Per-output entity and strictness scoping
 
-Each `outputs` entry's `entities` field, if present, SHALL act as an allow-list of IR entity kinds (using the same kebab-case kind tokens as `coverage-reporting`'s capability matrix): only entities of a listed kind SHALL be considered for that output.
-Each `outputs` entry's `drop` field, if present, SHALL act as a deny-list applied after `entities`: entities of a listed kind SHALL be excluded from that output even if `entities` would otherwise include them.
-If both `entities` and `drop` are omitted for an output entry, that output SHALL receive every entity kind its target emitter can represent.
-Each `outputs` entry's `strict` field, if present, SHALL override the invocation's global `--strict` flag for that output only; if absent, that output SHALL use the invocation's global `--strict` value.
-These fields SHALL be evaluated independently per output entry: two output entries in the same invocation with different `entities`/`drop`/`strict` values SHALL each receive their own filtered view of the input entities.
+The `entities`, `drop`, and `strict` fields SHALL be evaluated independently per output entry: two output entries in the same invocation with different `entities`/`drop`/`strict` values SHALL each receive their own filtered view of the input entities.
+
+#### Scenario: Selecting entity kinds for each output
+
+- **WHEN** Rulette evaluates the entity selection fields of any output entry
+- **THEN** Each `outputs` entry's `entities` field, if present, SHALL act as an allow-list of IR entity kinds (using the same kebab-case kind tokens as `coverage-reporting`'s capability matrix): only entities of a listed kind SHALL be considered for that output.
+- **AND** Each `outputs` entry's `drop` field, if present, SHALL act as a deny-list applied after `entities`: entities of a listed kind SHALL be excluded from that output even if `entities` would otherwise include them.
+- **AND** If both `entities` and `drop` are omitted for an output entry, that output SHALL receive every entity kind its target emitter can represent.
+
+#### Scenario: Resolving strictness for each output
+
+- **WHEN** Rulette evaluates any output entry
+- **THEN** Each `outputs` entry's `strict` field, if present, SHALL override the invocation's global `--strict` flag for that output only; if absent, that output SHALL use the invocation's global `--strict` value.
 
 #### Scenario: Coarse allow-list restricts an output to specific entity kinds
 
@@ -116,10 +129,18 @@ Behavioral differences between scope tiers other than `project` are not defined 
 ### Requirement: Scaffold a transform-config from on-disk inputs
 
 The `transform` command SHALL support `--to transform-config` as an output format, which, combined with `--out <path>`, SHALL write a transform-config file (in the syntax implied by `<path>`'s extension, defaulting to plain JSON content when writing to standard output or to an unrecognized extension; scaffold output SHALL NOT contain generated comments regardless of extension) whose `inputs` reproduce the invocation's resolved input paths exactly, unmodified.
-For each of the invocation's resolved input paths — the literal paths given as positional arguments or via a config's `inputs`, not a recursive expansion of directory contents — Rulette SHALL infer a target output format from the path's own naming convention, checked against an ordered, most-specific-first table of known conventions for the targets this capability currently recognizes (`codex`, `claude`, `cursor-mdc`, `cursor-mcp`); a path matching no recognized target is out of scope for inference (see the corresponding scenario below).
-A matched input SHALL contribute one `outputs` entry using that target's default path, deduplicated so that multiple inputs matching the same target contribute only one `outputs` entry, regardless of how many distinct input paths matched it.
-An input path matching no known convention SHALL still appear in the generated `inputs` list but SHALL NOT contribute an `outputs` entry, and Rulette SHALL print a warning naming the unmatched path.
-This capability's target recognition is a strict subset of `OutputFormat`: it does not attempt to infer `windsurf`, `copilot`, `gemini`, or `agent-skills` targets from path conventions, consistent with those targets being deferred by the source design (`docs/2026-08-18-cli-ux-design.md` "Scope of tools"); a path belonging to one of them is treated the same as any other unmatched path.
+
+#### Scenario: Inferring and deduplicating recognized targets
+
+- **WHEN** Rulette scaffolds a transform-config from the invocation's resolved input paths
+- **THEN** For each of the invocation's resolved input paths — the literal paths given as positional arguments or via a config's `inputs`, not a recursive expansion of directory contents — Rulette SHALL infer a target output format from the path's own naming convention, checked against an ordered, most-specific-first table of known conventions for the targets this capability currently recognizes (`codex`, `claude`, `cursor-mdc`, `cursor-mcp`); a path matching no recognized target is out of scope for inference (see the corresponding scenario below).
+- **AND** A matched input SHALL contribute one `outputs` entry using that target's default path, deduplicated so that multiple inputs matching the same target contribute only one `outputs` entry, regardless of how many distinct input paths matched it.
+
+#### Scenario: Retaining unmatched and deferred target paths
+
+- **WHEN** Rulette scaffolds a transform-config from the invocation's resolved input paths
+- **THEN** An input path matching no known convention SHALL still appear in the generated `inputs` list but SHALL NOT contribute an `outputs` entry, and Rulette SHALL print a warning naming the unmatched path.
+- **AND** This capability's target recognition is a strict subset of `OutputFormat`: it does not attempt to infer `windsurf`, `copilot`, `gemini`, or `agent-skills` targets from path conventions, consistent with those targets being deferred by the source design (`docs/2026-08-18-cli-ux-design.md` "Scope of tools"); a path belonging to one of them is treated the same as any other unmatched path.
 
 #### Scenario: Scaffolding from a known multi-tool repo layout
 

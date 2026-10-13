@@ -54,11 +54,19 @@ A rule logical name SHALL be a non-empty UTF-8 frontend-normalized native rule n
 ### Requirement: Package-aware graph representation
 
 Each graph package SHALL be the smallest native materialization unit and SHALL contain exactly one portable semantic item or one unsupported native unit.
-A standalone rule file SHALL produce one rule package.
-A native skill directory SHALL produce one skill package.
-A native directory containing multiple rules or skills SHALL produce one package for each semantic item rather than a package with multiple semantic items.
-Each supported package SHALL have source provenance, a normalized relative package root, exactly one UTF-8 Markdown primary-instruction resource, and an ordered resource map.
-A rule or skill semantic item SHALL reference its primary instruction by resource path instead of duplicating instruction text.
+
+#### Scenario: Grouping native semantic items
+
+- **WHEN** a frontend groups native files into graph packages
+- **THEN** A standalone rule file SHALL produce one rule package.
+- **AND** A native skill directory SHALL produce one skill package.
+- **AND** A native directory containing multiple rules or skills SHALL produce one package for each semantic item rather than a package with multiple semantic items.
+
+#### Scenario: Representing supported package resources
+
+- **WHEN** any supported rule or skill package is constructed
+- **THEN** Each supported package SHALL have source provenance, a normalized relative package root, exactly one UTF-8 Markdown primary-instruction resource, and an ordered resource map.
+- **AND** A rule or skill semantic item SHALL reference its primary instruction by resource path instead of duplicating instruction text.
 
 #### Scenario: Separating two rules in one native directory
 
@@ -75,11 +83,23 @@ A rule or skill semantic item SHALL reference its primary instruction by resourc
 
 Every graph resource SHALL have a non-empty slash-separated `ResourcePath` relative to its package.
 Rulette SHALL reject a resource path containing an empty, `.` or `..` component, a backslash, a NUL or control character, an absolute or platform-prefixed spelling, or a normalized collision within its package.
-Each resource SHALL preserve exact text or byte content, a `primary-instruction` or `opaque` role, and executable-bit metadata.
-Primary instructions SHALL be UTF-8 Markdown and opaque resources MAY contain arbitrary bytes.
-Graph JSON and TOML SHALL encode text resources as UTF-8 strings and byte resources as canonical unwrapped RFC 4648 base64.
-The graph SHALL record content-safe source provenance containing the recognized frontend, a normalized caller-supplied relative input label or `stdin`, and an archive member path when applicable.
-When the caller supplied input root is absolute, serialized provenance SHALL use `input_` followed by the SHA-256 digest of its canonical root instead of an absolute host path.
+
+#### Scenario: Representing graph resource content
+
+- **WHEN** any graph resource is represented
+- **THEN** Each resource SHALL preserve exact text or byte content, a `primary-instruction` or `opaque` role, and executable-bit metadata.
+- **AND** Primary instructions SHALL be UTF-8 Markdown and opaque resources MAY contain arbitrary bytes.
+
+#### Scenario: Encoding graph resources for interchange
+
+- **WHEN** graph resources are serialized as JSON or TOML
+- **THEN** Graph JSON and TOML SHALL encode text resources as UTF-8 strings and byte resources as canonical unwrapped RFC 4648 base64.
+
+#### Scenario: Recording content-safe provenance
+
+- **WHEN** any compilation graph is constructed
+- **THEN** The graph SHALL record content-safe source provenance containing the recognized frontend, a normalized caller-supplied relative input label or `stdin`, and an archive member path when applicable.
+- **AND** When the caller supplied input root is absolute, serialized provenance SHALL use `input_` followed by the SHA-256 digest of its canonical root instead of an absolute host path.
 
 #### Scenario: Rejecting a resource that escapes a package
 
@@ -94,11 +114,23 @@ When the caller supplied input root is absolute, serialized provenance SHALL use
 ### Requirement: Safe observation discovery
 
 The input layer SHALL provide frontends raw observations containing bytes, normalized source-relative paths, executable metadata when available, source provenance, and an origin kind of filesystem, standard input, tar, or gzip-compressed tar.
-One invocation SHALL accept at most 10,000 observations, 32 MiB for one resource, and 256 MiB of total resource bytes.
-Directory discovery SHALL reject symlinks before reading content.
-Archive discovery SHALL reject every non-regular entry, including symbolic-link and hard-link entries, duplicate normalized member paths, and unsafe GNU or PAX path overrides.
-Filesystem hard links SHALL be copied as ordinary bytes and SHALL not preserve link identity.
 Malformed input and safety-invariant failures SHALL be hard errors that no loss policy can relax.
+
+#### Scenario: Enforcing invocation resource budgets
+
+- **WHEN** input discovery runs for any invocation
+- **THEN** One invocation SHALL accept at most 10,000 observations, 32 MiB for one resource, and 256 MiB of total resource bytes.
+
+#### Scenario: Discovering filesystem resources safely
+
+- **WHEN** any input resource is discovered from the filesystem
+- **THEN** Directory discovery SHALL reject symlinks before reading content.
+- **AND** Filesystem hard links SHALL be copied as ordinary bytes and SHALL not preserve link identity.
+
+#### Scenario: Discovering archive resources safely
+
+- **WHEN** resources are discovered from any tar or gzip-compressed tar archive
+- **THEN** Archive discovery SHALL reject every non-regular entry, including symbolic-link and hard-link entries, duplicate normalized member paths, and unsafe GNU or PAX path overrides.
 
 #### Scenario: Rejecting an archive symbolic link
 
@@ -113,9 +145,17 @@ Malformed input and safety-invariant failures SHALL be hard errors that no loss 
 ### Requirement: Explicit unsupported-semantic representation
 
 Frontends SHALL classify every recognized observation as a supported semantic package, retained opaque package resource, unsupported semantic package, unrecognized-file warning, or fatal malformed input.
-Agents, hooks, MCP servers, permissions, and other unsupported native semantic units SHALL be represented as opaque native package content with a structured unsupported-semantic diagnostic.
-An unrecognized file outside a recognized package SHALL produce a warning and SHALL not be added to the graph.
 No frontend SHALL silently discard an observation after recognizing its enclosing package.
+
+#### Scenario: Representing unsupported native semantic units
+
+- **WHEN** a frontend recognizes any unsupported native semantic unit
+- **THEN** Agents, hooks, MCP servers, permissions, and other unsupported native semantic units SHALL be represented as opaque native package content with a structured unsupported-semantic diagnostic.
+
+#### Scenario: Warning about files outside recognized packages
+
+- **WHEN** a frontend encounters an unrecognized file outside a recognized package
+- **THEN** An unrecognized file outside a recognized package SHALL produce a warning and SHALL not be added to the graph.
 
 #### Scenario: Unsupported native agent is not made portable
 
@@ -126,13 +166,29 @@ No frontend SHALL silently discard an observation after recognizing its enclosin
 ### Requirement: Deterministic capability-aware lowering
 
 Each target backend SHALL lower a selected graph into a deterministic typed lowering plan without writing files.
-The backend SHALL classify every selected rule, skill, resource, and unsupported semantic as `supported`, `lossy`, or `dropped` with a stable reason.
-The compiler SHALL aggregate the worst classification for each selected graph package and target before staging or publication.
-Two selected graph items that produce the same target artifact class and normalized native artifact path SHALL cause a hard collision.
-A backend SHALL report loss when it cannot preserve a selected resource's executable bit.
-A target without a native skill-package concept MAY lower a skill's primary instruction as a rule only under the explicit lossy policy and SHALL classify every unrepresentable opaque resource as dropped.
 Opaque resource emission SHALL be allowed only when the backend explicitly supports the originating frontend's package shape.
 Cross-domain opaque resource lowering SHALL always be classified as dropped with source provenance.
+
+#### Scenario: Classifying every selected package and resource
+
+- **WHEN** a selected graph is lowered for any target
+- **THEN** The backend SHALL classify every selected rule, skill, resource, and unsupported semantic as `supported`, `lossy`, or `dropped` with a stable reason.
+- **AND** The compiler SHALL aggregate the worst classification for each selected graph package and target before staging or publication.
+
+#### Scenario: Rejecting colliding target artifacts
+
+- **WHEN** selected graph items produce target artifacts
+- **THEN** Two selected graph items that produce the same target artifact class and normalized native artifact path SHALL cause a hard collision.
+
+#### Scenario: Reporting executable-bit loss
+
+- **WHEN** a selected resource is lowered for any target
+- **THEN** A backend SHALL report loss when it cannot preserve a selected resource's executable bit.
+
+#### Scenario: Lowering skills for a target without native skill packages
+
+- **WHEN** a selected skill is lowered for a target without a native skill-package concept
+- **THEN** A target without a native skill-package concept MAY lower a skill's primary instruction as a rule only under the explicit lossy policy and SHALL classify every unrepresentable opaque resource as dropped.
 
 #### Scenario: Strict skill lowering to a rule-only target
 

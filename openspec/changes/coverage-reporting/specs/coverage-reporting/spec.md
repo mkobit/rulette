@@ -2,13 +2,21 @@
 
 ### Requirement: All-targets capability matrix reporting
 
-Rulette SHALL provide a mechanism to compute a capability matrix across every registered output target in a single invocation. For each entity kind present in the input IR, and for each registered target, the matrix SHALL report one of three statuses:
+Rulette SHALL provide a mechanism to compute a capability matrix across every registered output target in a single invocation.
+
+#### Scenario: Defining capability status for every matrix cell
+
+- **WHEN** Rulette computes a capability matrix for the input IR
+- **THEN** For each entity kind present in the input IR, and for each registered target, the matrix SHALL report one of three statuses:
 
 - **Dropped**: at least one entity of that kind contributes zero bytes to any file the target emitter produces.
 - **Lossy**: no entity of that kind is Dropped, but at least one entity of that kind has a field or metadata item the target emitter does not carry over.
 - **Supported**: every entity of that kind is fully represented in the target's output with no detected field loss.
 
-When an input document contains multiple entities of the same kind, the reported status for that `(target, entity kind)` pair SHALL be the worst status across all instances of that kind (Dropped outranks Lossy outranks Supported).
+#### Scenario: Aggregating status across every instance
+
+- **WHEN** an input document contains multiple entities of the same kind
+- **THEN** When an input document contains multiple entities of the same kind, the reported status for that `(target, entity kind)` pair SHALL be the worst status across all instances of that kind (Dropped outranks Lossy outranks Supported).
 
 #### Scenario: Generating a full coverage matrix
 
