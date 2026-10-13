@@ -3,7 +3,11 @@
 ### Requirement: Config-file input composition with CLI positional inputs
 
 The `transform` command SHALL treat a transform-config file's `inputs` and the CLI's positional input arguments as mutually exclusive when both are non-empty: if `--config <path>` is given, the loaded config declares a non-empty `inputs`, and the CLI invocation also passes at least one positional input, Rulette SHALL exit with a non-zero exit code and a usage error rather than silently preferring one source.
-If the loaded config's `inputs` is empty, the CLI's positional inputs (if any) SHALL be used; if both are empty, Rulette SHALL default to reading standard input, matching the command's behavior with no `--config` at all.
+
+#### Scenario: Resolving empty config and positional input lists
+
+- **WHEN** the loaded config's `inputs` is empty
+- **THEN** If the loaded config's `inputs` is empty, the CLI's positional inputs (if any) SHALL be used; if both are empty, Rulette SHALL default to reading standard input, matching the command's behavior with no `--config` at all.
 
 #### Scenario: Config inputs and CLI positional inputs both set is a usage error
 
@@ -25,8 +29,13 @@ If the loaded config's `inputs` is empty, the CLI's positional inputs (if any) S
 
 ### Requirement: Config-file pipeline and output composition with CLI flags
 
-When `--config <path>` is given alongside CLI pipeline flags (`--filter`, `--exclude`, `--rename`, `--set`), Rulette SHALL run the config's `pipeline` steps first, in the file's order, followed by any CLI pipeline flags, in the fixed order filter, exclude, rename, set. CLI pipeline flags SHALL compose with (append to), not replace, the config's `pipeline`.
-When `--config <path>` is given alongside CLI output flags (`-o`/`--out`, `--to`), and at least one CLI output flag is present, the CLI-specified outputs SHALL entirely replace the config's `outputs`; the config's `outputs` SHALL only be used when no CLI output flag is given.
+When `--config <path>` is given alongside CLI pipeline flags (`--filter`, `--exclude`, `--rename`, `--set`), Rulette SHALL run the config's `pipeline` steps first, in the file's order, followed by any CLI pipeline flags, in the fixed order filter, exclude, rename, set.
+CLI pipeline flags SHALL compose with (append to), not replace, the config's `pipeline`.
+
+#### Scenario: Selecting config or CLI outputs
+
+- **WHEN** Rulette resolves output destinations for an invocation with `--config <path>`
+- **THEN** When `--config <path>` is given alongside CLI output flags (`-o`/`--out`, `--to`), and at least one CLI output flag is present, the CLI-specified outputs SHALL entirely replace the config's `outputs`; the config's `outputs` SHALL only be used when no CLI output flag is given.
 
 #### Scenario: CLI filter flag appends to a config's pipeline
 

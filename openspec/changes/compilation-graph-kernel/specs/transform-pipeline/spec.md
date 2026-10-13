@@ -62,10 +62,18 @@ Native destination transaction semantics and staging layout are defined by the s
 ### Requirement: Strict loss policy for transform
 
 Transform compilation SHALL fail before staging or publication when any selected graph package is classified as `lossy` or `dropped` for any selected target.
-`--allow-lossy` SHALL be the only v0.1 escape hatch for such representational loss.
-When `--allow-lossy` is present, Rulette SHALL retain structured loss diagnostics in the compilation result and staged publication plan.
 `--allow-lossy` SHALL not relax unsafe paths, malformed metadata, identity collisions, unsupported input syntax, or publication authorization failures.
-The transform command SHALL not accept `--strict` because strict loss handling is its default behavior.
+
+#### Scenario: Enforcing the transform loss-policy interface
+
+- **WHEN** the v0.1 transform command is invoked
+- **THEN** `--allow-lossy` SHALL be the only v0.1 escape hatch for such representational loss.
+- **AND** The transform command SHALL not accept `--strict` because strict loss handling is its default behavior.
+
+#### Scenario: Retaining permitted loss findings in publication plans
+
+- **WHEN** the transform command is invoked with `--allow-lossy`
+- **THEN** When `--allow-lossy` is present, Rulette SHALL retain structured loss diagnostics in the compilation result and staged publication plan.
 
 #### Scenario: Loss blocks strict transformation
 

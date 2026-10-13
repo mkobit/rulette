@@ -46,10 +46,18 @@ When inspect targets a format, it SHALL report every `supported`, `lossy`, or `d
 ### Requirement: Native frontend conformance
 
 Each core frontend SHALL convert native files into validated graph packages without embedding native destination paths in the graph.
-Each frontend SHALL preserve recognized primary instructions, portable rule or skill semantics, source provenance, retained opaque resource bytes, normalized resource paths, and executable-bit metadata.
-Each frontend SHALL produce an unsupported-semantic diagnostic instead of a portable entity for agents, hooks, MCP servers, permissions, and other unsupported native semantics.
-Each frontend SHALL preserve an unknown native frontmatter or configuration field only in a namespaced frontend payload attached to its owning package or semantic item.
-That payload SHALL not change the portable rule or skill meaning.
+
+#### Scenario: Preserving recognized frontend content
+
+- **WHEN** any core frontend converts native files into graph packages
+- **THEN** Each frontend SHALL preserve recognized primary instructions, portable rule or skill semantics, source provenance, retained opaque resource bytes, normalized resource paths, and executable-bit metadata.
+- **AND** Each frontend SHALL produce an unsupported-semantic diagnostic instead of a portable entity for agents, hooks, MCP servers, permissions, and other unsupported native semantics.
+
+#### Scenario: Retaining unknown native metadata in a frontend payload
+
+- **WHEN** a core frontend encounters an unknown native frontmatter or configuration field
+- **THEN** Each frontend SHALL preserve an unknown native frontmatter or configuration field only in a namespaced frontend payload attached to its owning package or semantic item.
+- **AND** That payload SHALL not change the portable rule or skill meaning.
 
 #### Scenario: Retaining an opaque same-domain package resource
 
@@ -60,9 +68,13 @@ That payload SHALL not change the portable rule or skill meaning.
 ### Requirement: Deterministic backend conformance
 
 Each core backend SHALL lower selected graph packages deterministically to typed native artifacts without writing files.
-Each backend SHALL return a capability result for every selected package and resource before publication.
-Each backend SHALL report a loss instead of inventing a target layout for an unrepresentable package resource or semantic item.
 Backends SHALL not use network access, initialization, local state, automatic configuration discovery, or caller filesystem paths during lowering.
+
+#### Scenario: Reporting capability results before publication
+
+- **WHEN** a core backend lowers any selected package and resource
+- **THEN** Each backend SHALL return a capability result for every selected package and resource before publication.
+- **AND** Each backend SHALL report a loss instead of inventing a target layout for an unrepresentable package resource or semantic item.
 
 #### Scenario: Repeated core backend lowering
 

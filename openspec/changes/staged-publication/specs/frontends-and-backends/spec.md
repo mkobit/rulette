@@ -2,11 +2,20 @@
 
 ### Requirement: Typed native artifact lowering
 
-For every native target requested by `transform --target <format>@<scope>`, the backend SHALL lower selected graph packages into typed `NativeArtifact` values before any stage or destination write.
-A `NativeArtifact` SHALL contain only the target identifier, mapping-version identifier, artifact class, normalized native artifact path, bytes, executable-bit metadata, and structured capability findings.
-A backend SHALL NOT return an absolute destination path, a root path, an environment-expanded path, a write permission, or a generic unchecked filesystem path.
-The publication library SHALL validate each artifact against the backend's compiled-in mapping version before it derives a destination.
-The backend SHALL produce deterministic artifact bytes and paths for the same graph, target, mapping version, and scope inputs.
+Every backend SHALL lower native targets through the following typed artifact contract, mapping validation, and determinism guarantees.
+
+#### Scenario: Native lowering returns only typed artifact data
+
+- **WHEN** any backend lowers native targets requested by a transform invocation
+- **THEN** For every native target requested by `transform --target <format>@<scope>`, the backend SHALL lower selected graph packages into typed `NativeArtifact` values before any stage or destination write.
+- **AND** A `NativeArtifact` SHALL contain only the target identifier, mapping-version identifier, artifact class, normalized native artifact path, bytes, executable-bit metadata, and structured capability findings.
+- **AND** A backend SHALL NOT return an absolute destination path, a root path, an environment-expanded path, a write permission, or a generic unchecked filesystem path.
+
+#### Scenario: Typed artifacts are validated and deterministically generated
+
+- **WHEN** any backend generates an artifact or the publication library derives its destination
+- **THEN** The publication library SHALL validate each artifact against the backend's compiled-in mapping version before it derives a destination.
+- **AND** The backend SHALL produce deterministic artifact bytes and paths for the same graph, target, mapping version, and scope inputs.
 
 #### Scenario: A backend cannot select an arbitrary destination
 
@@ -21,11 +30,16 @@ The backend SHALL produce deterministic artifact bytes and paths for the same gr
 
 ### Requirement: Verified target scope mapping registry
 
-Each target backend SHALL expose a versioned registry of supported native artifact classes and logical-scope mappings.
-Every core target backend SHALL expose a documented project mapping.
-A user mapping SHALL be exposed only when its root and layout are verified against primary vendor documentation and covered by conformance fixtures.
-Backends SHALL expose no v0.1 mapping for local-project, enterprise, managed, system, or arbitrary absolute scopes.
-The publication layer SHALL reject a serialized mapping version that is not supported by the running backend.
+Target backends SHALL expose only the following versioned and verified native artifact and logical-scope mappings.
+
+#### Scenario: Registry mappings are versioned verified and restricted
+
+- **WHEN** any Rulette invocation runs with a target backend
+- **THEN** Each target backend SHALL expose a versioned registry of supported native artifact classes and logical-scope mappings.
+- **AND** Every core target backend SHALL expose a documented project mapping.
+- **AND** A user mapping SHALL be exposed only when its root and layout are verified against primary vendor documentation and covered by conformance fixtures.
+- **AND** Backends SHALL expose no v0.1 mapping for local-project, enterprise, managed, system, or arbitrary absolute scopes.
+- **AND** The publication layer SHALL reject a serialized mapping version that is not supported by the running backend.
 
 #### Scenario: Project mapping exists for a core target
 
@@ -40,12 +54,21 @@ The publication layer SHALL reject a serialized mapping version that is not supp
 
 ### Requirement: Authoritative loss findings for native lowering
 
-Backends SHALL report structured capability findings for every selected graph package during native lowering.
-Each finding SHALL include a stable finding identifier, package identity, target, severity, reason code, and human-readable reason.
-When a finding corresponds to a native artifact, it SHALL also include that artifact entry identifier.
-Staged compilation SHALL fail on `lossy` or `dropped` findings unless the caller explicitly supplies `--allow-lossy`.
-When `--allow-lossy` permits staging, the resulting plan SHALL record each accepted finding.
-`inspect --coverage` SHALL report the same backend capability classifications without creating a stage or publishing a destination.
+Native lowering and coverage inspection SHALL use the following structured capability findings and explicit accepted-loss rules.
+
+#### Scenario: Native lowering reports structured package and artifact findings
+
+- **WHEN** any backend lowers a selected graph package
+- **THEN** Backends SHALL report structured capability findings for every selected graph package during native lowering.
+- **AND** Each finding SHALL include a stable finding identifier, package identity, target, severity, reason code, and human-readable reason.
+- **AND** When a finding corresponds to a native artifact, it SHALL also include that artifact entry identifier.
+
+#### Scenario: Staging and coverage inspection enforce authoritative loss findings
+
+- **WHEN** any staged compilation or coverage inspection evaluates target capability findings
+- **THEN** Staged compilation SHALL fail on `lossy` or `dropped` findings unless the caller explicitly supplies `--allow-lossy`.
+- **AND** When `--allow-lossy` permits staging, the resulting plan SHALL record each accepted finding.
+- **AND** `inspect --coverage` SHALL report the same backend capability classifications without creating a stage or publishing a destination.
 
 #### Scenario: Loss blocks staging by default
 

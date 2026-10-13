@@ -2,11 +2,20 @@
 
 ### Requirement: Stage and apply publication lifecycle
 
-The `transform` command SHALL keep a single top-level source-to-sink lifecycle while separating compilation from live native publication.
-`transform <inputs> --target <format>@<scope> --stage <directory>` SHALL compile and stage native artifacts without publishing them to a live harness location.
-`transform --apply <plan> --expect-plan-sha256 <digest>` SHALL be the only transform mode that may publish staged native artifacts to a live destination.
-Graph output to standard output SHALL remain available for non-native pipeline composition.
-Native layouts SHALL NOT be published to standard output as an alternative to stage or apply.
+The transform lifecycle SHALL separate compilation from live native publication under the following mode and output guarantees.
+
+#### Scenario: Transform modes separate staging from authorized publication
+
+- **WHEN** any transform invocation compiles or publishes native artifacts
+- **THEN** The `transform` command SHALL keep a single top-level source-to-sink lifecycle while separating compilation from live native publication.
+- **AND** `transform <inputs> --target <format>@<scope> --stage <directory>` SHALL compile and stage native artifacts without publishing them to a live harness location.
+- **AND** `transform --apply <plan> --expect-plan-sha256 <digest>` SHALL be the only transform mode that may publish staged native artifacts to a live destination.
+
+#### Scenario: Standard output supports graph composition only
+
+- **WHEN** any transform invocation selects standard output
+- **THEN** Graph output to standard output SHALL remain available for non-native pipeline composition.
+- **AND** Native layouts SHALL NOT be published to standard output as an alternative to stage or apply.
 
 #### Scenario: Native compilation requires a stage
 
