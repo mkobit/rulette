@@ -1,5 +1,5 @@
 [tools]
-bun = "1.4.2"
+bun = "1.4.3"
 "github:gastownhall/beads" = "1.2.2"
 rust = { version = "1.98.1", components = ["rustfmt", "clippy", "llvm-tools"] }
 
