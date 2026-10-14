@@ -46,21 +46,11 @@ jobs:
       - name: Set up rust cache
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
 
-      - name: Cache fixtures
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: target/fixtures
-          key: fixtures-${{ runner.os }}-${{ hashFiles('build.rs') }}
-          restore-keys: |
-            fixtures-${{ runner.os }}-
-
       - name: Check formatting
         run: cargo fmt --check
 
       - name: Lint
         run: cargo clippy -- -D warnings
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   test:
     name: Test (${{ matrix.os }})
@@ -81,19 +71,9 @@ jobs:
       - name: Set up rust cache
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
 
-      - name: Cache fixtures
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: target/fixtures
-          key: fixtures-${{ runner.os }}-${{ hashFiles('build.rs') }}
-          restore-keys: |
-            fixtures-${{ runner.os }}-
-
       - name: Test
         if: matrix.os != 'ubuntu-latest'
         run: cargo test
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install cargo-llvm-cov
         if: matrix.os == 'ubuntu-latest'
@@ -104,8 +84,6 @@ jobs:
       - name: Test and coverage gate
         if: matrix.os == 'ubuntu-latest'
         run: cargo llvm-cov
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   audit:
     name: Security audit
