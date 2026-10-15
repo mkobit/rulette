@@ -31,21 +31,6 @@ jobs:
       - name: Run markdown lint
         run: bun x markdownlint-cli2
 
-  spec-validate:
-    name: Validate OpenSpec
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-
-      - uses: ./.github/actions/setup-mise
-        with:
-          version: ${{ env.MISE_VERSION }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Validate OpenSpec specs and changes
-        run: mise run spec-validate
-
   check:
     name: Check
     runs-on: ubuntu-latest

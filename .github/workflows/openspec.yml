@@ -1,0 +1,38 @@
+name: OpenSpec
+
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'openspec/**'
+      - '.github/workflows/openspec.yml'
+  pull_request:
+    branches: ['**']
+    paths:
+      - 'openspec/**'
+      - '.github/workflows/openspec.yml'
+  workflow_dispatch: {}
+
+env:
+  MISE_VERSION: "v2026.9.1"
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: ./.github/actions/setup-mise
+        with:
+          version: ${{ env.MISE_VERSION }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Validate OpenSpec specs and changes
+        run: mise run spec-validate

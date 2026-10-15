@@ -88,7 +88,7 @@ This command replaces separate parse, convert, and emit verbs with a unified, so
 This project uses OpenSpec for spec-driven development.
 Run `mise run spec-list` to see current changes and their status.
 Run `mise run spec-validate` to validate all specs strictly.
-Note that `mise run spec-validate` runs as a PR check in CI.
+Note that `mise run spec-validate` runs as a PR check on changes under `openspec/**`.
 Specs live in `openspec/changes/` and follow the `proposal → design → tasks` artifact flow.
 Workflow execution uses the `.beads/formulas/openspec-workflow.formula.toml` formula.
 All design proposals must undergo a mandatory adversarial review phase prior to staging implementation tasks.
