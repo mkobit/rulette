@@ -20,7 +20,7 @@ No competitor lifecycle probes were needed to resolve a material uncertainty, an
 The user's preference for official stated behavior narrows the issue's original broad experiment acceptance criteria.
 The 40 Agent Skills experiments from `rulette-l8r.1` and the migration fixtures and tests from `rulette-um4` were not repeated.
 
-Rulette findings use the [current PRD](2026-04-11-prd.md), [CLI reference](2026-04-11-man-page.md), and shipped source reviewed by the Rulette scout.
+Rulette findings use the [CLI reference](2026-04-11-man-page.md), OpenSpec specifications, the [legacy PRD](2026-04-11-prd.md), and shipped source reviewed by the Rulette scout.
 The [IR](../openspec/specs/ir-core/spec.md), [transform](../openspec/specs/transform-pipeline/spec.md), and [frontend/backend](../openspec/specs/frontends-and-backends/spec.md) specifications retain older model and command descriptions in places.
 Where they diverge, this comparison reports shipped behavior and leaves reconciliation to synthesis.
 
