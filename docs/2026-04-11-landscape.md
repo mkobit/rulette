@@ -1,5 +1,9 @@
 # Rulette 0.1 landscape
 
+> **Superseded by OpenSpec.**
+> This early landscape document is superseded. Active specifications reside in [OpenSpec](../openspec/specs/ir-core/spec.md), and current competitor analysis and workflow assessment reside in [docs/2026-10-10-competitor-synthesis.md](2026-10-10-competitor-synthesis.md) and [docs/2026-10-10-workflow-assessment.md](2026-10-10-workflow-assessment.md).
+> D16 loss-permission and D17 plugin scope remain human decisions recorded under bead `rulette-w6d`; do not infer or invent product approval.
+
 ## Problem
 
 AI-agent harnesses load guidance from different directory layouts, frontmatter formats, and configuration files.

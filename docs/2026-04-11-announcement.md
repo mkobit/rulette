@@ -1,5 +1,9 @@
 # Rulette 0.1 compiler model
 
+> **Superseded by OpenSpec.**
+> This early announcement document is superseded. All active specifications reside in [OpenSpec](../openspec/specs/ir-core/spec.md), and current release and command reference documentation resides in [docs/releases/v0.1.0.md](releases/v0.1.0.md) and [docs/2026-04-11-man-page.md](2026-04-11-man-page.md).
+> D16 loss-permission and D17 plugin scope remain human decisions recorded under bead `rulette-w6d`; do not infer or invent product approval.
+
 Rulette is moving from a text-and-entity converter to a package-aware compiler for local agent guidance.
 
 The v0.1 core recognizes Codex, Claude, Cursor, OpenCode, and Antigravity layouts.

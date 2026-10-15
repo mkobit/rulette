@@ -8,22 +8,22 @@ No initialization phase, no local state, no configuration files.
 
 ## Documentation Reference
 
-For product requirements, goals, and milestones, see:
+For executable capabilities, product requirements, and specifications, see:
 
-- [docs/2026-04-11-prd.md](docs/2026-04-11-prd.md)
+- [openspec/specs/ir-core/spec.md](openspec/specs/ir-core/spec.md)
+- [openspec/specs/transform-pipeline/spec.md](openspec/specs/transform-pipeline/spec.md)
+- [openspec/specs/frontends-and-backends/spec.md](openspec/specs/frontends-and-backends/spec.md)
 
 For CLI command documentation and options, see:
 
 - [docs/2026-04-11-man-page.md](docs/2026-04-11-man-page.md)
 
+For superseded planning and comparison documents (historical only; active specs reside in OpenSpec), see:
+
+- [docs/2026-04-11-prd.md](docs/2026-04-11-prd.md)
 - [docs/2026-04-11-announcement.md](docs/2026-04-11-announcement.md)
 - [docs/2026-04-11-landscape.md](docs/2026-04-11-landscape.md)
-
-For executable capabilities and specifications, see:
-
-- [openspec/specs/ir-core/spec.md](openspec/specs/ir-core/spec.md)
-- [openspec/specs/transform-pipeline/spec.md](openspec/specs/transform-pipeline/spec.md)
-- [openspec/specs/frontends-and-backends/spec.md](openspec/specs/frontends-and-backends/spec.md)
+- [docs/2026-04-25-comparison-matrix.md](docs/2026-04-25-comparison-matrix.md)
 
 ## Build and test
 
@@ -79,16 +79,16 @@ Single files (path or stdin) and tar archives containing multiple files are both
 
 ## Pipeline
 
-Rulette uses a single `transform` command to handle the full lifecycle of AI rules.
-It reads from any source, applies a transformation pipeline (filter, rename, set, dedup), and emits to any target.
-This command replaces the separate parse, convert, and emit verbs with a unified, source-to-sink engine.
+Rulette uses a single `transform` command to handle the compilation and staged publication lifecycle of AI rules and skills.
+It reads from explicit sources, compiles a deterministic package graph, supports exact package selection, and stages artifacts for authorized publication.
+This command replaces separate parse, convert, and emit verbs with a unified, source-to-sink engine.
 
 ## Specs
 
 This project uses OpenSpec for spec-driven development.
 Run `mise run spec-list` to see current changes and their status.
 Run `mise run spec-validate` to validate all specs strictly.
-Note that `mise run spec-validate` runs as a PR check on changes under `openspec/**`.
+Note that `mise run spec-validate` runs as a PR check in CI.
 Specs live in `openspec/changes/` and follow the `proposal → design → tasks` artifact flow.
 Workflow execution uses the `.beads/formulas/openspec-workflow.formula.toml` formula.
 All design proposals must undergo a mandatory adversarial review phase prior to staging implementation tasks.

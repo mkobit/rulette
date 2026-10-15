@@ -92,7 +92,7 @@ Experimental [sync][sync] has separate ownership and collision rules, including 
 
 ## Rulette reconciliation
 
-The [PRD](2026-04-11-prd.md) and [man page](2026-04-11-man-page.md) describe five core harnesses, explicit snapshots, exact selection, loss findings, and staged publication.
+The [OpenSpec specifications](../openspec/specs/ir-core/spec.md), [man page](2026-04-11-man-page.md), and legacy [PRD](2026-04-11-prd.md) describe five core harnesses, explicit snapshots, exact selection, loss findings, and staged publication.
 Repository [input handling](../src/inputs/mod.rs) accepts local files/directories and safe tar/gzip-tar; native plain stdin is not a general skill-package reader.
 Repository [Codex parsing](../src/parsers/codex.rs) recognizes `.codex/skills`, whereas the verified skills CLI uses `.agents/skills` for project Codex and Cursor placement.
 That layout difference needs a deliberate interoperability decision rather than a claim of automatic compatibility.
