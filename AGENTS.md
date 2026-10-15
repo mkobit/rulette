@@ -35,22 +35,30 @@ mise run bd-check      # Verify beads database health and unblocked work
 
 ## Docker sandbox execution
 
-Execute validation checks within the Docker Sandbox environment by running:
+The `agent` property in `.sbx/sbxenv.yaml` or `.sbx/sbxenv.agy.yaml` configures the sandbox environment integration.
+This setting configures the container environment, but it does not launch the agent automatically.
+The `sbx env exec` command runs only the explicit command provided after `--`.
+
+Direct execution works without a shell wrapper.
+The sandbox runner closes standard input unless `-i` is passed, so `/dev/null` redirection is not needed.
+Reserve shell wrappers (`sh -c` or `sh -lc`) only for commands that require shell syntax or login-shell PATH setup.
+
+Execute validation checks within the Docker sandbox environment by running:
 
 ```bash
 sbx env exec .sbx/sbxenv.yaml -- mise run check
 ```
 
-Execute non-interactive tasks using Antigravity (`agy`):
+Execute non-interactive tasks using Antigravity (`agy`) with an explicit model and skipped permission prompts:
 
 ```bash
-sbx env exec .sbx/sbxenv.agy.yaml -- sh -c 'agy --print "<prompt>" < /dev/null'
+sbx env exec .sbx/sbxenv.agy.yaml -- agy --model <model> --dangerously-skip-permissions --print "<prompt>"
 ```
 
-Execute non-interactive tasks using Codex:
+Execute non-interactive tasks using Codex with an explicit model:
 
 ```bash
-sbx env exec .sbx/sbxenv.yaml -- sh -c 'codex exec "<prompt>" < /dev/null'
+sbx env exec .sbx/sbxenv.yaml -- codex exec --model <model> "<prompt>"
 ```
 
 Create and run an isolated per-task named sandbox:
