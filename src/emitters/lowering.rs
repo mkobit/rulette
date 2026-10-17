@@ -74,6 +74,8 @@ pub enum CapabilityReasonCode {
     SkillLoweredAsRule,
     RuleLoweredAsSkill,
     SynthesizedManifest,
+    RuleDescriptionUnrepresentable,
+    RuleActivationUnrepresentable,
 }
 
 impl CapabilityReasonCode {
@@ -87,6 +89,8 @@ impl CapabilityReasonCode {
             Self::SkillLoweredAsRule => "skill-lowered-as-rule",
             Self::RuleLoweredAsSkill => "rule-lowered-as-skill",
             Self::SynthesizedManifest => "synthesized-manifest",
+            Self::RuleDescriptionUnrepresentable => "rule-description-unrepresentable",
+            Self::RuleActivationUnrepresentable => "rule-activation-unrepresentable",
         }
     }
 }
@@ -150,6 +154,7 @@ pub fn lower(
                 ..
             } => {
                 let artifact = lower_rule(package, target)?;
+                findings.extend(rule_field_findings(package, target, &artifact.path));
                 findings.push(supported_finding(
                     package,
                     target,
@@ -277,9 +282,33 @@ pub fn lower(
             .iter()
             .any(|finding| finding.severity != CapabilitySeverity::Supported)
     {
+        let rule_losses = findings
+            .iter()
+            .filter(|finding| {
+                matches!(
+                    finding.reason_code,
+                    CapabilityReasonCode::RuleDescriptionUnrepresentable
+                        | CapabilityReasonCode::RuleActivationUnrepresentable
+                )
+            })
+            .map(|finding| {
+                format!(
+                    "{} [{}]: {}",
+                    finding.reason_code.as_str(),
+                    finding.package_id.as_str(),
+                    finding.reason
+                )
+            })
+            .collect::<Vec<_>>();
+        let detail = if rule_losses.is_empty() {
+            String::new()
+        } else {
+            format!(": {}", rule_losses.join("; "))
+        };
         bail!(
-            "{} lowering has unaccepted capability loss",
-            target.as_str()
+            "{} lowering has unaccepted capability loss{}",
+            target.as_str(),
+            detail
         );
     }
 
@@ -551,6 +580,134 @@ fn capability_finding(
         reason: reason.into(),
         artifact_path,
     }
+}
+
+fn rule_field_findings(
+    package: &Package,
+    target: NativeTarget,
+    artifact_path: &ResourcePath,
+) -> Vec<CapabilityFinding> {
+    let SemanticItem::Rule {
+        description,
+        activation,
+        ..
+    } = &package.semantic_item
+    else {
+        unreachable!("rule_field_findings only accepts rule packages");
+    };
+    let mut findings = Vec::new();
+    if matches!(
+        target,
+        NativeTarget::Codex | NativeTarget::Claude | NativeTarget::OpenCode
+    ) && description
+        .as_ref()
+        .is_some_and(|value| !value.trim().is_empty())
+    {
+        findings.push(loss_finding(
+            package,
+            target,
+            CapabilityReasonCode::RuleDescriptionUnrepresentable,
+            None,
+            Some(artifact_path.clone()),
+            "lost rule field: description",
+        ));
+    }
+    let Some(activation) = activation else {
+        return findings;
+    };
+    let key = if target == NativeTarget::Cursor {
+        "cursor-mdc"
+    } else {
+        target.as_str()
+    };
+    let activation = activation.resolve(key);
+    let (selected_mode, emits_globs) = match target {
+        NativeTarget::Cursor => {
+            let (always_apply, globs) = cursor_fields(activation);
+            let selected = match always_apply {
+                Some(true) => Some(ActivationMode::Always),
+                Some(false) if globs.as_ref().is_some_and(|globs| !globs.is_empty()) => {
+                    Some(ActivationMode::Glob)
+                }
+                Some(false) => Some(ActivationMode::Manual),
+                _ => None,
+            };
+            (selected, globs.is_some())
+        }
+        NativeTarget::Antigravity => {
+            let (trigger, globs) = antigravity_fields(activation);
+            let selected = match trigger {
+                Some("always_on") => Some(ActivationMode::Always),
+                Some("glob") if activation.mode.contains(&ActivationMode::Glob) => {
+                    Some(ActivationMode::Glob)
+                }
+                Some("glob") => Some(ActivationMode::Pattern),
+                Some("model_decision") => Some(ActivationMode::Model),
+                Some("manual") => Some(ActivationMode::Manual),
+                _ => None,
+            };
+            (selected, globs.is_some())
+        }
+        _ => (Some(ActivationMode::Always), false),
+    };
+    let mut lost_fields = Vec::new();
+    let lost_modes = [
+        (ActivationMode::Always, "always"),
+        (ActivationMode::Glob, "glob"),
+        (ActivationMode::Manual, "manual"),
+        (ActivationMode::Model, "model"),
+        (ActivationMode::Pattern, "pattern"),
+    ]
+    .into_iter()
+    .filter_map(|(mode, name)| {
+        (activation.mode.contains(&mode) && selected_mode.as_ref() != Some(&mode)).then_some(name)
+    })
+    .collect::<Vec<_>>();
+    if !lost_modes.is_empty() {
+        lost_fields.push(format!("mode ({})", lost_modes.join(", ")));
+    }
+    if !emits_globs
+        && activation
+            .globs
+            .as_ref()
+            .is_some_and(|globs| !globs.is_empty())
+    {
+        lost_fields.push("globs".to_owned());
+    }
+    if activation
+        .pattern
+        .as_ref()
+        .is_some_and(|value| !value.trim().is_empty())
+    {
+        lost_fields.push("pattern".to_owned());
+    }
+    if let Some(activation_description) = activation
+        .description
+        .as_ref()
+        .filter(|value| !value.trim().is_empty())
+    {
+        let preserved = target == NativeTarget::Antigravity
+            && selected_mode == Some(ActivationMode::Model)
+            && description.as_ref().is_some_and(|description| {
+                description
+                    .split_whitespace()
+                    .eq(activation_description.split_whitespace())
+            });
+        if !preserved {
+            lost_fields.push("description".to_owned());
+        }
+    }
+    if !lost_fields.is_empty() {
+        findings.push(loss_finding(
+            package,
+            target,
+            CapabilityReasonCode::RuleActivationUnrepresentable,
+            None,
+            Some(artifact_path.clone()),
+            format!("lost activation fields: {}", lost_fields.join(", ")),
+        ));
+    }
+    findings
 }
 
 fn lower_rule(package: &Package, target: NativeTarget) -> Result<NativeArtifact> {
@@ -1617,7 +1774,22 @@ mod tests {
         .unwrap();
         let graph = CompilationGraph::new([package]).unwrap();
 
-        let plan = lower(&graph, NativeTarget::Antigravity, LoweringOptions::strict()).unwrap();
+        let error =
+            lower(&graph, NativeTarget::Antigravity, LoweringOptions::strict()).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("rule-activation-unrepresentable"));
+        assert!(error.to_string().contains("description"));
+        let plan = lower(
+            &graph,
+            NativeTarget::Antigravity,
+            LoweringOptions::allow_lossy(),
+        )
+        .unwrap();
+        assert!(plan.findings.iter().any(|finding| {
+            finding.reason_code == CapabilityReasonCode::RuleActivationUnrepresentable
+                && finding.reason.contains("description")
+        }));
         let content = std::str::from_utf8(&plan.artifacts[0].bytes).unwrap();
         assert!(content.starts_with("---\n"));
         assert!(content.contains("trigger: model_decision"));

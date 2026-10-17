@@ -176,6 +176,7 @@ fn test_journey_4_target_activation_overrides() {
         .arg("rulette.transform.jsonc")
         .arg("--from")
         .arg("antigravity")
+        .arg("--allow-lossy")
         .arg("--stage")
         .arg(&stage_dir)
         .arg("--project-root")
