@@ -195,6 +195,7 @@ Guidelines for writing maintainable, type-safe TypeScript code.
         .arg("opencode@project")
         .arg("--target")
         .arg("antigravity@project")
+        .arg("--allow-lossy")
         .arg("--stage")
         .arg(&stage_dir)
         .arg("--project-root")

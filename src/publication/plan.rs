@@ -473,6 +473,12 @@ fn parse_reason_code(value: &str) -> Result<CapabilityReasonCode> {
         "skill-lowered-as-rule" => Ok(CapabilityReasonCode::SkillLoweredAsRule),
         "rule-lowered-as-skill" => Ok(CapabilityReasonCode::RuleLoweredAsSkill),
         "synthesized-manifest" => Ok(CapabilityReasonCode::SynthesizedManifest),
+        "rule-description-unrepresentable" => {
+            Ok(CapabilityReasonCode::RuleDescriptionUnrepresentable)
+        }
+        "rule-activation-unrepresentable" => {
+            Ok(CapabilityReasonCode::RuleActivationUnrepresentable)
+        }
         _ => bail!("unsupported capability reason code `{value}`"),
     }
 }
