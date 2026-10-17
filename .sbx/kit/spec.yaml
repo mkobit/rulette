@@ -2,7 +2,7 @@
 schemaVersion: "2"
 kind: mixin
 name: rulette-toolchain
-version: "0.1.0"
+version: "0.2.0"
 description: Bootstrap mise, bun, beads, and rust toolchain for rulette
 
 permissions:
@@ -31,31 +31,30 @@ setup:
   install:
     - command: |
         apt-get update
-        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential file musl-tools
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential file musl-tools ripgrep
         rm -rf /var/lib/apt/lists/*
-      description: "Install native build tools, file inspection, and musl linkers"
+      description: "Install native build tools, file inspection, musl linkers, and search"
     - command: |
         curl -fsSL https://mise.run | MISE_VERSION=v2026.9.1 MISE_INSTALL_PATH=/usr/local/bin/mise sh
         printf '%s\n' 'export PATH="/home/agent/.local/share/mise/shims:/home/agent/.local/bin:$PATH"' > /etc/profile.d/mise.sh
         printf '%s\n' 'export PATH="/home/agent/.local/share/mise/shims:/home/agent/.local/bin:$PATH"' >> /etc/sandbox-persistent.sh
       description: "Install mise into /usr/local/bin and configure shell paths"
-    - command: "mise settings set paranoid false && mise settings set yes true && mise use -g bun@1.4.3 && mise use -g github:gastownhall/beads@1.2.2 && mise use -g rust@1.98.1"
+    - command: "mise settings set paranoid false && mise settings set yes true && mise use -g bun@1.4.3 && mise use -g github:gastownhall/beads@1.2.2 && mise use -g rust@1.98.1 && mise exec -- rustup component add rustfmt clippy llvm-tools && mise reshim"
       user: "1000"
-      description: "Install bun 1.4.3, beads 1.2.2, and rust 1.98.1 for agent"
-  startup:
-    - command:
-        - sh
-        - -c
-        - |
-          set -e
-          target="$HOME/.gemini/antigravity-cli/antigravity-oauth-token"
-          src=$(ls -1 /home/*/.gemini/antigravity-cli/antigravity-oauth-token 2>/dev/null | grep -v "^/home/agent/" | head -n 1 || true)
-          if [ -n "$src" ] && [ -f "$src" ]; then
-            if [ ! -f "$target" ] || [ "$src" -nt "$target" ]; then
-              mkdir -p "$(dirname "$target")"
-              cp "$src" "$target"
-              chmod 600 "$target"
+      description: "Install pinned tools and required Rust components for agent"
+    - command: |
+        set -eu
+        for tool in bun bd cargo cargo-clippy cargo-fmt rustc rustfmt rustup; do
+          source="/home/agent/.local/share/mise/shims/$tool"
+          target="/usr/local/bin/$tool"
+          test -x "$source"
+          if [ -e "$target" ] || [ -L "$target" ]; then
+            if [ ! -L "$target" ] || [ "$(readlink -f "$target")" != /usr/local/bin/mise ]; then
+              printf 'Refuse to replace unrelated executable: %s\n' "$target" >&2
+              exit 1
             fi
+          else
+            ln -s "$source" "$target"
           fi
-      user: "1000"
-      description: "Seed host AGY OAuth token into agent home if mounted"
+        done
+      description: "Expose mise shims for direct execution without shell profiles"

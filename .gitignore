@@ -13,3 +13,8 @@
 # Unignore tracked examples
 !examples/**/.antigravity
 !examples/**/.antigravity/**
+
+# Keep repository sandbox files visible when a global ignore excludes .sbx.
+!.sbx/
+!.sbx/kit/
+!.sbx/kit/check-runtime.sh
