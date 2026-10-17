@@ -21,9 +21,10 @@ fn executable(path: &Path, script: &str) {
 impl Runtime {
     fn new() -> Self {
         let root = tempfile::tempdir().unwrap();
-        let bin = root.path().join("bin");
-        let checkout = root.path().join("shared checkout");
-        let scratch = root.path().join("scratch");
+        let root_path = root.path().canonicalize().unwrap();
+        let bin = root_path.join("bin");
+        let checkout = root_path.join("shared checkout");
+        let scratch = root_path.join("scratch");
         for directory in [&bin, &checkout, &scratch] {
             fs::create_dir(directory).unwrap();
         }
@@ -31,7 +32,19 @@ impl Runtime {
         fs::write(checkout.join("Cargo.toml"), "").unwrap();
         fs::write(checkout.join("AGENTS.md"), "").unwrap();
         for tool in [
-            "mise", "cargo", "rustc", "bun", "bd", "file", "cc", "musl-gcc", "git", "rg",
+            "mise",
+            "cargo",
+            "rustc",
+            "bun",
+            "bd",
+            "file",
+            "cc",
+            "musl-gcc",
+            "git",
+            "rg",
+            "tar",
+            "gzip",
+            "sha256sum",
         ] {
             executable(&bin.join(tool), "#!/bin/sh\nprintf 'mock version\\n'\n");
         }
