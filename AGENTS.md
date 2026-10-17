@@ -35,12 +35,29 @@ mise run bd-check      # Verify beads database health and unblocked work
 
 ## Docker sandbox execution
 
+The host coordinator owns Beads mutations, Git and GitHub writes, credentials, final review, and sandbox cleanup.
+The sandbox executor reads the host-supplied Bead context, edits only the allowed paths, runs checks, and returns evidence.
+An explicit executor assignment overrides the general Beads session protocol below.
+Do not claim, close, create, update, or sync Beads from the executor.
+Use the supplied issue context instead of invoking `bd` from the executor, except for the `bd --version` runtime check.
+Do not commit, push, merge, change host settings, or install or invoke SBX inside the sandbox.
+Use `mise run check` directly when already inside the sandbox.
+Run `mise run validate-sbx` only on the host.
+
+Both environments use `clone: false`.
+The checkout keeps its host path; do not assume `/workspace` exists.
+Edits, `.git`, `.beads`, and build output are shared, not isolated or rolled back.
+Record pre-existing changes and preserve them.
+Use one executor per checkout and serialize builds, formatters, and Git operations with the coordinator.
+Never use `git reset`, `git clean`, or shared-directory deletion as recovery.
+
 The `agent` property in `.sbx/sbxenv.yaml` or `.sbx/sbxenv.agy.yaml` configures the sandbox environment integration.
 This setting configures the container environment, but it does not launch the agent automatically.
 The `sbx env exec` command runs only the explicit command provided after `--`.
 
-Direct execution works without a shell wrapper.
-The sandbox runner closes standard input unless `-i` is passed, so `/dev/null` redirection is not needed.
+Direct execution is the normal command without a shell wrapper; omit `-i` for noninteractive tasks.
+In this session, a host PTY invocation waited at `Reading additional input from stdin` until Ctrl-D.
+Do not assume stdin closes in every host invocation.
 Reserve shell wrappers (`sh -c` or `sh -lc`) only for commands that require shell syntax or login-shell PATH setup.
 
 Execute validation checks within the Docker sandbox environment by running:
@@ -58,10 +75,23 @@ sbx env exec .sbx/sbxenv.agy.yaml -- agy --model <model> --dangerously-skip-perm
 Execute non-interactive tasks using Codex with an explicit model:
 
 ```bash
-sbx env exec .sbx/sbxenv.yaml -- codex exec --model <model> "<prompt>"
+sbx env exec .sbx/sbxenv.yaml -- codex exec --model <model> --disable hooks --dangerously-bypass-approvals-and-sandbox "<prompt>"
 ```
 
-Create and run an isolated per-task named sandbox:
+If the host invocation leaves stdin open, use this shell-syntax fallback after setting `model` and `prompt`.
+The shell receives them as positional arguments, not interpolated shell source, and redirects the executor's stdin explicitly.
+
+```bash
+sbx env exec .sbx/sbxenv.yaml -- sh -c 'exec codex exec --model "$1" --disable hooks --dangerously-bypass-approvals-and-sandbox "$2" </dev/null' rulette-codex "$model" "$prompt"
+```
+
+Use the Codex bypass flag only inside the authorized Docker sandbox.
+The hook flag disables project Beads hooks for this invocation.
+Do not use AGY for design-heavy work.
+The AGY kit uses host-managed Google API-key access; no host OAuth directory is mounted or copied.
+Missing credentials or source approval are host blockers, not permission to change settings.
+
+Create and run a named sandbox from the host for interactive work:
 
 ```bash
 # Antigravity (agy)
@@ -72,6 +102,10 @@ sbx run --name rulette-task-<id>
 sbx env create --name rulette-task-<id> .sbx/sbxenv.yaml
 sbx run --name rulette-task-<id>
 ```
+
+Named sandboxes still share the checkout when `clone: false` is set.
+Use `sbx env exec` for bounded noninteractive commands, not an implicit agent launch.
+See [the SBX workflow](docs/2026-10-15-sbx-delegation.md) for preflight, dispatch, failure handling, and host acceptance.
 
 ## Inputs
 
