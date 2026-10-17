@@ -1,0 +1,33 @@
+formula = "permission-precedence-implementation"
+name = "permission-precedence-implementation"
+description = "Layered TDD execution blueprint for rulette-5bk.14 (ToolAccessRule permission precedence, fail-closed lowering, and capability reporting)"
+type = "workflow"
+
+[[steps]]
+id = "layer1-precedence-engine"
+title = "Layer 1: Implement pure permission types and 4-tier precedence engine in src/ir/permissions.rs"
+description = "Create src/ir/permissions.rs (re-exported in src/ir/mod.rs and src/lib.rs) with PermissionAction, PermissionScope, CanonicalTool, NormalizedPattern, SpecificityKey, ToolAccessRule, PermissionPolicy, TargetPermissionPolicy, 4-tier resolution, shadowing detection, and reference evaluator. Must not import cli, inputs, parsers, emitters, or publication. Run: cargo test ir::permissions"
+
+[[steps]]
+id = "layer2-graph-integration"
+title = "Layer 2: Integrate PackageKind::Permissions and SemanticItem::Permissions into src/ir/graph.rs"
+description = "Extend PackageKind, SemanticIdentity, SemanticItem, and Package::permissions() in src/ir/graph.rs. Include canonical policy digest in package_id() and implement commutative merge_permission_packages(). Run: cargo test ir::graph"
+needs = ["layer1-precedence-engine"]
+
+[[steps]]
+id = "layer3-frontend-parsers"
+title = "Layer 3: Migrate native permission blocks in Claude, OpenCode, Cursor, Antigravity, and Codex parsers"
+description = "Update src/parsers/{claude,opencode,cursor,antigravity,codex}.rs to construct PackageKind::Permissions packages from native permission configs and fail closed on missing or invalid actions. Run: cargo test parsers::"
+needs = ["layer2-graph-integration"]
+
+[[steps]]
+id = "layer4-backend-lowering-and-capabilities"
+title = "Layer 4: Implement fail-closed permission lowering, Asymmetric Approximation Law, and CapabilityReasonCode reporting"
+description = "Extend src/emitters/lowering.rs, src/publication/mapping.rs, and src/publication/plan.rs with NativeArtifactClass::PermissionConfig, 7 permission CapabilityReasonCode variants, capabilities(), and fail-closed renderers for Claude, OpenCode (4-tier sequential order), Cursor (Ask->Deny promotion), Antigravity (wildcard withholding), Codex (Starlark prefix_rule), and AgentPlugin (Dropped). Run: cargo test emitters::lowering && cargo test publication::"
+needs = ["layer2-graph-integration"]
+
+[[steps]]
+id = "layer5-cli-diagnostics-and-journey6"
+title = "Layer 5: Integrate inspect coverage matrix, strict diagnostics, and Journey 6 multi-target conformance tests"
+description = "Update src/cli/commands/inspect.rs for PackageKind::Permissions and add end-to-end TDD fixtures in tests/ covering strict rejection, --allow-lossy staged plan round-trips, OpenCode vs Claude evaluation equivalence, and Journey 6 governance fan-out. Run: mise run check && mise run spec-validate"
+needs = ["layer3-frontend-parsers", "layer4-backend-lowering-and-capabilities"]
