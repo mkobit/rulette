@@ -119,7 +119,7 @@ url_api = "https://api.github.com/repos/gastownhall/beads/releases/assets/602014
 provenance = "github-attestations"
 
 [[tools.rust]]
-version = "1.98.1"
+version = "1.99.1"
 backend = "core:rust"
 
 [tools.rust.options]

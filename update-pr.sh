@@ -27,7 +27,7 @@ For AGY, substitute \`.sbx/sbxenv.agy.yaml\` as the first path argument to maint
 Based on the actual files and configuration currently committed to this repository:
 
 **1. Required standalone tool versions (from `mise.toml` and `.sbx/kit/spec.yaml`)**
-- Rust: `1.98.1` (with `rustfmt`, `clippy`, `llvm-tools`)
+- Rust: `1.99.1` (with `rustfmt`, `clippy`, `llvm-tools`)
 - Bun: `1.4.2`
 - Beads (`bd`): `1.2.2` (gastownhall/beads)
 - Mise: `v2026.9.1` (installed via `.sbx/kit/spec.yaml`)

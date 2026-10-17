@@ -818,3 +818,51 @@ fn cargo_package_version_script_accepts_only_cargo_compatible_semver_identifiers
         }
     }
 }
+
+#[test]
+fn rust_toolchain_version_parity_across_configs() {
+    let toolchain_content = std::fs::read_to_string("rust-toolchain.toml").unwrap();
+    let toolchain_toml: toml::Value = toml::from_str(&toolchain_content).unwrap();
+    let expected_version = toolchain_toml["toolchain"]["channel"]
+        .as_str()
+        .expect("channel in rust-toolchain.toml");
+
+    let cargo_content = std::fs::read_to_string("Cargo.toml").unwrap();
+    let cargo_toml: toml::Value = toml::from_str(&cargo_content).unwrap();
+    let cargo_rust_version = cargo_toml["package"]["rust-version"]
+        .as_str()
+        .expect("rust-version in Cargo.toml");
+    assert_eq!(
+        cargo_rust_version, expected_version,
+        "Cargo.toml rust-version must match rust-toolchain.toml"
+    );
+
+    let mise_content = std::fs::read_to_string("mise.toml").unwrap();
+    let mise_toml: toml::Value = toml::from_str(&mise_content).unwrap();
+    let mise_rust_version = mise_toml["tools"]["rust"]["version"]
+        .as_str()
+        .expect("tools.rust.version in mise.toml");
+    assert_eq!(
+        mise_rust_version, expected_version,
+        "mise.toml tools.rust.version must match rust-toolchain.toml"
+    );
+
+    let spec_content = std::fs::read_to_string(".sbx/kit/spec.yaml").unwrap();
+    assert!(
+        spec_content.contains(&format!("rust@{expected_version}")),
+        ".sbx/kit/spec.yaml must reference rust@{expected_version}"
+    );
+
+    let lock_content = std::fs::read_to_string("mise.lock").unwrap();
+    let lock_toml: toml::Value = toml::from_str(&lock_content).unwrap();
+    let lock_tools = lock_toml["tools"]["rust"]
+        .as_array()
+        .expect("tools.rust array in mise.lock");
+    let lock_version = lock_tools[0]["version"]
+        .as_str()
+        .expect("version in mise.lock");
+    assert_eq!(
+        lock_version, expected_version,
+        "mise.lock rust version must match rust-toolchain.toml"
+    );
+}
