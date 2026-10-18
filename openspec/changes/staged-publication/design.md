@@ -224,13 +224,13 @@ Apply never follows a symlink while validating, reading, creating, replacing, or
 
 ## Configuration and capability interaction
 
-An explicit transform configuration may declare source inputs, targets, logical scopes, and selection intent.
+An explicit transform configuration may declare source inputs, targets, logical scopes, selection intent, and per-target `allow_lossy` overrides.
 
-It may not declare stage roots, apply roots, user-home locations, replace permission, loss permission, or scope authorization.
+It may not declare stage roots, apply roots, user-home locations, replace permission, or scope authorization.
 
 Target backends classify loss before stage writing.
 
-The compiler fails a staged build on any `lossy` or `dropped` result unless `--allow-lossy` is explicit.
+The compiler fails a staged build on any `lossy` or `dropped` result unless authorized by CLI `--allow-lossy` or configured per-target `allow_lossy = true`.
 
 `inspect --coverage` remains the preflight explanation path and reports the same findings the stage command uses.
 

@@ -1,0 +1,25 @@
+formula = "contract-reconciliation"
+name = "contract-reconciliation"
+description = "Reconcile OpenSpec base specs, change designs, and release documentation with D16 and D17"
+type = "workflow"
+
+[[steps]]
+id = "reconcile-base-specs"
+title = "Reconcile OpenSpec base specs (ir-core, transform-pipeline, frontends-and-backends) with D16 and D17"
+description = "Update openspec/specs/ir-core/spec.md, openspec/specs/transform-pipeline/spec.md, and openspec/specs/frontends-and-backends/spec.md to reflect CompilationGraph, staged publication, explicit --config resolution, per-target allow_lossy, passive agent-plugin packaging, and explicit schema versioning."
+
+[[steps]]
+id = "align-change-designs"
+title = "Align OpenSpec change designs (staged-publication, generated-snapshot-builds) with D16 configuration and loss rules"
+description = "Update openspec/changes/staged-publication/design.md and openspec/changes/generated-snapshot-builds/design.md to match D16 configuration and loss rules."
+
+[[steps]]
+id = "reconcile-release-docs"
+title = "Reconcile CLI man page and PRD documentation with D16 and D17 decisions"
+description = "Update docs/2026-04-11-man-page.md and docs/2026-04-11-prd.md to document --config <PATH>, per-target allow_lossy, passive agent-plugin support, and explicit schema versions."
+
+[[steps]]
+id = "verify-conformance"
+title = "Run full D16/D17 verification suite and close rulette-w6d"
+description = "Verify that mise run check and mise run spec-validate pass, and close rulette-w6d."
+needs = ["reconcile-base-specs", "align-change-designs", "reconcile-release-docs"]
