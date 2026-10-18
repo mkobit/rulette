@@ -29,7 +29,7 @@ This design joins those boundaries into a generated-snapshot build contract with
 - This change does not make generator provenance a trust credential or require a generator-specific manifest.
 - This change does not define a reverse parser from a destination artifact to a generator source or attempt three-way merges.
 - This change does not add initialization, state, history, lockfiles, configuration discovery, plugins, scripts, shared libraries, subprocesses, or network access.
-- This change does not add JSON5, YAML, TOML, or code-like transformation configuration.
+- This change does not add arbitrary generator or code-like transformation configuration; explicit `--config <path>` accepts only declarative target, input, selection, and loss-override manifests.
 - This change does not accept plain native standard input until a naming and layout contract exists.
 - Per-input frontend routing is deferred to `rulette-5n4`.
 - Future declarative configuration is limited to selecting compiled-in transforms and is tracked by `rulette-5n4`.
@@ -182,7 +182,7 @@ This is deferred to `rulette-5n4` because routing policy needs a separate determ
 
 Rulette could consume a JSON5, YAML, TOML, or code-like file that declares arbitrary generator or transform behavior.
 
-This is out of scope and any future declarative configuration may only choose transforms compiled into Rulette, as tracked by `rulette-5n4`.
+This is out of scope; declarative `--config` manifests are limited to selecting compiled-in transforms, inputs, exact package IDs, and per-target loss overrides, as tracked by `rulette-5n4`.
 
 ## Testing strategy
 
