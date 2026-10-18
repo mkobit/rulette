@@ -849,8 +849,12 @@ fn rust_toolchain_version_parity_across_configs() {
 
     let spec_content = std::fs::read_to_string(".sbx/kit/spec.yaml").unwrap();
     assert!(
-        spec_content.contains(&format!("rust@{expected_version}")),
-        ".sbx/kit/spec.yaml must reference rust@{expected_version}"
+        spec_content.contains("mise install"),
+        ".sbx/kit/spec.yaml must use mise install to delegate tool installation to mise.toml"
+    );
+    assert!(
+        !spec_content.contains("rust@"),
+        ".sbx/kit/spec.yaml should not hardcode rust version numbers"
     );
 
     let lock_content = std::fs::read_to_string("mise.lock").unwrap();
