@@ -10,9 +10,13 @@ use std::path::Path;
 use tar::{Builder, EntryType, Header};
 
 fn append_file(builder: &mut Builder<Vec<u8>>, path: &str, contents: &[u8]) {
+    append_file_with_mode(builder, path, contents, 0o644);
+}
+
+fn append_file_with_mode(builder: &mut Builder<Vec<u8>>, path: &str, contents: &[u8], mode: u32) {
     let mut header = Header::new_gnu();
     header.set_entry_type(EntryType::Regular);
-    header.set_mode(0o644);
+    header.set_mode(mode);
     header.set_size(contents.len() as u64);
     header.set_cksum();
     builder.append_data(&mut header, path, contents).unwrap();
@@ -138,6 +142,35 @@ fn detects_tar_input_by_magic_without_an_archive_extension() {
     assert_eq!(observations.len(), 1);
     assert_eq!(observations[0].origin, InputOrigin::Tar);
     assert_eq!(observations[0].source_path.as_str(), "rules/AGENTS.md");
+}
+
+#[test]
+fn preserves_archive_entry_executable_permissions() {
+    let temp = tempfile::tempdir().unwrap();
+    let archive_path = temp.path().join("source.tar");
+    let mut tar = Builder::new(Vec::new());
+    append_file_with_mode(
+        &mut tar,
+        "skills/deploy/run.sh",
+        b"#!/bin/sh\nexit 0\n",
+        0o755,
+    );
+    append_file_with_mode(&mut tar, "skills/deploy/SKILL.md", b"# Deploy\n", 0o644);
+    fs::write(&archive_path, tar.into_inner().unwrap()).unwrap();
+
+    let observations = observe_path(&archive_path).unwrap();
+
+    assert_eq!(observations.len(), 2);
+    let run_sh = observations
+        .iter()
+        .find(|obs| obs.source_path.as_str() == "skills/deploy/run.sh")
+        .unwrap();
+    assert!(run_sh.executable);
+    let skill_md = observations
+        .iter()
+        .find(|obs| obs.source_path.as_str() == "skills/deploy/SKILL.md")
+        .unwrap();
+    assert!(!skill_md.executable);
 }
 
 #[test]

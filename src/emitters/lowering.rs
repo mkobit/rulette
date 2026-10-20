@@ -76,6 +76,7 @@ pub enum CapabilityReasonCode {
     SynthesizedManifest,
     RuleDescriptionUnrepresentable,
     RuleActivationUnrepresentable,
+    SkillFrontmatterUnrepresentable,
 }
 
 impl CapabilityReasonCode {
@@ -91,6 +92,7 @@ impl CapabilityReasonCode {
             Self::SynthesizedManifest => "synthesized-manifest",
             Self::RuleDescriptionUnrepresentable => "rule-description-unrepresentable",
             Self::RuleActivationUnrepresentable => "rule-activation-unrepresentable",
+            Self::SkillFrontmatterUnrepresentable => "skill-frontmatter-unrepresentable",
         }
     }
 }
@@ -238,40 +240,8 @@ pub fn lower(
                 }
             }
         }
-        for resource in package
-            .resources
-            .values()
-            .filter(|resource| resource.executable)
-        {
-            let is_primary = matches!(
-                &package.semantic_item,
-                SemanticItem::Rule {
-                    primary_instruction,
-                    ..
-                } | SemanticItem::Skill {
-                    primary_instruction,
-                    ..
-                } if primary_instruction == &resource.path
-            );
-            let artifact_path = is_primary
-                .then(|| {
-                    artifacts
-                        .iter()
-                        .rev()
-                        .find(|artifact| artifact.source_package == package.id)
-                        .map(|artifact| artifact.path.clone())
-                })
-                .flatten();
-            findings.push(loss_finding(
-                package,
-                target,
-                CapabilityReasonCode::ExecutableBitUnrepresentable,
-                Some(resource.path.clone()),
-                artifact_path,
-                "the target native artifact format does not preserve executable-bit metadata",
-            ));
-        }
     }
+    append_executable_bit_findings(graph, target, &artifacts, &mut findings);
 
     append_package_outcomes(graph, target, &artifacts, &mut findings);
     findings.sort_by(|left, right| left.id.cmp(&right.id));
@@ -326,6 +296,7 @@ fn lower_skill_package(
     let SemanticItem::Skill {
         primary_instruction,
         description,
+        frontend_payload,
         ..
     } = &package.semantic_item
     else {
@@ -339,16 +310,34 @@ fn lower_skill_package(
         unreachable!("validated primary instruction is UTF-8 text");
     };
     let name = logical_name(package);
-    #[derive(serde::Serialize)]
-    struct SkillFrontmatter<'a> {
-        name: &'a str,
-        description: &'a str,
+
+    let payload = frontend_payload
+        .as_ref()
+        .or(package.frontend_payload.as_ref());
+
+    let mut mapping = serde_yaml::Mapping::new();
+    mapping.insert(
+        serde_yaml::Value::String("name".to_string()),
+        serde_yaml::Value::String(name.to_string()),
+    );
+    mapping.insert(
+        serde_yaml::Value::String("description".to_string()),
+        serde_yaml::Value::String(description.to_string()),
+    );
+    if package.provenance.frontend == target.as_str() {
+        if let Some(payload) = payload {
+            for (key, value) in &payload.fields {
+                if key != "name" && key != "description" {
+                    let yaml_key = serde_yaml::Value::String(key.clone());
+                    let yaml_val = serde_yaml::to_value(value)?;
+                    mapping.insert(yaml_key, yaml_val);
+                }
+            }
+        }
     }
+
     let mut rendered = String::from("---\n");
-    rendered.push_str(&serde_yaml::to_string(&SkillFrontmatter {
-        name,
-        description,
-    })?);
+    rendered.push_str(&serde_yaml::to_string(&mapping)?);
     rendered.push_str("---\n");
     rendered.push_str(text);
 
@@ -367,42 +356,101 @@ fn lower_skill_package(
         primary_instruction.clone(),
         artifacts[0].path.clone(),
     ));
-    let supports_same_domain_resources = package.provenance.frontend == target.as_str();
+
+    if package.provenance.frontend != target.as_str() {
+        if let Some(payload) = payload {
+            if !payload.fields.is_empty() {
+                findings.push(loss_finding(
+                    package,
+                    target,
+                    CapabilityReasonCode::SkillFrontmatterUnrepresentable,
+                    None,
+                    Some(artifacts[0].path.clone()),
+                    "the target native skill format does not support source-specific frontmatter fields",
+                ));
+            }
+        }
+    }
+
     for resource in package.resources.values() {
         if resource.path == *primary_instruction {
             continue;
         }
-        if supports_same_domain_resources {
-            artifacts.push(NativeArtifact {
-                target,
-                class: NativeArtifactClass::SkillResource,
-                path: ResourcePath::parse(format!("skills/{name}/{}", resource.path.as_str()))?,
-                bytes: resource_content_bytes(&resource.content),
-                executable: false,
-                source_package: package.id.clone(),
+        artifacts.push(NativeArtifact {
+            target,
+            class: NativeArtifactClass::SkillResource,
+            path: ResourcePath::parse(format!("skills/{name}/{}", resource.path.as_str()))?,
+            bytes: resource_content_bytes(&resource.content),
+            executable: resource.executable,
+            source_package: package.id.clone(),
+        });
+        let artifact_path = artifacts
+            .last()
+            .expect("opaque resource artifact was just appended")
+            .path
+            .clone();
+        findings.push(supported_finding(
+            package,
+            target,
+            resource.path.clone(),
+            artifact_path,
+        ));
+    }
+    Ok((artifacts, findings))
+}
+
+fn append_executable_bit_findings(
+    graph: &CompilationGraph,
+    target: NativeTarget,
+    artifacts: &[NativeArtifact],
+    findings: &mut Vec<CapabilityFinding>,
+) {
+    for package in graph.packages.values() {
+        let name = logical_name(package);
+        for resource in package
+            .resources
+            .values()
+            .filter(|resource| resource.executable)
+        {
+            let is_preserved = artifacts.iter().any(|artifact| {
+                artifact.source_package == package.id
+                    && artifact.executable
+                    && artifact.class == NativeArtifactClass::SkillResource
+                    && artifact.path.as_str() == format!("skills/{name}/{}", resource.path.as_str())
             });
-            let artifact_path = artifacts
-                .last()
-                .expect("opaque resource artifact was just appended")
-                .path
-                .clone();
-            findings.push(supported_finding(
+            if is_preserved {
+                continue;
+            }
+
+            let is_primary = matches!(
+                &package.semantic_item,
+                SemanticItem::Rule {
+                    primary_instruction,
+                    ..
+                } | SemanticItem::Skill {
+                    primary_instruction,
+                    ..
+                } if primary_instruction == &resource.path
+            );
+            let artifact_path = is_primary
+                .then(|| {
+                    artifacts
+                        .iter()
+                        .rev()
+                        .find(|artifact| artifact.source_package == package.id)
+                        .map(|artifact| artifact.path.clone())
+                })
+                .flatten();
+            findings.push(loss_finding(
                 package,
                 target,
-                resource.path.clone(),
-                artifact_path,
-            ));
-        } else {
-            findings.push(dropped_finding(
-                package,
-                target,
-                CapabilityReasonCode::OpaqueCrossDomain,
+                CapabilityReasonCode::ExecutableBitUnrepresentable,
                 Some(resource.path.clone()),
-                "opaque native resource cannot cross harness domains because the target has not declared the source package shape compatible",
+                artifact_path,
+                "the target native artifact format does not preserve executable-bit metadata",
             ));
         }
     }
-    Ok((artifacts, findings))
 }
 
 fn append_package_outcomes(
@@ -1363,41 +1411,7 @@ fn lower_agent_plugin(graph: &CompilationGraph, options: LoweringOptions) -> Res
     }
 
     // 5. Executable bit metadata
-    for package in graph.packages.values() {
-        for resource in package
-            .resources
-            .values()
-            .filter(|resource| resource.executable)
-        {
-            let is_primary = matches!(
-                &package.semantic_item,
-                SemanticItem::Rule {
-                    primary_instruction,
-                    ..
-                } | SemanticItem::Skill {
-                    primary_instruction,
-                    ..
-                } if primary_instruction == &resource.path
-            );
-            let artifact_path = is_primary
-                .then(|| {
-                    artifacts
-                        .iter()
-                        .rev()
-                        .find(|artifact| artifact.source_package == package.id)
-                        .map(|artifact| artifact.path.clone())
-                })
-                .flatten();
-            findings.push(loss_finding(
-                package,
-                target,
-                CapabilityReasonCode::ExecutableBitUnrepresentable,
-                Some(resource.path.clone()),
-                artifact_path,
-                "the target native artifact format does not preserve executable-bit metadata",
-            ));
-        }
-    }
+    append_executable_bit_findings(graph, target, &artifacts, &mut findings);
 
     append_package_outcomes(graph, target, &artifacts, &mut findings);
     findings.sort_by(|left, right| left.id.cmp(&right.id));
@@ -1628,7 +1642,7 @@ mod tests {
     }
 
     #[test]
-    fn opaque_skill_resources_are_emitted_only_for_a_supported_same_domain_package() {
+    fn opaque_skill_resources_are_emitted_across_skill_directory_targets() {
         let primary = Resource::primary_instruction(
             ResourcePath::parse("SKILL.md").unwrap(),
             ResourceContent::Text("Review the diff.".to_owned()),
@@ -1671,18 +1685,28 @@ mod tests {
                 && artifact.bytes == b"Check error paths."
         }));
 
-        assert!(lower(&graph, NativeTarget::Claude, LoweringOptions::strict()).is_err());
-        let cross_domain =
-            lower(&graph, NativeTarget::Claude, LoweringOptions::allow_lossy()).unwrap();
-        assert_eq!(cross_domain.artifacts.len(), 1);
-        assert!(cross_domain.findings.iter().any(|finding| {
+        let cross_domain = lower(&graph, NativeTarget::Claude, LoweringOptions::strict()).unwrap();
+        assert_eq!(cross_domain.artifacts.len(), 2);
+        assert!(cross_domain.artifacts.iter().any(|artifact| {
+            artifact.class == NativeArtifactClass::SkillInstruction
+                && artifact.path.as_str() == "skills/code-review/SKILL.md"
+        }));
+        assert!(cross_domain.artifacts.iter().any(|artifact| {
+            artifact.class == NativeArtifactClass::SkillResource
+                && artifact.path.as_str() == "skills/code-review/references/checklist.md"
+                && artifact.bytes == b"Check error paths."
+        }));
+
+        assert!(lower(&graph, NativeTarget::Cursor, LoweringOptions::strict()).is_err());
+        let cursor = lower(&graph, NativeTarget::Cursor, LoweringOptions::allow_lossy()).unwrap();
+        assert_eq!(cursor.artifacts.len(), 1);
+        assert!(cursor.findings.iter().any(|finding| {
             finding.severity == CapabilitySeverity::Dropped
-                && finding.reason_code == CapabilityReasonCode::OpaqueCrossDomain
+                && finding.reason_code == CapabilityReasonCode::OpaqueResourceUnrepresentable
                 && finding
                     .resource_path
                     .as_ref()
                     .is_some_and(|path| path.as_str() == "references/checklist.md")
-                && finding.provenance.frontend == "opencode"
         }));
     }
 

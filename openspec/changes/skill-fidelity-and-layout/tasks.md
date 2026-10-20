@@ -7,11 +7,11 @@
 
 ## 2. Skill companions and executable metadata (rulette-6lj.2 / D10)
 
-- [ ] 2.1 Read archive entry mode bits in `src/inputs/mod.rs` to preserve executable flags in tar inputs.
-- [ ] 2.2 Allow `SkillResource` companions to lower across skill-directory targets in `src/emitters/lowering.rs`.
-- [ ] 2.3 Propagate executable permissions to `NativeArtifact` for `SkillResource` and preserve mode in staged plans.
-- [ ] 2.4 Report `SkillFrontmatterUnrepresentable` when unmapped skill frontmatter keys are dropped across domains.
-- [ ] 2.5 Add integration tests covering acceptance cases A01-A06.
+- [x] 2.1 Read archive entry mode bits in `src/inputs/mod.rs` to preserve executable flags in tar inputs.
+- [x] 2.2 Allow `SkillResource` companions to lower across skill-directory targets in `src/emitters/lowering.rs`.
+- [x] 2.3 Propagate executable permissions to `NativeArtifact` for `SkillResource` and preserve mode in staged plans.
+- [x] 2.4 Report `SkillFrontmatterUnrepresentable` when unmapped skill frontmatter keys are dropped across domains.
+- [x] 2.5 Add integration tests covering acceptance cases A01-A06.
 
 ## 3. Shared layout interoperability (rulette-6lj.3 / D11)
 
