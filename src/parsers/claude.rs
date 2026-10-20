@@ -1,5 +1,6 @@
 use crate::inputs::ArtifactObservation;
 use crate::parsers::frontend::{NativeCompilation, NativeFrontend, NativeObservationDisposition};
+use crate::parsers::skills::DirectSkillRoots;
 use crate::{ActivationMode, PortableActivation};
 use crate::{
     FrontendPayload, Package, PackageKind, PackageRoot, Resource, ResourceContent, ResourcePath,
@@ -20,22 +21,24 @@ fn parse_graph(observations: &[ArtifactObservation]) -> Result<crate::Compilatio
 
 /// Compiles Claude observations while recording the disposition of each input.
 pub(crate) fn compile_native(observations: &[ArtifactObservation]) -> Result<NativeCompilation> {
+    let direct_roots = DirectSkillRoots::from_observations(observations);
     let mut ordered_observations: Vec<_> = observations.iter().enumerate().collect();
     ordered_observations
         .sort_by(|left, right| observation_key(left.1).cmp(&observation_key(right.1)));
 
     let mut packages = Vec::new();
     let mut dispositions = vec![None; observations.len()];
-    let mut skill_members: BTreeMap<SkillGroupKey, Vec<(usize, &ArtifactObservation)>> =
+    let mut skill_members: BTreeMap<SkillGroupKey, Vec<(usize, &ArtifactObservation, &str)>> =
         BTreeMap::new();
 
     for (index, observation) in ordered_observations {
         let path = observation.source_path.as_str();
-        if let Some(root) = skill_root(path) {
+        if let Some((root, member)) = direct_roots.match_skill(Some(".claude/skills/"), observation)
+        {
             skill_members
                 .entry(SkillGroupKey::from_observation(root, observation))
                 .or_default()
-                .push((index, observation));
+                .push((index, observation, member));
         } else if is_rule_path(path) {
             packages.push(rule_package(observation)?);
             dispositions[index] = Some(NativeObservationDisposition::PackageContent);
@@ -59,23 +62,21 @@ pub(crate) fn compile_native(observations: &[ArtifactObservation]) -> Result<Nat
     }
 
     for (key, members) in skill_members {
-        if let Some(primary) = members
+        if let Some((_, primary, _)) = members
             .iter()
-            .find(|(_, observation)| {
-                skill_member(observation.source_path.as_str()) == Some("SKILL.md")
-            })
-            .map(|(_, observation)| *observation)
+            .find(|(_, _, member)| *member == "SKILL.md")
+            .copied()
         {
-            let member_observations = members
+            let member_pairs = members
                 .iter()
-                .map(|(_, observation)| *observation)
+                .map(|(_, observation, member)| (*observation, *member))
                 .collect::<Vec<_>>();
-            packages.push(skill_package(&key.root, primary, &member_observations)?);
-            for (index, _) in members {
+            packages.push(skill_package(&key.root, primary, &member_pairs)?);
+            for (index, _, _) in members {
                 dispositions[index] = Some(NativeObservationDisposition::PackageContent);
             }
         } else {
-            for (index, _) in members {
+            for (index, _, _) in members {
                 dispositions[index] = Some(NativeObservationDisposition::UnrecognizedWarning);
             }
         }
@@ -229,16 +230,14 @@ fn activation_from_paths(value: serde_json::Value) -> Result<TargetActivation> {
 fn skill_package(
     root: &str,
     primary: &ArtifactObservation,
-    members: &[&ArtifactObservation],
+    members: &[(&ArtifactObservation, &str)],
 ) -> Result<Package> {
     let primary_text =
         std::str::from_utf8(&primary.bytes).context("Claude SKILL.md must be valid UTF-8")?;
     let document = parse_skill_document(primary_text)?;
     let primary_path = ResourcePath::parse("SKILL.md")?;
     let mut resources = BTreeMap::new();
-    for member in members {
-        let member_path = skill_member(member.source_path.as_str())
-            .expect("skill grouping only contains paths below its skill root");
+    for &(member, member_path) in members {
         let path = ResourcePath::parse(member_path)?;
         let resource = if member.source_path == primary.source_path {
             Resource::primary_instruction(
@@ -474,18 +473,6 @@ fn split_parent(path: &str) -> Result<(&str, &str)> {
             Ok((parent, name))
         },
     )
-}
-
-fn skill_root(path: &str) -> Option<&str> {
-    let suffix = path.strip_prefix(".claude/skills/")?;
-    let (name, member) = suffix.split_once('/')?;
-    (!name.is_empty() && !member.is_empty()).then(|| &path[..".claude/skills/".len() + name.len()])
-}
-
-fn skill_member(path: &str) -> Option<&str> {
-    let suffix = path.strip_prefix(".claude/skills/")?;
-    let (_, member) = suffix.split_once('/')?;
-    (!member.is_empty()).then_some(member)
 }
 
 struct SkillDocument {

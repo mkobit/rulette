@@ -1,13 +1,14 @@
 #![cfg(any(target_os = "linux", target_os = "android"))]
 
 use rulette::emitters::lowering::CapabilityReasonCode;
+use rulette::inputs::{ArtifactObservation, InputOrigin};
 use rulette::publication::{
     stage, PublicationScope, ScopedAcceptedLoss, ScopedLowering, StageRequest, StageRoot,
 };
 use rulette::{
-    lower, CapabilitySeverity, CompilationGraph, FrontendPayload, LoweringOptions, NativeTarget,
-    Package, PackageKind, PackageRoot, Resource, ResourceContent, ResourcePath, SemanticIdentity,
-    SemanticItem, SourceProvenance,
+    compile_graph, lower, CapabilitySeverity, CompilationGraph, DecoderSelection, FrontendPayload,
+    LoweringOptions, NativeFrontend, NativeTarget, Package, PackageKind, PackageRoot, Resource,
+    ResourceContent, ResourcePath, SemanticIdentity, SemanticItem, SourceProvenance,
 };
 use std::collections::BTreeMap;
 use std::fs;
@@ -457,4 +458,347 @@ fn tar_archive_skill_input_preserves_executable_permission_across_targets() {
         run_sh.executable,
         "tar entry 0755 must be preserved on artifact"
     );
+}
+
+fn make_obs(path: &str, bytes: &[u8], executable: bool) -> ArtifactObservation {
+    ArtifactObservation::new(
+        bytes.to_vec(),
+        path,
+        executable,
+        InputOrigin::Filesystem,
+        "test-input",
+        None,
+    )
+    .unwrap()
+}
+
+#[test]
+fn a07_mixed_agents_md_and_agents_skills_auto_detects_codex_and_emits_claude_project() {
+    let obs = [
+        make_obs("AGENTS.md", b"# Rule\nFollow guidelines.\n", false),
+        make_obs(
+            ".agents/skills/deploy/SKILL.md",
+            b"---\nname: deploy\ndescription: Deploy app\n---\n# Deploy\n",
+            false,
+        ),
+        make_obs(
+            ".agents/skills/deploy/run.sh",
+            b"#!/bin/sh\necho deploy\n",
+            true,
+        ),
+    ];
+
+    let graph = compile_graph(&obs, DecoderSelection::Auto)
+        .expect("A07 auto-detection must resolve unambiguously to codex");
+    assert_eq!(graph.packages.len(), 2);
+
+    let lowering = lower(&graph, NativeTarget::Claude, LoweringOptions::strict())
+        .expect("A07 strict lowering to claude must pass");
+    assert_eq!(lowering.artifacts.len(), 3);
+
+    let temp = tempfile::tempdir().unwrap();
+    let live_root = temp.path().join("live");
+    let stage_dir = temp.path().join("stage");
+    fs::create_dir(&live_root).unwrap();
+
+    let staged = stage(request(
+        &graph,
+        vec![ScopedLowering {
+            scope: PublicationScope::Project,
+            lowering: &lowering,
+        }],
+        vec![StageRoot {
+            target: NativeTarget::Claude,
+            scope: PublicationScope::Project,
+            path: &live_root,
+        }],
+        vec![],
+        &stage_dir,
+    ))
+    .expect("A07 stage must succeed");
+    assert_eq!(staged.plan.entries.len(), 3);
+
+    let run_sh = staged
+        .plan
+        .entries
+        .iter()
+        .find(|e| e.artifact.native_path.as_str() == "skills/deploy/run.sh")
+        .unwrap();
+    assert!(run_sh.executable);
+    let mapping = rulette::publication::mapping_for(run_sh.target, run_sh.scope).unwrap();
+    assert_eq!(
+        mapping.map_artifact(&run_sh.artifact).unwrap().as_str(),
+        ".claude/skills/deploy/run.sh"
+    );
+
+    let claude_md = staged
+        .plan
+        .entries
+        .iter()
+        .find(|e| e.artifact.native_path.as_str() == "CLAUDE.md")
+        .unwrap();
+    assert_eq!(
+        mapping.map_artifact(&claude_md.artifact).unwrap().as_str(),
+        "CLAUDE.md"
+    );
+}
+
+#[test]
+fn a08_mixed_cursor_rules_and_agents_skills_auto_detects_cursor_and_emits_antigravity() {
+    let obs = [
+        make_obs(
+            ".cursor/rules/deploy.mdc",
+            b"---\ndescription: Deployment guidance\nglobs: [\"deploy/**\"]\n---\nGuidance content.\n",
+            false,
+        ),
+        make_obs(
+            ".agents/skills/deploy/SKILL.md",
+            b"---\nname: deploy\ndescription: Deploy app\n---\n# Deploy\n",
+            false,
+        ),
+        make_obs(
+            ".agents/skills/deploy/run.sh",
+            b"#!/bin/sh\necho deploy\n",
+            true,
+        ),
+    ];
+
+    let graph = compile_graph(&obs, DecoderSelection::Auto)
+        .expect("A08 auto-detection must resolve unambiguously to cursor-mdc");
+    assert_eq!(graph.packages.len(), 2);
+
+    let lowering = lower(&graph, NativeTarget::Antigravity, LoweringOptions::strict())
+        .expect("A08 strict lowering to antigravity must pass");
+    assert_eq!(lowering.artifacts.len(), 3);
+
+    let temp = tempfile::tempdir().unwrap();
+    let live_root = temp.path().join("live");
+    let stage_dir = temp.path().join("stage");
+    fs::create_dir(&live_root).unwrap();
+
+    let staged = stage(request(
+        &graph,
+        vec![ScopedLowering {
+            scope: PublicationScope::Project,
+            lowering: &lowering,
+        }],
+        vec![StageRoot {
+            target: NativeTarget::Antigravity,
+            scope: PublicationScope::Project,
+            path: &live_root,
+        }],
+        vec![],
+        &stage_dir,
+    ))
+    .expect("A08 stage must succeed");
+    assert_eq!(staged.plan.entries.len(), 3);
+
+    let run_sh = staged
+        .plan
+        .entries
+        .iter()
+        .find(|e| e.artifact.native_path.as_str() == "skills/deploy/run.sh")
+        .unwrap();
+    let mapping = rulette::publication::mapping_for(run_sh.target, run_sh.scope).unwrap();
+    assert_eq!(
+        mapping.map_artifact(&run_sh.artifact).unwrap().as_str(),
+        ".agents/skills/deploy/run.sh"
+    );
+}
+
+#[test]
+fn a09_pure_agents_skills_snapshot_compiles_with_explicit_codex_and_auto() {
+    let obs = [
+        make_obs(
+            ".agents/skills/deploy/SKILL.md",
+            b"---\nname: deploy\ndescription: Deploy app\n---\n# Deploy\n",
+            false,
+        ),
+        make_obs(
+            ".agents/skills/deploy/run.sh",
+            b"#!/bin/sh\necho deploy\n",
+            true,
+        ),
+    ];
+
+    // Explicit --from codex
+    let graph_explicit = compile_graph(&obs, DecoderSelection::Native(NativeFrontend::Codex))
+        .expect("A09 explicit codex must pass");
+    assert_eq!(graph_explicit.packages.len(), 1);
+
+    // Auto-detection resolves to default skill frontend (Codex)
+    let graph_auto = compile_graph(&obs, DecoderSelection::Auto)
+        .expect("A09 auto-detection on standalone skills must resolve to codex");
+    assert_eq!(graph_auto.packages.len(), 1);
+
+    let lowering = lower(
+        &graph_explicit,
+        NativeTarget::Codex,
+        LoweringOptions::strict(),
+    )
+    .expect("A09 strict lowering to codex must pass");
+    assert_eq!(lowering.artifacts.len(), 2);
+
+    let temp = tempfile::tempdir().unwrap();
+    let live_root = temp.path().join("live");
+    let stage_dir = temp.path().join("stage");
+    fs::create_dir(&live_root).unwrap();
+
+    let staged = stage(request(
+        &graph_explicit,
+        vec![ScopedLowering {
+            scope: PublicationScope::Project,
+            lowering: &lowering,
+        }],
+        vec![StageRoot {
+            target: NativeTarget::Codex,
+            scope: PublicationScope::Project,
+            path: &live_root,
+        }],
+        vec![],
+        &stage_dir,
+    ))
+    .expect("A09 stage must succeed");
+    assert_eq!(staged.plan.entries.len(), 2);
+
+    let run_sh = staged
+        .plan
+        .entries
+        .iter()
+        .find(|e| e.artifact.native_path.as_str() == "skills/deploy/run.sh")
+        .unwrap();
+    let mapping = rulette::publication::mapping_for(run_sh.target, run_sh.scope).unwrap();
+    assert_eq!(
+        mapping.map_artifact(&run_sh.artifact).unwrap().as_str(),
+        ".codex/skills/deploy/run.sh"
+    );
+}
+
+#[test]
+fn a10_codex_skills_and_agents_skills_duplicate_skill_collides_before_lowering() {
+    let obs = [
+        make_obs(
+            ".codex/skills/deploy/SKILL.md",
+            b"---\nname: deploy\ndescription: Deploy app (codex)\n---\n# Deploy\n",
+            false,
+        ),
+        make_obs(
+            ".agents/skills/deploy/SKILL.md",
+            b"---\nname: deploy\ndescription: Deploy app (agents)\n---\n# Deploy\n",
+            false,
+        ),
+    ];
+
+    let error = compile_graph(&obs, DecoderSelection::Native(NativeFrontend::Codex))
+        .expect_err("A10 duplicate semantic identity must fail before lowering");
+    assert!(
+        error.to_string().contains("skill:deploy"),
+        "error must mention colliding skill identity: {error}"
+    );
+}
+
+#[test]
+fn a11_skill_with_symlink_companion_is_rejected_at_observation() {
+    let temp = tempfile::tempdir().unwrap();
+    let skill_dir = temp.path().join("deploy");
+    fs::create_dir(&skill_dir).unwrap();
+    fs::write(
+        skill_dir.join("SKILL.md"),
+        b"---\nname: deploy\ndescription: Deploy app\n---\n# Deploy\n",
+    )
+    .unwrap();
+
+    let target = temp.path().join("target.sh");
+    fs::write(&target, b"#!/bin/sh\nexit 0\n").unwrap();
+    std::os::unix::fs::symlink(&target, skill_dir.join("run.sh")).unwrap();
+
+    let error = rulette::inputs::observe_path(&skill_dir)
+        .expect_err("A11 symlinked companion must be rejected during observation");
+    assert!(
+        error.to_string().contains("symlink"),
+        "error must report symlink: {error}"
+    );
+}
+
+#[test]
+fn a12_valid_skill_package_rejected_at_cursor_user_target() {
+    let pkg = make_skill_package(
+        "codex",
+        ".codex/skills/deploy",
+        "deploy",
+        "Deploy the service",
+        true,
+        None,
+    );
+    let graph = CompilationGraph::new([pkg]).unwrap();
+    let lowering = lower(&graph, NativeTarget::Cursor, LoweringOptions::allow_lossy()).unwrap();
+
+    let temp = tempfile::tempdir().unwrap();
+    let live_root = temp.path().join("live");
+    let stage_dir = temp.path().join("stage");
+    fs::create_dir(&live_root).unwrap();
+
+    let error = stage(request(
+        &graph,
+        vec![ScopedLowering {
+            scope: PublicationScope::User,
+            lowering: &lowering,
+        }],
+        vec![StageRoot {
+            target: NativeTarget::Cursor,
+            scope: PublicationScope::User,
+            path: &live_root,
+        }],
+        vec![],
+        &stage_dir,
+    ))
+    .expect_err("A12 cursor@user must be rejected as unsupported scope");
+    assert!(
+        error
+            .to_string()
+            .contains("user mapping is unavailable for target `cursor`"),
+        "error must report unavailable user mapping for cursor: {error}"
+    );
+}
+
+#[test]
+fn direct_directory_skill_inputs_supported_across_single_and_multi_skill_layouts() {
+    // Single skill direct input (SKILL.md + run.sh at root ".")
+    let single_obs = [
+        make_obs(
+            "SKILL.md",
+            b"---\nname: single\ndescription: Single direct skill\n---\n# Single\n",
+            false,
+        ),
+        make_obs("run.sh", b"#!/bin/sh\necho single\n", true),
+    ];
+    let graph_single = compile_graph(&single_obs, DecoderSelection::Auto).unwrap();
+    assert_eq!(graph_single.packages.len(), 1);
+    let lowering_single = lower(
+        &graph_single,
+        NativeTarget::Claude,
+        LoweringOptions::strict(),
+    )
+    .unwrap();
+    assert_eq!(lowering_single.artifacts.len(), 2);
+
+    // Multi-skill direct input (<name>/SKILL.md + <name>/run.sh)
+    let multi_obs = [
+        make_obs(
+            "alpha/SKILL.md",
+            b"---\nname: alpha\ndescription: Alpha direct skill\n---\n# Alpha\n",
+            false,
+        ),
+        make_obs("alpha/run.sh", b"#!/bin/sh\necho alpha\n", true),
+        make_obs(
+            "beta/SKILL.md",
+            b"---\nname: beta\ndescription: Beta direct skill\n---\n# Beta\n",
+            false,
+        ),
+    ];
+    let graph_multi = compile_graph(&multi_obs, DecoderSelection::Auto).unwrap();
+    assert_eq!(graph_multi.packages.len(), 2);
+    let lowering_multi =
+        lower(&graph_multi, NativeTarget::Codex, LoweringOptions::strict()).unwrap();
+    assert_eq!(lowering_multi.artifacts.len(), 3);
 }

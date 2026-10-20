@@ -6,6 +6,7 @@ pub mod codex;
 pub mod cursor;
 pub mod frontend;
 pub mod opencode;
+pub mod skills;
 
 pub use aggregation::{
     aggregate, AggregateCollisionCandidate, AggregateCollisionGroup, AggregateCollisionKey,

@@ -4,6 +4,7 @@ use crate::ir::graph::{
     SemanticIdentity, SemanticItem, SourceProvenance,
 };
 use crate::parsers::frontend::{NativeCompilation, NativeFrontend, NativeObservationDisposition};
+use crate::parsers::skills::DirectSkillRoots;
 use anyhow::{anyhow, bail, Context, Result};
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -18,13 +19,14 @@ fn compile_opencode_graph(inputs: &[ArtifactObservation]) -> Result<crate::Compi
 
 /// Compiles OpenCode observations while recording the disposition of each input.
 pub(crate) fn compile_native(inputs: &[ArtifactObservation]) -> Result<NativeCompilation> {
+    let direct_roots = DirectSkillRoots::from_observations(inputs);
     let mut packages = Vec::new();
     let mut dispositions = vec![None; inputs.len()];
     let mut skill_groups: BTreeMap<SkillGroupKey, Vec<usize>> = BTreeMap::new();
     for (index, observation) in inputs.iter().enumerate() {
-        if let Some((root, _)) = skill_location(&observation.source_path) {
+        if let Some((root, _)) = direct_roots.match_skill(Some(".opencode/skills/"), observation) {
             skill_groups
-                .entry(SkillGroupKey::from_observation(&root, observation))
+                .entry(SkillGroupKey::from_observation(root, observation))
                 .or_default()
                 .push(index);
         }
@@ -311,21 +313,15 @@ fn split_frontmatter(input: &str) -> (Option<&str>, &str) {
     (Some(remainder[..end].trim()), body)
 }
 
-fn skill_location(path: &ResourcePath) -> Option<(String, String)> {
-    let components: Vec<_> = path.as_str().split('/').collect();
-    let skills = components
-        .iter()
-        .rposition(|component| *component == "skills")?;
-    let name = *components.get(skills + 1)?;
-    let resource = components.get(skills + 2..)?.join("/");
-    (!resource.is_empty()).then(|| (components[..skills + 2].join("/"), name.to_owned()))
-}
-
 fn relative_to_root(path: &ResourcePath, root: &str) -> Option<String> {
-    path.as_str()
-        .strip_prefix(root)
-        .and_then(|rest| rest.strip_prefix('/'))
-        .map(ToOwned::to_owned)
+    if root == "." {
+        Some(path.as_str().to_owned())
+    } else {
+        path.as_str()
+            .strip_prefix(root)
+            .and_then(|rest| rest.strip_prefix('/'))
+            .map(ToOwned::to_owned)
+    }
 }
 
 fn skill_name_from_root(root: &str) -> &str {
