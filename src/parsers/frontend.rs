@@ -1,5 +1,6 @@
 use crate::inputs::{ArtifactObservation, InputOrigin};
 use crate::parsers::aggregation::{construct_graph, AggregationCandidate};
+use crate::parsers::skills::{has_shared_skills, is_agents_skills_path};
 use crate::{CompilationGraph, DiagnosticSeverity, GraphDiagnostic};
 use anyhow::{Context, Result};
 use std::collections::BTreeSet;
@@ -332,7 +333,13 @@ fn detect_graph_format(observations: &[ArtifactObservation]) -> Result<DecoderSe
             .iter()
             .next()
             .expect("one graph frontend candidate is present")),
-        0 => anyhow::bail!("could not auto-detect a core graph frontend from the input paths"),
+        0 => {
+            if has_shared_skills(observations) {
+                Ok(DecoderSelection::Native(NativeFrontend::Codex))
+            } else {
+                anyhow::bail!("could not auto-detect a core graph frontend from the input paths")
+            }
+        }
         _ => anyhow::bail!(
             "auto-detection found multiple core graph frontends; use --from to select one explicitly"
         ),
@@ -383,7 +390,7 @@ fn native_frontend_candidates(observation: &ArtifactObservation) -> BTreeSet<Nat
         candidates.insert(NativeFrontend::Claude);
     }
     if has_path_component(path, ".antigravity")
-        || has_path_component(path, ".agents")
+        || (has_path_component(path, ".agents") && !is_agents_skills_path(path))
         || has_path_component(path, ".agent")
     {
         candidates.insert(NativeFrontend::Antigravity);

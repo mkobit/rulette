@@ -15,10 +15,10 @@
 
 ## 3. Shared layout interoperability (rulette-6lj.3 / D11)
 
-- [ ] 3.1 Treat `.agents/skills/...` as a universal skill path across native frontends in `src/parsers/frontend.rs`.
-- [ ] 3.2 Resolve `--from auto` unambiguously when `.agents/skills/...` coexists with native rule files.
-- [ ] 3.3 Extend parser skill matchers in `src/parsers/codex.rs` and `src/parsers/claude.rs` for shared layouts.
-- [ ] 3.4 Add integration tests covering acceptance cases A07-A12.
+- [x] 3.1 Treat `.agents/skills/...` as a universal skill path across native frontends in `src/parsers/frontend.rs`.
+- [x] 3.2 Resolve `--from auto` unambiguously when `.agents/skills/...` coexists with native rule files.
+- [x] 3.3 Extend parser skill matchers in `src/parsers/codex.rs` and `src/parsers/claude.rs` for shared layouts.
+- [x] 3.4 Add integration tests covering acceptance cases A07-A12.
 
 ## 4. Verification and closure (rulette-6lj.4)
 
