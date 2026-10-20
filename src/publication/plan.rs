@@ -479,6 +479,9 @@ fn parse_reason_code(value: &str) -> Result<CapabilityReasonCode> {
         "rule-activation-unrepresentable" => {
             Ok(CapabilityReasonCode::RuleActivationUnrepresentable)
         }
+        "skill-frontmatter-unrepresentable" => {
+            Ok(CapabilityReasonCode::SkillFrontmatterUnrepresentable)
+        }
         _ => bail!("unsupported capability reason code `{value}`"),
     }
 }

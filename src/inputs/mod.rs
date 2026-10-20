@@ -330,12 +330,17 @@ fn observe_archive<R: Read>(
                 source_path.as_str()
             );
         }
+        let mode = entry
+            .header()
+            .mode()
+            .context("could not read archive entry mode")?;
+        let executable = (mode & 0o111) != 0;
         let bytes = read_resource(&mut entry, collector.limits.max_resource_bytes)?;
         let source_path_string = source_path.as_str().to_owned();
         collector.push(ArtifactObservation::new(
             bytes,
             source_path_string,
-            false,
+            executable,
             origin,
             input_label,
             Some(source_path),
