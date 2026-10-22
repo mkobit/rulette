@@ -2,13 +2,13 @@
 
 ## 1. Phase 1: Pure IR and domain modeling
 
-- [ ] 1.1 Add canonical `<plugin>` identifier validation and namespace helpers in [`src/ir/graph.rs`](../../../src/ir/graph.rs) for `FrontendPayload` namespaces `"agent-plugin.marketplace"` and `"agent-plugin.manifest"`.
+- [x] 1.1 Add canonical `<plugin>` identifier validation and namespace helpers in [`src/ir/graph.rs`](../../../src/ir/graph.rs) for `FrontendPayload` namespaces `"agent-plugin.marketplace"` and `"agent-plugin.manifest"`.
   - Acceptance criteria: `CompilationGraph::validate` in [`src/ir/graph.rs`](../../../src/ir/graph.rs) preserves `/<plugin>:<skill>` namespace metadata across `to_canonical_json` and `to_canonical_toml` round-trips and rejects `<plugin>` names that are empty or contain `:`, `..`, `/`, `\`, or control characters.
-- [ ] 1.2 Add a deterministic `(SemanticIdentity, PackageId)` ordering key helper for `PackageKind::Rule` packages in [`src/ir/graph.rs`](../../../src/ir/graph.rs).
+- [x] 1.2 Add a deterministic `(SemanticIdentity, PackageId)` ordering key helper for `PackageKind::Rule` packages in [`src/ir/graph.rs`](../../../src/ir/graph.rs).
   - Acceptance criteria: `CompilationGraph` in [`src/ir/graph.rs`](../../../src/ir/graph.rs) returns `PackageKind::Rule` packages ordered by `(SemanticIdentity, PackageId)` for any input observation order.
-- [ ] 1.3 Add `contributing_packages: Vec<PackageId>` to `NativeArtifact` in [`src/emitters/lowering.rs`](../../../src/emitters/lowering.rs) and `PlanEntry` in [`src/publication/model.rs`](../../../src/publication/model.rs) and keep `source_package: PackageId` as the primary provenance identifier.
+- [x] 1.3 Add `contributing_packages: Vec<PackageId>` to `NativeArtifact` in [`src/emitters/lowering.rs`](../../../src/emitters/lowering.rs) and `PlanEntry` in [`src/publication/model.rs`](../../../src/publication/model.rs) and keep `source_package: PackageId` as the primary provenance identifier.
   - Acceptance criteria: `NativeArtifact` in [`src/emitters/lowering.rs`](../../../src/emitters/lowering.rs) and `PlanEntry` in [`src/publication/model.rs`](../../../src/publication/model.rs) record all sorted contributing `PackageId` values and serialize deterministically in [`src/publication/plan.rs`](../../../src/publication/plan.rs).
-- [ ] 1.4 Define `MarketplaceCatalogWireV1` and `MarketplacePluginEntryWireV1` in [`src/parsers/agent_plugin/wire.rs`](../../../src/parsers/agent_plugin/wire.rs) and `MarketplaceCatalog` and `MarketplacePluginEntry` in [`src/parsers/agent_plugin/model.rs`](../../../src/parsers/agent_plugin/model.rs).
+- [x] 1.4 Define `MarketplaceCatalogWireV1` and `MarketplacePluginEntryWireV1` in [`src/parsers/agent_plugin/wire.rs`](../../../src/parsers/agent_plugin/wire.rs) and `MarketplaceCatalog` and `MarketplacePluginEntry` in [`src/parsers/agent_plugin/model.rs`](../../../src/parsers/agent_plugin/model.rs).
   - Acceptance criteria: `MarketplaceCatalog::try_from` in [`src/parsers/agent_plugin/model.rs`](../../../src/parsers/agent_plugin/model.rs) validates each plugin path with `ResourcePath::parse` and rejects duplicate `<plugin>` names, `..`, `.`, leading `/`, backslashes, and drive prefixes.
 
 ## 2. Phase 2: Rule bundling implementation in lowering
@@ -46,7 +46,7 @@
 
 ## 5. Phase 5: Verification and test suite
 
-- [ ] 5.1 Write TDD unit tests in [`src/ir/graph.rs`](../../../src/ir/graph.rs) and [`src/parsers/agent_plugin/model.rs`](../../../src/parsers/agent_plugin/model.rs) that test `(SemanticIdentity, PackageId)` rule ordering, canonical `<plugin>` namespace validation, and `MarketplaceCatalog` path containment rejection.
+- [x] 5.1 Write TDD unit tests in [`src/ir/graph.rs`](../../../src/ir/graph.rs) and [`src/parsers/agent_plugin/model.rs`](../../../src/parsers/agent_plugin/model.rs) that test `(SemanticIdentity, PackageId)` rule ordering, canonical `<plugin>` namespace validation, and `MarketplaceCatalog` path containment rejection.
   - Acceptance criteria: `cargo test ir::graph` and `cargo test parsers::agent_plugin` pass with zero warnings.
 - [ ] 5.2 Write TDD unit tests in [`src/emitters/lowering.rs`](../../../src/emitters/lowering.rs) and [`src/publication/stage.rs`](../../../src/publication/stage.rs) that test multi-rule bundling into `AGENTS.md` and `CLAUDE.md`, single-rule preservation, frontmatter conversion, `-->` injection rejection, `\n\n---\n\n` delimiters, and per-package `CapabilityFinding` and `PlanLossFinding` attribution.
   - Acceptance criteria: `cargo test emitters::lowering` and `cargo test publication::stage` pass and verify byte-identical bundled outputs across input permutations.

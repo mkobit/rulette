@@ -200,6 +200,13 @@ fn build_plan<'a>(
             let entry_id = entry_identifier(target, scope, artifact, &content_digest);
             let stage_artifact_path =
                 ResourcePath::parse(format!("artifacts/{entry_id}/artifact"))?;
+            let mut contributing_packages = artifact.contributing_packages.clone();
+            if !contributing_packages.contains(&artifact.source_package) {
+                contributing_packages.push(artifact.source_package.clone());
+            }
+            contributing_packages.sort();
+            contributing_packages.dedup();
+
             let entry = PlanEntry {
                 entry_id: entry_id.clone(),
                 target,
@@ -215,15 +222,13 @@ fn build_plan<'a>(
                     .context("artifact is too large")?,
                 executable: artifact.executable,
                 source_package: artifact.source_package.clone(),
+                contributing_packages: contributing_packages.clone(),
             };
-            if entry_lookup
-                .insert(
-                    (target, scope, artifact.source_package.clone(), descriptor),
-                    entry_id,
-                )
-                .is_some()
-            {
-                bail!("staging contains duplicate source artifact descriptors");
+            for pkg_id in &contributing_packages {
+                entry_lookup.insert(
+                    (target, scope, pkg_id.clone(), descriptor.clone()),
+                    entry_id.clone(),
+                );
             }
             entries.push(entry.clone());
             prepared.push(PreparedArtifact {
@@ -304,10 +309,11 @@ fn matching_artifact_descriptor(
     let lowering = lowerings
         .get(&(target, scope))
         .expect("accepted loss has a matching scoped lowering");
-    let mut artifacts = lowering
-        .artifacts
-        .iter()
-        .filter(|artifact| artifact.source_package == finding.package_id && artifact.path == *path);
+    let mut artifacts = lowering.artifacts.iter().filter(|artifact| {
+        (artifact.source_package == finding.package_id
+            || artifact.contributing_packages.contains(&finding.package_id))
+            && artifact.path == *path
+    });
     let artifact = artifacts
         .next()
         .context("accepted artifact loss does not match a lowered artifact")?;

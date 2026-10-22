@@ -1,7 +1,8 @@
 use super::wire::{
-    McpConfigWireV1, McpServerWireV1, PluginAuthorWireV1, PluginManifestWireV1,
-    MCP_CONFIG_SCHEMA_V1, PLUGIN_MANIFEST_SCHEMA_V1,
+    MarketplaceCatalogWireV1, MarketplacePluginEntryWireV1, McpConfigWireV1, McpServerWireV1,
+    PluginAuthorWireV1, PluginManifestWireV1, MCP_CONFIG_SCHEMA_V1, PLUGIN_MANIFEST_SCHEMA_V1,
 };
+use crate::ir::graph::{validate_plugin_name, ResourcePath};
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -357,6 +358,146 @@ fn validate_rest_of_path(rest: &str, full_path: &str, field: &str) -> Result<()>
     Ok(())
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MarketplacePluginEntry {
+    pub name: String,
+    pub path: ResourcePath,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub extra: BTreeMap<String, serde_json::Value>,
+}
+
+impl MarketplacePluginEntry {
+    pub fn new(name: impl Into<String>, path: ResourcePath) -> Result<Self> {
+        let name = name.into();
+        validate_plugin_name(&name)?;
+        Ok(Self {
+            name,
+            path,
+            description: None,
+            version: None,
+            extra: BTreeMap::new(),
+        })
+    }
+
+    pub fn source(&self) -> &ResourcePath {
+        &self.path
+    }
+}
+
+impl TryFrom<MarketplacePluginEntryWireV1> for MarketplacePluginEntry {
+    type Error = anyhow::Error;
+
+    fn try_from(wire: MarketplacePluginEntryWireV1) -> Result<Self, Self::Error> {
+        validate_plugin_name(&wire.name)?;
+        let path_str = match (&wire.path, &wire.source) {
+            (Some(p), None) => p.as_str(),
+            (None, Some(s)) => s.as_str(),
+            (Some(p), Some(s)) => {
+                if p != s {
+                    bail!(
+                        "conflicting path `{p}` and source `{s}` for plugin `{}`",
+                        wire.name
+                    );
+                }
+                p.as_str()
+            }
+            (None, None) => bail!("marketplace plugin `{}` missing path or source", wire.name),
+        };
+        let path = ResourcePath::parse(path_str)?;
+        Ok(Self {
+            name: wire.name,
+            path,
+            description: wire.description,
+            version: wire.version,
+            extra: wire.extra,
+        })
+    }
+}
+
+impl From<MarketplacePluginEntry> for MarketplacePluginEntryWireV1 {
+    fn from(entry: MarketplacePluginEntry) -> Self {
+        Self {
+            name: entry.name,
+            source: Some(entry.path.as_str().to_string()),
+            path: None,
+            description: entry.description,
+            version: entry.version,
+            extra: entry.extra,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct MarketplaceCatalog {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub plugins: Vec<MarketplacePluginEntry>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub extra: BTreeMap<String, serde_json::Value>,
+}
+
+impl MarketplaceCatalog {
+    pub fn new(plugins: Vec<MarketplacePluginEntry>) -> Result<Self> {
+        let mut seen = std::collections::BTreeSet::new();
+        for entry in &plugins {
+            if !seen.insert(entry.name.clone()) {
+                bail!(
+                    "duplicate plugin name `{}` in marketplace catalog",
+                    entry.name
+                );
+            }
+        }
+        Ok(Self {
+            name: None,
+            description: None,
+            plugins,
+            extra: BTreeMap::new(),
+        })
+    }
+}
+
+impl TryFrom<MarketplaceCatalogWireV1> for MarketplaceCatalog {
+    type Error = anyhow::Error;
+
+    fn try_from(wire: MarketplaceCatalogWireV1) -> Result<Self, Self::Error> {
+        let mut seen = std::collections::BTreeSet::new();
+        let mut plugins = Vec::with_capacity(wire.plugins.len());
+        for entry_wire in wire.plugins {
+            if !seen.insert(entry_wire.name.clone()) {
+                bail!(
+                    "duplicate plugin name `{}` in marketplace catalog",
+                    entry_wire.name
+                );
+            }
+            plugins.push(MarketplacePluginEntry::try_from(entry_wire)?);
+        }
+        Ok(Self {
+            name: wire.name,
+            description: wire.description,
+            plugins,
+            extra: wire.extra,
+        })
+    }
+}
+
+impl From<MarketplaceCatalog> for MarketplaceCatalogWireV1 {
+    fn from(catalog: MarketplaceCatalog) -> Self {
+        Self {
+            name: catalog.name,
+            description: catalog.description,
+            plugins: catalog.plugins.into_iter().map(Into::into).collect(),
+            extra: catalog.extra,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -673,5 +814,78 @@ mod tests {
         let parsed_wire: McpConfigWireV1 = serde_json::from_str(&serialized).unwrap();
         let parsed_domain = McpConfiguration::try_from(parsed_wire).unwrap();
         assert_eq!(config, parsed_domain);
+    }
+
+    #[test]
+    fn marketplace_catalog_valid_roundtrip() {
+        let entry1 = MarketplacePluginEntryWireV1::new("plugin-a", "plugins/plugin-a");
+        let entry2 = MarketplacePluginEntryWireV1::new("plugin-b", "vendor/plugin-b");
+        let catalog_wire = MarketplaceCatalogWireV1 {
+            name: Some("test-catalog".to_string()),
+            description: Some("Test catalog".to_string()),
+            plugins: vec![entry1, entry2],
+            extra: BTreeMap::new(),
+        };
+
+        let domain = MarketplaceCatalog::try_from(catalog_wire.clone()).unwrap();
+        assert_eq!(domain.plugins.len(), 2);
+        assert_eq!(domain.plugins[0].name, "plugin-a");
+        assert_eq!(domain.plugins[0].path.as_str(), "plugins/plugin-a");
+        assert_eq!(domain.plugins[1].name, "plugin-b");
+        assert_eq!(domain.plugins[1].path.as_str(), "vendor/plugin-b");
+
+        let wire_back = MarketplaceCatalogWireV1::from(domain);
+        assert_eq!(wire_back.plugins.len(), 2);
+        assert_eq!(wire_back.plugins[0].name, "plugin-a");
+        assert_eq!(
+            wire_back.plugins[0].source.as_deref(),
+            Some("plugins/plugin-a")
+        );
+    }
+
+    #[test]
+    fn marketplace_catalog_rejects_duplicate_plugin_names() {
+        let entry1 = MarketplacePluginEntryWireV1::new("same-plugin", "plugins/a");
+        let entry2 = MarketplacePluginEntryWireV1::new("same-plugin", "plugins/b");
+        let catalog_wire = MarketplaceCatalogWireV1::new(vec![entry1, entry2]);
+
+        assert!(MarketplaceCatalog::try_from(catalog_wire).is_err());
+    }
+
+    #[test]
+    fn marketplace_catalog_rejects_path_containment_violations() {
+        let invalid_paths = [
+            "../outside",
+            "./inside",
+            "/absolute/path",
+            "backslash\\path",
+            "C:drive_prefix",
+            ".",
+            "..",
+            "nested/../path",
+            "nested/./path",
+        ];
+
+        for path in invalid_paths {
+            let entry = MarketplacePluginEntryWireV1::new("my-plugin", path);
+            let catalog_wire = MarketplaceCatalogWireV1::new(vec![entry]);
+            assert!(
+                MarketplaceCatalog::try_from(catalog_wire).is_err(),
+                "path `{path}` should have been rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn marketplace_catalog_rejects_invalid_plugin_name() {
+        let invalid_names = ["", "   ", "a:b", "a..b", "a/b", "a\\b", "a\0b"];
+        for name in invalid_names {
+            let entry = MarketplacePluginEntryWireV1::new(name, "plugins/valid");
+            let catalog_wire = MarketplaceCatalogWireV1::new(vec![entry]);
+            assert!(
+                MarketplaceCatalog::try_from(catalog_wire).is_err(),
+                "name `{name}` should have been rejected"
+            );
+        }
     }
 }

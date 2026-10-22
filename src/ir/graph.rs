@@ -90,6 +90,42 @@ pub(crate) fn validate_skill_name(name: &str) -> Result<()> {
     Ok(())
 }
 
+pub const NAMESPACE_AGENT_PLUGIN_MARKETPLACE: &str = "agent-plugin.marketplace";
+pub const NAMESPACE_AGENT_PLUGIN_MANIFEST: &str = "agent-plugin.manifest";
+
+pub fn validate_plugin_name(name: &str) -> Result<()> {
+    if name.trim().is_empty() {
+        bail!("plugin name cannot be empty");
+    }
+    if name.contains(':')
+        || name.contains("..")
+        || name.contains('/')
+        || name.contains('\\')
+        || name.chars().any(char::is_control)
+    {
+        bail!("invalid plugin name `{name}`: plugin name cannot contain `:`, `..`, `/`, `\\`, or control characters");
+    }
+    Ok(())
+}
+
+pub fn plugin_skill_invocation(plugin: &str, skill: &str) -> Result<String> {
+    validate_plugin_name(plugin)?;
+    validate_skill_name(skill)?;
+    Ok(format!("/{plugin}:{skill}"))
+}
+
+pub fn parse_plugin_skill_invocation(invocation: &str) -> Result<(&str, &str)> {
+    let stripped = invocation
+        .strip_prefix('/')
+        .ok_or_else(|| anyhow::anyhow!("plugin skill invocation must start with `/`"))?;
+    let (plugin, skill) = stripped.split_once(':').ok_or_else(|| {
+        anyhow::anyhow!("plugin skill invocation must have form `/<plugin>:<skill>`")
+    })?;
+    validate_plugin_name(plugin)?;
+    validate_skill_name(skill)?;
+    Ok((plugin, skill))
+}
+
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize, JsonSchema)]
 #[serde(transparent)]
 pub struct ResourcePath(String);
@@ -373,9 +409,78 @@ pub struct FrontendPayload {
 }
 
 impl FrontendPayload {
+    pub fn is_agent_plugin_namespace(&self) -> bool {
+        self.namespace == NAMESPACE_AGENT_PLUGIN_MARKETPLACE
+            || self.namespace == NAMESPACE_AGENT_PLUGIN_MANIFEST
+    }
+
+    pub fn plugin_name(&self) -> Option<&str> {
+        self.fields
+            .get("plugin")
+            .or_else(|| self.fields.get("name"))
+            .and_then(|value| value.as_str())
+    }
+
+    pub fn for_manifest(plugin_name: impl Into<String>) -> Result<Self> {
+        let name = plugin_name.into();
+        validate_plugin_name(&name)?;
+        let mut fields = BTreeMap::new();
+        fields.insert("name".to_owned(), serde_json::Value::String(name));
+        Ok(Self {
+            namespace: NAMESPACE_AGENT_PLUGIN_MANIFEST.to_owned(),
+            fields,
+        })
+    }
+
+    pub fn for_marketplace(plugin_name: impl Into<String>) -> Result<Self> {
+        let name = plugin_name.into();
+        validate_plugin_name(&name)?;
+        let mut fields = BTreeMap::new();
+        fields.insert("plugin".to_owned(), serde_json::Value::String(name));
+        Ok(Self {
+            namespace: NAMESPACE_AGENT_PLUGIN_MARKETPLACE.to_owned(),
+            fields,
+        })
+    }
+
     fn validate(&self) -> Result<()> {
         if self.namespace.is_empty() || self.namespace.chars().any(char::is_control) {
             bail!("frontend payload namespace must be non-empty and control-character free");
+        }
+        if self.is_agent_plugin_namespace() {
+            if let Some(plugin_val) = self.fields.get("plugin") {
+                let plugin_str = plugin_val
+                    .as_str()
+                    .ok_or_else(|| anyhow::anyhow!("`plugin` field must be a string"))?;
+                validate_plugin_name(plugin_str)?;
+            }
+            if let Some(name_val) = self.fields.get("name") {
+                let name_str = name_val
+                    .as_str()
+                    .ok_or_else(|| anyhow::anyhow!("`name` field must be a string"))?;
+                validate_plugin_name(name_str)?;
+            }
+            if let Some(plugins_val) = self.fields.get("plugins") {
+                match plugins_val {
+                    serde_json::Value::Array(entries) => {
+                        for entry in entries {
+                            if let Some(name_val) = entry.get("name") {
+                                if let Some(name_str) = name_val.as_str() {
+                                    validate_plugin_name(name_str)?;
+                                }
+                            } else if let Some(name_str) = entry.as_str() {
+                                validate_plugin_name(name_str)?;
+                            }
+                        }
+                    }
+                    serde_json::Value::Object(map) => {
+                        for key in map.keys() {
+                            validate_plugin_name(key)?;
+                        }
+                    }
+                    _ => {}
+                }
+            }
         }
         Ok(())
     }
@@ -610,6 +715,36 @@ impl Package {
 
     pub fn package_root(&self) -> &PackageRoot {
         &self.package_root
+    }
+
+    pub fn rule_ordering_key(&self) -> (&SemanticIdentity, &PackageId) {
+        (&self.semantic_identity, &self.id)
+    }
+
+    pub fn plugin_name(&self) -> Option<&str> {
+        self.frontend_payload
+            .as_ref()
+            .and_then(|payload| payload.plugin_name())
+            .or_else(|| match &self.semantic_item {
+                SemanticItem::Skill {
+                    frontend_payload: Some(payload),
+                    ..
+                }
+                | SemanticItem::Rule {
+                    frontend_payload: Some(payload),
+                    ..
+                } => payload.plugin_name(),
+                _ => None,
+            })
+    }
+
+    pub fn plugin_skill_invocation(&self) -> Option<String> {
+        if self.kind != PackageKind::Skill {
+            return None;
+        }
+        let plugin = self.plugin_name()?;
+        let skill = self.semantic_identity.as_str().strip_prefix("skill:")?;
+        plugin_skill_invocation(plugin, skill).ok()
     }
 
     pub fn validate(&self) -> Result<()> {
@@ -855,6 +990,31 @@ impl CompilationGraph {
         let graph: Self = toml::from_str(input)?;
         graph.validate()?;
         Ok(graph)
+    }
+
+    pub fn rule_packages(&self) -> Vec<&Package> {
+        let mut rules: Vec<&Package> = self
+            .packages
+            .values()
+            .filter(|package| package.kind == PackageKind::Rule)
+            .collect();
+        rules.sort_by_key(|package| package.rule_ordering_key());
+        rules
+    }
+
+    pub fn rules(&self) -> Vec<&Package> {
+        self.rule_packages()
+    }
+
+    pub fn plugin_skill_invocations(&self) -> Vec<String> {
+        let mut invocations = self
+            .packages
+            .values()
+            .filter_map(|package| package.plugin_skill_invocation())
+            .collect::<Vec<_>>();
+        invocations.sort();
+        invocations.dedup();
+        invocations
     }
 }
 
@@ -1298,5 +1458,165 @@ mod tests {
 
         assert!(value["properties"].get("graph_version").is_some());
         assert!(value["properties"].get("packages").is_some());
+    }
+
+    #[test]
+    fn rule_packages_are_ordered_deterministically_by_semantic_identity_and_package_id() {
+        let make_rule = |name: &str| {
+            Package::rule(
+                SemanticIdentity::parse(format!("rule:{name}")).unwrap(),
+                SourceProvenance::new("codex", format!("fixtures/{name}.md")).unwrap(),
+                Resource::primary_instruction(
+                    ResourcePath::parse(format!("{name}.md")).unwrap(),
+                    ResourceContent::Text(format!("# {name}\n")),
+                    false,
+                ),
+            )
+            .unwrap()
+        };
+
+        let zebra = make_rule("zebra");
+        let apple = make_rule("apple");
+        let mango = make_rule("mango");
+
+        let graph1 = CompilationGraph::new([zebra.clone(), apple.clone(), mango.clone()]).unwrap();
+        let graph2 = CompilationGraph::new([apple.clone(), mango.clone(), zebra.clone()]).unwrap();
+
+        let rules1: Vec<_> = graph1
+            .rule_packages()
+            .into_iter()
+            .map(|p| p.semantic_identity.as_str())
+            .collect();
+        let rules2: Vec<_> = graph2
+            .rule_packages()
+            .into_iter()
+            .map(|p| p.semantic_identity.as_str())
+            .collect();
+
+        assert_eq!(rules1, vec!["rule:apple", "rule:mango", "rule:zebra"]);
+        assert_eq!(rules1, rules2);
+    }
+
+    #[test]
+    fn validate_plugin_name_enforces_grammar() {
+        assert!(super::validate_plugin_name("my-plugin").is_ok());
+        assert!(super::validate_plugin_name("superpowers").is_ok());
+        assert!(super::validate_plugin_name("tool_123").is_ok());
+
+        assert!(super::validate_plugin_name("").is_err());
+        assert!(super::validate_plugin_name("   ").is_err());
+        assert!(super::validate_plugin_name("a:b").is_err());
+        assert!(super::validate_plugin_name("a..b").is_err());
+        assert!(super::validate_plugin_name("a/b").is_err());
+        assert!(super::validate_plugin_name("a\\b").is_err());
+        assert!(super::validate_plugin_name("a\0b").is_err());
+        assert!(super::validate_plugin_name("a\nb").is_err());
+    }
+
+    #[test]
+    fn plugin_skill_invocations_round_trip_and_preserve_canonical_metadata() {
+        use super::{FrontendPayload, PackageKind, PackageRoot, SemanticItem};
+
+        let invocation = super::plugin_skill_invocation("my-plugin", "test-skill").unwrap();
+        assert_eq!(invocation, "/my-plugin:test-skill");
+
+        let (plugin, skill) = super::parse_plugin_skill_invocation(&invocation).unwrap();
+        assert_eq!(plugin, "my-plugin");
+        assert_eq!(skill, "test-skill");
+
+        let payload = FrontendPayload::for_marketplace("my-plugin").unwrap();
+        let resource_path = ResourcePath::parse("skills/test-skill/SKILL.md").unwrap();
+        let mut resources = std::collections::BTreeMap::new();
+        resources.insert(
+            resource_path.clone(),
+            Resource::primary_instruction(
+                resource_path.clone(),
+                ResourceContent::Text("# Test skill\n".to_owned()),
+                false,
+            ),
+        );
+
+        let skill_pkg = Package::new(
+            PackageKind::Skill,
+            SemanticIdentity::parse("skill:test-skill").unwrap(),
+            SourceProvenance::new("agent-plugin", "skills/test-skill/SKILL.md").unwrap(),
+            PackageRoot::parse("skills/test-skill").unwrap(),
+            SemanticItem::Skill {
+                primary_instruction: resource_path,
+                description: "Test skill description".to_owned(),
+                frontend_payload: Some(payload.clone()),
+            },
+            resources,
+            Some(payload),
+        )
+        .unwrap();
+
+        assert_eq!(skill_pkg.plugin_name(), Some("my-plugin"));
+        assert_eq!(
+            skill_pkg.plugin_skill_invocation(),
+            Some("/my-plugin:test-skill".to_owned())
+        );
+
+        let graph = CompilationGraph::new([skill_pkg]).unwrap();
+        assert_eq!(
+            graph.plugin_skill_invocations(),
+            vec!["/my-plugin:test-skill"]
+        );
+
+        let json = graph.to_canonical_json().unwrap();
+        let from_json = CompilationGraph::from_json(&json).unwrap();
+        assert_eq!(
+            from_json.plugin_skill_invocations(),
+            vec!["/my-plugin:test-skill"]
+        );
+
+        let toml_str = graph.to_toml().unwrap();
+        let from_toml = CompilationGraph::from_toml(&toml_str).unwrap();
+        assert_eq!(
+            from_toml.plugin_skill_invocations(),
+            vec!["/my-plugin:test-skill"]
+        );
+    }
+
+    #[test]
+    fn graph_validation_rejects_invalid_plugin_name_in_payload() {
+        use super::{FrontendPayload, PackageKind, PackageRoot, SemanticItem};
+
+        let mut fields = std::collections::BTreeMap::new();
+        fields.insert(
+            "plugin".to_owned(),
+            serde_json::Value::String("bad:plugin".to_owned()),
+        );
+        let payload = FrontendPayload {
+            namespace: super::NAMESPACE_AGENT_PLUGIN_MARKETPLACE.to_owned(),
+            fields,
+        };
+
+        let resource_path = ResourcePath::parse("skills/test-skill/SKILL.md").unwrap();
+        let mut resources = std::collections::BTreeMap::new();
+        resources.insert(
+            resource_path.clone(),
+            Resource::primary_instruction(
+                resource_path.clone(),
+                ResourceContent::Text("# Test skill\n".to_owned()),
+                false,
+            ),
+        );
+
+        let pkg_res = Package::new(
+            PackageKind::Skill,
+            SemanticIdentity::parse("skill:test-skill").unwrap(),
+            SourceProvenance::new("agent-plugin", "skills/test-skill/SKILL.md").unwrap(),
+            PackageRoot::parse("skills/test-skill").unwrap(),
+            SemanticItem::Skill {
+                primary_instruction: resource_path,
+                description: "Test skill description".to_owned(),
+                frontend_payload: Some(payload.clone()),
+            },
+            resources,
+            Some(payload),
+        );
+
+        assert!(pkg_res.is_err());
     }
 }

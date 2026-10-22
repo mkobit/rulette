@@ -249,6 +249,7 @@ fn sample_plan() -> PublicationPlan {
             byte_length: 8,
             executable: false,
             source_package: package_id(),
+            contributing_packages: vec![package_id()],
         }],
     }
 }
