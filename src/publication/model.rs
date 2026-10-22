@@ -116,6 +116,7 @@ pub struct PlanEntry {
     pub byte_length: u64,
     pub executable: bool,
     pub source_package: PackageId,
+    pub contributing_packages: Vec<PackageId>,
 }
 
 /// A structured loss finding retained when a caller explicitly accepts loss.

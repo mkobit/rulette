@@ -53,6 +53,7 @@ pub struct NativeArtifact {
     pub bytes: Vec<u8>,
     pub executable: bool,
     pub source_package: PackageId,
+    pub contributing_packages: Vec<PackageId>,
 }
 
 /// The severity of one representability decision.
@@ -348,6 +349,7 @@ fn lower_skill_package(
         bytes: rendered.into_bytes(),
         executable: false,
         source_package: package.id.clone(),
+        contributing_packages: vec![package.id.clone()],
     }];
     let mut findings = Vec::new();
     findings.push(supported_finding(
@@ -383,6 +385,7 @@ fn lower_skill_package(
             bytes: resource_content_bytes(&resource.content),
             executable: resource.executable,
             source_package: package.id.clone(),
+            contributing_packages: vec![package.id.clone()],
         });
         let artifact_path = artifacts
             .last()
@@ -559,6 +562,7 @@ fn lower_skill_as_cursor_rule(package: &Package) -> Result<NativeArtifact> {
         bytes: rendered.into_bytes(),
         executable: false,
         source_package: package.id.clone(),
+        contributing_packages: vec![package.id.clone()],
     })
 }
 
@@ -790,6 +794,7 @@ fn lower_rule(package: &Package, target: NativeTarget) -> Result<NativeArtifact>
         bytes: render_rule(package, target, text)?,
         executable: false,
         source_package: package.id.clone(),
+        contributing_packages: vec![package.id.clone()],
     })
 }
 
@@ -1057,6 +1062,7 @@ fn lower_agent_plugin(graph: &CompilationGraph, options: LoweringOptions) -> Res
             bytes: manifest_bytes,
             executable: false,
             source_package: manifest_pkg.id.clone(),
+            contributing_packages: vec![manifest_pkg.id.clone()],
         });
 
         if manifest_pkg
@@ -1123,6 +1129,7 @@ fn lower_agent_plugin(graph: &CompilationGraph, options: LoweringOptions) -> Res
                 bytes: manifest_str.into_bytes(),
                 executable: false,
                 source_package: first_pkg.id.clone(),
+                contributing_packages: vec![first_pkg.id.clone()],
             });
         }
     }
@@ -1205,6 +1212,7 @@ fn lower_agent_plugin(graph: &CompilationGraph, options: LoweringOptions) -> Res
                         bytes: rendered.into_bytes(),
                         executable: false,
                         source_package: package.id.clone(),
+                        contributing_packages: vec![package.id.clone()],
                     });
 
                     findings.push(loss_finding(
@@ -1350,6 +1358,12 @@ fn lower_agent_plugin(graph: &CompilationGraph, options: LoweringOptions) -> Res
         let config_wire = McpConfigWireV1::new(mcp_servers);
         let mut config_str = serde_json::to_string_pretty(&config_wire)?;
         config_str.push('\n');
+        let mut contributing_packages: Vec<PackageId> = same_domain_mcp_packages
+            .iter()
+            .map(|p| p.id.clone())
+            .collect();
+        contributing_packages.sort();
+        contributing_packages.dedup();
         artifacts.push(NativeArtifact {
             target,
             class: NativeArtifactClass::McpConfig,
@@ -1357,6 +1371,7 @@ fn lower_agent_plugin(graph: &CompilationGraph, options: LoweringOptions) -> Res
             bytes: config_str.into_bytes(),
             executable: false,
             source_package: same_domain_mcp_packages[0].id.clone(),
+            contributing_packages,
         });
     }
 
@@ -1400,6 +1415,7 @@ fn lower_agent_plugin(graph: &CompilationGraph, options: LoweringOptions) -> Res
                 bytes: resource_content_bytes(&resource.content),
                 executable: false,
                 source_package: package.id.clone(),
+                contributing_packages: vec![package.id.clone()],
             });
             findings.push(supported_finding(
                 package,

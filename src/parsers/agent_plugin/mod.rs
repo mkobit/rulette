@@ -11,10 +11,14 @@ use std::collections::BTreeMap;
 pub mod model;
 pub mod wire;
 
-pub use model::{McpConfiguration, McpServer, McpTransport, PluginAuthor, PluginManifest};
+pub use model::{
+    MarketplaceCatalog, MarketplacePluginEntry, McpConfiguration, McpServer, McpTransport,
+    PluginAuthor, PluginManifest,
+};
 pub use wire::{
-    McpConfigWireV1, McpServerWireV1, PluginAuthorWireV1, PluginManifestWireV1,
-    SkillFrontmatterWire, MCP_CONFIG_SCHEMA_V1, PLUGIN_MANIFEST_SCHEMA_V1,
+    MarketplaceCatalogWireV1, MarketplacePluginEntryWireV1, McpConfigWireV1, McpServerWireV1,
+    PluginAuthorWireV1, PluginManifestWireV1, SkillFrontmatterWire, MCP_CONFIG_SCHEMA_V1,
+    PLUGIN_MANIFEST_SCHEMA_V1,
 };
 
 pub(crate) fn compile_native(observations: &[ArtifactObservation]) -> Result<NativeCompilation> {

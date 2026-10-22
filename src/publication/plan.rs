@@ -97,6 +97,8 @@ struct PlanEntryWire {
     byte_length: u64,
     executable: bool,
     source_package: String,
+    #[serde(default)]
+    contributing_packages: Vec<String>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -224,6 +226,17 @@ fn plan_from_wire(wire: PlanWire) -> Result<PublicationPlan> {
 }
 
 fn entry_to_wire(entry: PlanEntry) -> Result<PlanEntryWire> {
+    let mut contributing_packages = entry
+        .contributing_packages
+        .into_iter()
+        .map(|id| id.as_str().to_owned())
+        .collect::<Vec<_>>();
+    if contributing_packages.is_empty() {
+        contributing_packages.push(entry.source_package.as_str().to_owned());
+    }
+    contributing_packages.sort();
+    contributing_packages.dedup();
+
     Ok(PlanEntryWire {
         entry_id: entry.entry_id,
         target: target_name(entry.target).to_owned(),
@@ -235,6 +248,7 @@ fn entry_to_wire(entry: PlanEntry) -> Result<PlanEntryWire> {
         byte_length: entry.byte_length,
         executable: entry.executable,
         source_package: entry.source_package.as_str().to_owned(),
+        contributing_packages,
     })
 }
 
@@ -243,6 +257,18 @@ fn entry_from_wire(entry: PlanEntryWire) -> Result<PlanEntry> {
     if !stage_artifact_path.as_str().starts_with("artifacts/") {
         bail!("stage artifact path must be contained below `artifacts/`");
     }
+
+    let source_package = package_id_from_wire(entry.source_package)?;
+    let mut contributing_packages = entry
+        .contributing_packages
+        .into_iter()
+        .map(package_id_from_wire)
+        .collect::<Result<Vec<_>>>()?;
+    if contributing_packages.is_empty() {
+        contributing_packages.push(source_package.clone());
+    }
+    contributing_packages.sort();
+    contributing_packages.dedup();
 
     Ok(PlanEntry {
         entry_id: parse_identifier(&entry.entry_id, "entry identifier")?,
@@ -254,7 +280,8 @@ fn entry_from_wire(entry: PlanEntryWire) -> Result<PlanEntry> {
         content_digest: PlanDigest::parse(entry.content_digest)?,
         byte_length: entry.byte_length,
         executable: entry.executable,
-        source_package: package_id_from_wire(entry.source_package)?,
+        source_package,
+        contributing_packages,
     })
 }
 
@@ -365,6 +392,16 @@ fn validate_plan(plan: &PublicationPlan) -> Result<()> {
         }
         PlanDigest::parse(entry.content_digest.as_str())?;
         validate_package_id(&entry.source_package)?;
+        for pkg_id in &entry.contributing_packages {
+            validate_package_id(pkg_id)?;
+        }
+        if entry
+            .contributing_packages
+            .windows(2)
+            .any(|pair| pair[0] >= pair[1])
+        {
+            bail!("entry contributing packages must be in sorted, deduplicated order");
+        }
     }
 
     let mut loss_ids = BTreeSet::new();
@@ -387,7 +424,8 @@ fn validate_plan(plan: &PublicationPlan) -> Result<()> {
                     .find(|entry| entry.entry_id == *entry_id)
                     .expect("validated entry identifier exists");
                 if entry.target != loss.target
-                    || entry.source_package != loss.package_id
+                    || (!entry.contributing_packages.contains(&loss.package_id)
+                        && entry.source_package != loss.package_id)
                     || entry.artifact != *artifact
                 {
                     bail!("loss finding entry identifier does not match its artifact context");

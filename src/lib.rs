@@ -15,9 +15,9 @@ pub use emitters::lowering::{
     LoweringPlan, NativeArtifact, NativeArtifactClass, NativeTarget,
 };
 pub use ir::graph::{
-    CompilationGraph, DiagnosticSeverity, FrontendPayload, GraphDiagnostic, Package, PackageId,
-    PackageKind, PackageRoot, PortableActivation, Resource, ResourceContent, ResourcePath,
-    ResourceRole, SemanticIdentity, SemanticItem, SourceProvenance, TargetActivation,
+    validate_plugin_name, CompilationGraph, DiagnosticSeverity, FrontendPayload, GraphDiagnostic,
+    Package, PackageId, PackageKind, PackageRoot, PortableActivation, Resource, ResourceContent,
+    ResourcePath, ResourceRole, SemanticIdentity, SemanticItem, SourceProvenance, TargetActivation,
     TargetActivationOverrides, GRAPH_VERSION,
 };
 pub use ir::ActivationMode;
