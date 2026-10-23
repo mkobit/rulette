@@ -39,9 +39,9 @@ setup:
         printf '%s\n' 'export PATH="/home/agent/.local/share/mise/shims:/home/agent/.local/bin:$PATH"' > /etc/profile.d/mise.sh
         printf '%s\n' 'export PATH="/home/agent/.local/share/mise/shims:/home/agent/.local/bin:$PATH"' >> /etc/sandbox-persistent.sh
       description: "Install mise into /usr/local/bin and configure shell paths"
-    - command: "mise settings set paranoid false && mise settings set yes true && mise use -g bun@1.4.3 && mise use -g github:gastownhall/beads@1.3.1 && mise use -g rust@1.98.1 && mise exec -- rustup component add rustfmt clippy llvm-tools && mise reshim"
+    - command: "mise settings set paranoid false && mise settings set yes true && mise install && mise exec -- rustup component add rustfmt clippy llvm-tools && mise reshim"
       user: "1000"
-      description: "Install pinned tools and required Rust components for agent"
+      description: "Install configured tools and required Rust components for agent"
     - command: |
         set -eu
         for tool in bun bd cargo cargo-clippy cargo-fmt rustc rustfmt rustup; do
