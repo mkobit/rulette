@@ -89,7 +89,7 @@ mod docker_sandbox_tests {
 
         assert!(
             sandbox_section.contains(
-                "sbx env exec .sbx/sbxenv.yaml -- codex exec --model <model> \"<prompt>\""
+                "sbx env exec .sbx/sbxenv.yaml -- codex exec --model <model> --disable hooks --dangerously-bypass-approvals-and-sandbox \"<prompt>\""
             ),
             "Codex delegation must document direct sbx env exec with explicit --model"
         );
@@ -108,8 +108,8 @@ mod docker_sandbox_tests {
             "Guidance must reserve shell wrappers for commands requiring shell syntax or login-shell PATH"
         );
         assert!(
-            !sandbox_section.contains("sh -c 'codex"),
-            "Codex invocation must not use sh -c wrapper"
+            sandbox_section.contains("sh -c 'exec codex exec --model \"$1\" --disable hooks --dangerously-bypass-approvals-and-sandbox \"$2\" </dev/null' rulette-codex \"$model\" \"$prompt\""),
+            "Codex stdin fallback must pass model and prompt as positional arguments"
         );
         assert!(
             !sandbox_section.contains("sh -c 'agy"),
@@ -162,8 +162,8 @@ exit 1
             "codex",
             r#"#!/bin/sh
 set -eu
-if [ "$1" = "exec" ] && [ "$2" = "--model" ]; then
-    echo "codex: model=$3 prompt=$4"
+if [ "$1" = "exec" ] && [ "$2" = "--model" ] && [ "$4" = "--disable" ] && [ "$5" = "hooks" ] && [ "$6" = "--dangerously-bypass-approvals-and-sandbox" ]; then
+    echo "codex: model=$3 prompt=$7"
     exit 0
 fi
 echo "unexpected codex arguments: $*" >&2
@@ -199,6 +199,9 @@ exit 1
                 "exec",
                 "--model",
                 "gpt-5",
+                "--disable",
+                "hooks",
+                "--dangerously-bypass-approvals-and-sandbox",
                 "hello codex",
             ])
             .env_remove("BASH_ENV")
