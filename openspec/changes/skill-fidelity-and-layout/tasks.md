@@ -2,8 +2,8 @@
 
 ## 1. Specification and design baseline
 
-- [ ] 1.1 Complete proposal, design, and specification deltas for D10 and D11.
-- [ ] 1.2 Validate OpenSpec changes with `mise run spec-validate`.
+- [x] 1.1 Complete proposal, design, and specification deltas for D10 and D11.
+- [x] 1.2 Validate OpenSpec changes with `mise run spec-validate`.
 
 ## 2. Skill companions and executable metadata (rulette-6lj.2 / D10)
 
@@ -22,5 +22,5 @@
 
 ## 4. Verification and closure (rulette-6lj.4)
 
-- [ ] 4.1 Run full regression suite: `mise run check`.
-- [ ] 4.2 Update competitor synthesis document and close `rulette-6lj`.
+- [x] 4.1 Run full regression suite: `mise run check`.
+- [x] 4.2 Update competitor synthesis document and close `rulette-6lj`.
