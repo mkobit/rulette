@@ -25,6 +25,10 @@ pub enum Commands {
     /// Pretty-print the IR for debugging
     Inspect(commands::inspect::InspectArgs),
 
+    /// Evaluate incoming PreToolUse hook payloads against a permission policy
+    #[command(name = "hook-eval")]
+    HookEval(commands::hook_eval::HookEvalArgs),
+
     /// Output the JSON Schema for the compilation graph
     Schema(commands::schema::SchemaArgs),
 

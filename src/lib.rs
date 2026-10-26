@@ -20,6 +20,11 @@ pub use ir::graph::{
     ResourcePath, ResourceRole, SemanticIdentity, SemanticItem, SourceProvenance, TargetActivation,
     TargetActivationOverrides, GRAPH_VERSION,
 };
+pub use ir::permissions::{
+    CanonicalTool, NormalizedPattern, PermissionAction, PermissionPolicy, PermissionScope,
+    PrecedenceTier, ResolvedPermissionPolicy, ResolvedPermissionRule, SpecificityClass,
+    SpecificityKey, TargetPermissionOverrides, TargetPermissionPolicy, ToolAccessRule,
+};
 pub use ir::ActivationMode;
 pub use parsers::{
     aggregate, compile_graph, AggregateCollisionCandidate, AggregateCollisionGroup,
