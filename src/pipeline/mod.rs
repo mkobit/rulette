@@ -2,6 +2,37 @@ use crate::{CompilationGraph, DiagnosticSeverity, PackageId};
 use anyhow::{bail, Result};
 use std::collections::{BTreeMap, BTreeSet};
 
+/// A functional in-memory transformation step executed over a [`CompilationGraph`].
+///
+/// Middleware transforms run in order after source aggregation and package selection,
+/// but before target backend lowering.
+pub trait Transform: Send + Sync {
+    /// Returns the human-readable identifier of the transform step.
+    fn name(&self) -> &'static str;
+
+    /// Applies the transformation in place to the compilation graph.
+    ///
+    /// If the transformation returns an error, the pipeline halts immediately
+    /// and no subsequent transforms or target lowering steps execute.
+    fn apply(&self, graph: &mut CompilationGraph) -> Result<()>;
+}
+
+/// Executes a sequential chain of in-memory transforms over a compilation graph.
+///
+/// The graph is validated before the first transform and after every successful step.
+/// If any transform fails, execution stops immediately and returns the error.
+pub fn apply_transforms(
+    graph: &mut CompilationGraph,
+    transforms: &[Box<dyn Transform>],
+) -> Result<()> {
+    graph.validate()?;
+    for transform in transforms {
+        transform.apply(graph)?;
+        graph.validate()?;
+    }
+    Ok(())
+}
+
 /// Selects an exact, deterministic union of graph packages without changing
 /// any package content.
 ///
@@ -52,12 +83,15 @@ pub fn select_packages(
 
 #[cfg(test)]
 mod tests {
-    use super::select_packages;
+    use super::{apply_transforms, select_packages, Transform};
     use crate::{
         CompilationGraph, DiagnosticSeverity, GraphDiagnostic, Package, PackageKind, PackageRoot,
         Resource, ResourceContent, ResourcePath, SemanticIdentity, SemanticItem, SourceProvenance,
     };
+    use anyhow::{bail, Result};
     use std::collections::{BTreeMap, BTreeSet};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
 
     fn rule(name: &str, body: &str) -> Package {
         let primary_path = ResourcePath::parse("AGENTS.md").unwrap();
@@ -219,5 +253,110 @@ mod tests {
                 .resources
                 .get(&ResourcePath::parse("scripts/check.sh").unwrap())
         );
+    }
+
+    struct StepCounterTransform {
+        name: &'static str,
+        counter: Arc<AtomicUsize>,
+        expected_step: usize,
+    }
+
+    impl Transform for StepCounterTransform {
+        fn name(&self) -> &'static str {
+            self.name
+        }
+
+        fn apply(&self, _graph: &mut CompilationGraph) -> Result<()> {
+            let current = self.counter.fetch_add(1, Ordering::SeqCst);
+            if current != self.expected_step {
+                bail!(
+                    "step out of order: expected {} but got {}",
+                    self.expected_step,
+                    current
+                );
+            }
+            Ok(())
+        }
+    }
+
+    struct FailingTransform {
+        error_message: &'static str,
+    }
+
+    impl Transform for FailingTransform {
+        fn name(&self) -> &'static str {
+            "failing-transform"
+        }
+
+        fn apply(&self, _graph: &mut CompilationGraph) -> Result<()> {
+            bail!("{}", self.error_message);
+        }
+    }
+
+    #[test]
+    fn empty_transforms_slice_is_a_validated_noop() {
+        let (mut graph, _, _) = graph_with_diagnostics();
+        let original = graph.clone();
+
+        apply_transforms(&mut graph, &[]).unwrap();
+
+        assert_eq!(graph, original);
+    }
+
+    #[test]
+    fn transforms_execute_sequentially_in_chain_order() {
+        let (mut graph, _, _) = graph_with_diagnostics();
+        let counter = Arc::new(AtomicUsize::new(0));
+
+        let transforms: Vec<Box<dyn Transform>> = vec![
+            Box::new(StepCounterTransform {
+                name: "step-1",
+                counter: Arc::clone(&counter),
+                expected_step: 0,
+            }),
+            Box::new(StepCounterTransform {
+                name: "step-2",
+                counter: Arc::clone(&counter),
+                expected_step: 1,
+            }),
+            Box::new(StepCounterTransform {
+                name: "step-3",
+                counter: Arc::clone(&counter),
+                expected_step: 2,
+            }),
+        ];
+
+        apply_transforms(&mut graph, &transforms).unwrap();
+
+        assert_eq!(counter.load(Ordering::SeqCst), 3);
+    }
+
+    #[test]
+    fn failing_transform_halts_subsequent_transform_execution() {
+        let (mut graph, _, _) = graph_with_diagnostics();
+        let counter = Arc::new(AtomicUsize::new(0));
+
+        let transforms: Vec<Box<dyn Transform>> = vec![
+            Box::new(StepCounterTransform {
+                name: "step-1",
+                counter: Arc::clone(&counter),
+                expected_step: 0,
+            }),
+            Box::new(FailingTransform {
+                error_message: "transform step failed deliberately",
+            }),
+            Box::new(StepCounterTransform {
+                name: "step-2-should-not-run",
+                counter: Arc::clone(&counter),
+                expected_step: 1,
+            }),
+        ];
+
+        let err = apply_transforms(&mut graph, &transforms).unwrap_err();
+
+        assert!(err
+            .to_string()
+            .contains("transform step failed deliberately"));
+        assert_eq!(counter.load(Ordering::SeqCst), 1);
     }
 }
