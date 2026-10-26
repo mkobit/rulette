@@ -26,3 +26,4 @@ pub use parsers::{
     AggregateCollisionKey, AggregationCandidate, AggregationCollisionError, AggregationRequest,
     DecoderSelection, NativeFrontend, OuterInputIdentity,
 };
+pub use pipeline::{apply_transforms, select_packages, Transform};
