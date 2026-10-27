@@ -8,6 +8,8 @@
   "globs": [
     "**/*.md",
     "!target",
+    "!dist",
+    "!node_modules",
     "!conductor",
     "!tests/fixtures",
     "!docs/cli/rulette.md",

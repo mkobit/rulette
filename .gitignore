@@ -1,5 +1,6 @@
 /target
 /dist
+/node_modules
 **/*.rs.bk
 .mise.toml.user
 .claude/settings.local.json
