@@ -22,6 +22,10 @@ pub struct HookEvalArgs {
     /// Auto-detected from incoming payload if omitted.
     #[arg(long, value_name = "TARGET")]
     pub target: Option<String>,
+
+    /// Emit polyglot hook manifests to directory instead of evaluating stdin
+    #[arg(long, value_name = "DIR")]
+    pub emit_manifests: Option<PathBuf>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -58,6 +62,13 @@ impl std::error::Error for HookDeniedExit {}
 
 impl HookEvalArgs {
     pub fn execute(&self) -> Result<()> {
+        if let Some(ref dir) = self.emit_manifests {
+            let policy_str = self.policy.to_string_lossy();
+            let is_windows = cfg!(windows);
+            crate::emitters::hooks::write_polyglot_hook_manifests(dir, &policy_str, is_windows)?;
+            return Ok(());
+        }
+
         let policy_content = fs::read_to_string(&self.policy)
             .with_context(|| format!("Failed to read policy file at {:?}", self.policy))?;
 

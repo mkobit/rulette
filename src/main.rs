@@ -26,6 +26,7 @@ fn run() -> Result<()> {
 
     match args.command {
         Commands::HookEval(args) => args.execute(),
+        Commands::HookManifest(args) => args.execute(),
         Commands::Inspect(args) => args.execute(quiet),
         Commands::Schema(args) => args.execute(),
         Commands::Transform(args) => args.execute(quiet),

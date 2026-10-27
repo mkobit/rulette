@@ -10,6 +10,12 @@ pub mod publication;
 pub use compilation::{
     compile, lower_unique_targets, lower_unique_targets_with_options, CompilationRequest,
 };
+pub use emitters::hooks::{
+    build_hook_command, emit_polyglot_hook_manifests, generate_antigravity_hook_manifest,
+    generate_claude_hook_manifest, generate_codex_hook_manifest, generate_cursor_hook_manifest,
+    generate_hook_manifest, merge_hook_manifest, write_hook_manifest,
+    write_polyglot_hook_manifests, HookManifestTarget, PolyglotHookManifest,
+};
 pub use emitters::lowering::{
     lower, CapabilityFinding, CapabilityReasonCode, CapabilitySeverity, LoweringOptions,
     LoweringPlan, NativeArtifact, NativeArtifactClass, NativeTarget,
