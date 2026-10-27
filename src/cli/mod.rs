@@ -29,6 +29,10 @@ pub enum Commands {
     #[command(name = "hook-eval")]
     HookEval(commands::hook_eval::HookEvalArgs),
 
+    /// Emit polyglot PreToolUse hook manifests for Antigravity, Cursor, Claude, and Codex
+    #[command(name = "hook-manifest")]
+    HookManifest(commands::hook_manifest::HookManifestArgs),
+
     /// Output the JSON Schema for the compilation graph
     Schema(commands::schema::SchemaArgs),
 
