@@ -1,6 +1,8 @@
 use anyhow::Result;
 use clap::Parser;
-use rulette::cli::{commands::transform::DestinationDrift, Cli, Commands};
+use rulette::cli::{
+    commands::hook_eval::HookDeniedExit, commands::transform::DestinationDrift, Cli, Commands,
+};
 use std::process::ExitCode;
 
 use tracing_subscriber::EnvFilter;
@@ -23,6 +25,7 @@ fn run() -> Result<()> {
     let quiet = args.globals.quiet;
 
     match args.command {
+        Commands::HookEval(args) => args.execute(),
         Commands::Inspect(args) => args.execute(quiet),
         Commands::Schema(args) => args.execute(),
         Commands::Transform(args) => args.execute(quiet),
@@ -32,6 +35,10 @@ fn run() -> Result<()> {
 fn main() -> ExitCode {
     match run() {
         Ok(()) => ExitCode::SUCCESS,
+        Err(ref error) if error.downcast_ref::<HookDeniedExit>().is_some() => {
+            let code = error.downcast_ref::<HookDeniedExit>().unwrap().0;
+            ExitCode::from(code)
+        }
         Err(error) if error.downcast_ref::<DestinationDrift>().is_some() => ExitCode::FAILURE,
         Err(error) => {
             eprintln!("Error: {error:#}");
