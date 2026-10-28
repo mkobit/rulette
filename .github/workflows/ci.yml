@@ -29,7 +29,7 @@ jobs:
           version: ${{ env.MISE_VERSION }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run markdown lint
-        run: bun x markdownlint-cli2
+        run: mise run lint:md
 
   check:
     name: Check
@@ -103,4 +103,6 @@ jobs:
           tool: cargo-audit
 
       - name: Run security audit
-        run: cargo audit
+        run: |
+          cargo audit
+          bun audit
