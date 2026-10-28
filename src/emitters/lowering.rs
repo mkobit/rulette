@@ -122,17 +122,45 @@ pub struct LoweringPlan {
 
 /// Controls whether a caller explicitly accepts representational loss.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum RuleHeaderStyle {
+    Markdown,
+    #[default]
+    HtmlComment,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct RuleBundlingOptions {
+    pub header_style: RuleHeaderStyle,
+    pub delimiter: &'static str,
+    pub include_metadata_comments: bool,
+}
+
+impl Default for RuleBundlingOptions {
+    fn default() -> Self {
+        Self {
+            header_style: RuleHeaderStyle::HtmlComment,
+            delimiter: "\n\n---\n\n",
+            include_metadata_comments: true,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct LoweringOptions {
     pub allow_lossy: bool,
+    pub rule_bundling: RuleBundlingOptions,
 }
 
 impl LoweringOptions {
-    pub const fn strict() -> Self {
-        Self { allow_lossy: false }
+    pub fn strict() -> Self {
+        Self::default()
     }
 
-    pub const fn allow_lossy() -> Self {
-        Self { allow_lossy: true }
+    pub fn allow_lossy() -> Self {
+        Self {
+            allow_lossy: true,
+            ..Self::default()
+        }
     }
 }
 
@@ -148,14 +176,33 @@ pub fn lower(
         return lower_agent_plugin(graph, options);
     }
 
+    let bundled_rules = matches!(target, NativeTarget::Codex | NativeTarget::Claude)
+        .then(|| {
+            graph
+                .packages
+                .values()
+                .filter(|package| matches!(package.semantic_item, SemanticItem::Rule { .. }))
+                .collect::<Vec<_>>()
+        })
+        .filter(|packages| packages.len() > 1);
+
     let mut artifacts = Vec::new();
     let mut findings: Vec<CapabilityFinding> = Vec::new();
+    if let Some(packages) = &bundled_rules {
+        let (artifact, bundle_findings) =
+            lower_bundled_rules(packages, target, &options.rule_bundling)?;
+        artifacts.push(artifact);
+        findings.extend(bundle_findings);
+    }
     for package in graph.packages.values() {
         match &package.semantic_item {
             SemanticItem::Rule {
                 primary_instruction,
                 ..
             } => {
+                if bundled_rules.is_some() {
+                    continue;
+                }
                 let artifact = lower_rule(package, target)?;
                 findings.extend(rule_field_findings(package, target, &artifact.path));
                 findings.push(supported_finding(
@@ -440,7 +487,10 @@ fn append_executable_bit_findings(
                     artifacts
                         .iter()
                         .rev()
-                        .find(|artifact| artifact.source_package == package.id)
+                        .find(|artifact| {
+                            artifact.source_package == package.id
+                                || artifact.contributing_packages.contains(&package.id)
+                        })
                         .map(|artifact| artifact.path.clone())
                 })
                 .flatten();
@@ -493,7 +543,10 @@ fn append_package_outcomes(
         );
         let artifact_path = artifacts
             .iter()
-            .find(|artifact| artifact.source_package == package.id)
+            .find(|artifact| {
+                artifact.source_package == package.id
+                    || artifact.contributing_packages.contains(&package.id)
+            })
             .map(|artifact| artifact.path.clone());
         findings.push(capability_finding(
             package,
@@ -760,6 +813,131 @@ fn rule_field_findings(
         ));
     }
     findings
+}
+
+fn lower_bundled_rules(
+    packages: &[&Package],
+    target: NativeTarget,
+    options: &RuleBundlingOptions,
+) -> Result<(NativeArtifact, Vec<CapabilityFinding>)> {
+    debug_assert!(matches!(target, NativeTarget::Codex | NativeTarget::Claude));
+    let mut packages = packages.to_vec();
+    packages.sort_by(|left, right| left.rule_ordering_key().cmp(&right.rule_ordering_key()));
+
+    let path = ResourcePath::parse(match target {
+        NativeTarget::Codex => "AGENTS.md",
+        NativeTarget::Claude => "CLAUDE.md",
+        _ => unreachable!("only single-file instruction targets bundle rules"),
+    })?;
+    let mut sections = Vec::with_capacity(packages.len());
+    let mut findings = Vec::new();
+    for package in &packages {
+        let SemanticItem::Rule {
+            primary_instruction,
+            ..
+        } = &package.semantic_item
+        else {
+            unreachable!("lower_bundled_rules only accepts rule packages");
+        };
+        let resource = package
+            .resources
+            .get(primary_instruction)
+            .expect("validated rule package contains its primary instruction");
+        let ResourceContent::Text(text) = &resource.content else {
+            unreachable!("validated primary instruction is UTF-8 text");
+        };
+        let (metadata, body) = split_yaml_frontmatter(text)?;
+        sections.push(render_bundled_rule_section(
+            package,
+            metadata.as_ref(),
+            body,
+            options,
+        )?);
+
+        findings.extend(rule_field_findings(package, target, &path));
+        findings.push(supported_finding(
+            package,
+            target,
+            primary_instruction.clone(),
+            path.clone(),
+        ));
+        for other in package.resources.values() {
+            if other.path != *primary_instruction {
+                findings.push(dropped_finding(
+                    package,
+                    target,
+                    CapabilityReasonCode::OpaqueResourceUnrepresentable,
+                    Some(other.path.clone()),
+                    "rule packages have no native opaque-resource layout in the target",
+                ));
+            }
+        }
+    }
+
+    let mut rendered = sections.join(options.delimiter);
+    while rendered.ends_with('\n') {
+        rendered.pop();
+    }
+    rendered.push('\n');
+    let source_package = packages
+        .first()
+        .expect("bundling requires at least two rule packages")
+        .id
+        .clone();
+    let contributing_packages = packages.iter().map(|package| package.id.clone()).collect();
+    Ok((
+        NativeArtifact {
+            target,
+            class: NativeArtifactClass::Instruction,
+            path,
+            bytes: rendered.into_bytes(),
+            executable: false,
+            source_package,
+            contributing_packages,
+        },
+        findings,
+    ))
+}
+
+fn split_yaml_frontmatter(text: &str) -> Result<(Option<serde_yaml::Value>, &str)> {
+    let Some(rest) = text.strip_prefix("---\n") else {
+        return Ok((None, text));
+    };
+    let Some(end) = rest.find("\n---\n") else {
+        bail!("rule YAML frontmatter is missing its closing `---` delimiter");
+    };
+    let metadata = serde_yaml::from_str(&rest[..end])?;
+    Ok((Some(metadata), &rest[end + "\n---\n".len()..]))
+}
+
+fn render_bundled_rule_section(
+    package: &Package,
+    metadata: Option<&serde_yaml::Value>,
+    body: &str,
+    options: &RuleBundlingOptions,
+) -> Result<String> {
+    let name = logical_name(package);
+    if name.contains("-->") || name.chars().any(char::is_control) {
+        bail!("bundled rule name must not contain `-->` or control characters");
+    }
+    let mut rendered = match options.header_style {
+        RuleHeaderStyle::Markdown => format!("## {name}"),
+        RuleHeaderStyle::HtmlComment => format!("<!-- rulette:rule {name} -->"),
+    };
+    if options.include_metadata_comments {
+        if let Some(metadata) = metadata {
+            let metadata = serde_json::to_string(metadata)?.replace("-->", "-- >");
+            rendered.push_str("\n<!-- rulette:metadata ");
+            rendered.push_str(&metadata);
+            rendered.push_str(" -->");
+        }
+    }
+    let body = body.trim_end();
+    if !body.is_empty() {
+        rendered.push_str("\n\n");
+        rendered.push_str(body);
+    }
+    Ok(rendered)
 }
 
 fn lower_rule(package: &Package, target: NativeTarget) -> Result<NativeArtifact> {
@@ -1478,6 +1656,94 @@ mod tests {
         CompilationGraph::new([rule]).unwrap()
     }
 
+    fn named_rule(name: &str, text: &str, description: Option<&str>) -> Package {
+        let primary = Resource::primary_instruction(
+            ResourcePath::parse(format!("{name}.md")).unwrap(),
+            ResourceContent::Text(text.to_owned()),
+            false,
+        );
+        let primary_path = primary.path.clone();
+        Package::new(
+            PackageKind::Rule,
+            SemanticIdentity::parse(format!("rule:{name}")).unwrap(),
+            SourceProvenance::new("claude", format!(".claude/rules/{name}.md")).unwrap(),
+            PackageRoot::root(),
+            SemanticItem::Rule {
+                primary_instruction: primary_path.clone(),
+                description: description.map(str::to_owned),
+                activation: None,
+                frontend_payload: None,
+            },
+            BTreeMap::from([(primary_path, primary)]),
+            None,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn bundles_rules_deterministically_with_frontmatter_headers_and_delimiters() {
+        let first = named_rule(
+            "alpha",
+            "---\ndescription: First\n---\nAlpha body.\n\n",
+            None,
+        );
+        let second = named_rule("zeta", "Zeta body.", None);
+        let expected_ids = vec![first.id.clone(), second.id.clone()];
+        let graph_a = CompilationGraph::new([second.clone(), first.clone()]).unwrap();
+        let graph_b = CompilationGraph::new([first, second]).unwrap();
+
+        for target in [NativeTarget::Codex, NativeTarget::Claude] {
+            let plan_a = lower(&graph_a, target, LoweringOptions::strict()).unwrap();
+            let plan_b = lower(&graph_b, target, LoweringOptions::strict()).unwrap();
+            assert_eq!(plan_a.artifacts, plan_b.artifacts);
+            assert_eq!(plan_a.artifacts.len(), 1);
+            assert_eq!(plan_a.artifacts[0].contributing_packages, expected_ids);
+            assert_eq!(
+                std::str::from_utf8(&plan_a.artifacts[0].bytes).unwrap(),
+                "<!-- rulette:rule alpha -->\n<!-- rulette:metadata {\"description\":\"First\"} -->\n\nAlpha body.\n\n---\n\n<!-- rulette:rule zeta -->\n\nZeta body.\n"
+            );
+        }
+    }
+
+    #[test]
+    fn a_single_rule_remains_byte_identical_for_single_file_targets() {
+        let graph = rule_graph();
+        for target in [NativeTarget::Codex, NativeTarget::Claude] {
+            let plan = lower(&graph, target, LoweringOptions::strict()).unwrap();
+            assert_eq!(plan.artifacts[0].bytes, b"Use rustfmt.");
+        }
+    }
+
+    #[test]
+    fn bundled_rule_header_rejects_html_comment_termination() {
+        let unsafe_rule = named_rule("bad-->name", "Unsafe.", None);
+        let safe_rule = named_rule("safe", "Safe.", None);
+        let graph = CompilationGraph::new([unsafe_rule, safe_rule]).unwrap();
+        let error = lower(&graph, NativeTarget::Codex, LoweringOptions::strict()).unwrap_err();
+        assert!(error.to_string().contains("must not contain `-->`"));
+    }
+
+    #[test]
+    fn bundled_rule_losses_retain_each_contributing_package() {
+        let alpha = named_rule("alpha", "Alpha.", Some("Alpha description"));
+        let zeta = named_rule("zeta", "Zeta.", Some("Zeta description"));
+        let expected_ids = [alpha.id.clone(), zeta.id.clone()];
+        let graph = CompilationGraph::new([zeta, alpha]).unwrap();
+
+        let error = lower(&graph, NativeTarget::Codex, LoweringOptions::strict()).unwrap_err();
+        for package_id in &expected_ids {
+            assert!(error.to_string().contains(package_id.as_str()));
+        }
+        let plan = lower(&graph, NativeTarget::Codex, LoweringOptions::allow_lossy()).unwrap();
+        for package_id in expected_ids {
+            assert!(plan.findings.iter().any(|finding| {
+                finding.package_id == package_id
+                    && finding.reason_code == CapabilityReasonCode::RuleDescriptionUnrepresentable
+                    && finding.artifact_path.as_ref().map(ResourcePath::as_str) == Some("AGENTS.md")
+            }));
+        }
+    }
+
     #[test]
     fn lowers_a_rule_to_each_core_target_with_target_relative_paths() {
         let graph = rule_graph();
@@ -1727,7 +1993,7 @@ mod tests {
     }
 
     #[test]
-    fn duplicate_codex_instruction_artifacts_fail_before_loss_policy_gating() {
+    fn codex_instruction_rules_bundle_before_loss_policy_gating() {
         let first = Package::rule(
             SemanticIdentity::parse("rule:first").unwrap(),
             SourceProvenance::new("codex", "AGENTS.md").unwrap(),
@@ -1750,11 +2016,16 @@ mod tests {
         .unwrap();
         let graph = CompilationGraph::new([first, second]).unwrap();
 
-        for options in [LoweringOptions::strict(), LoweringOptions::allow_lossy()] {
-            let error = lower(&graph, NativeTarget::Codex, options).unwrap_err();
-            assert!(error.to_string().contains("artifact-collision"));
-            assert!(!error.to_string().contains("unaccepted capability loss"));
-        }
+        let error = lower(&graph, NativeTarget::Codex, LoweringOptions::strict()).unwrap_err();
+        assert!(error.to_string().contains("unaccepted capability loss"));
+        assert!(!error.to_string().contains("artifact-collision"));
+
+        let plan = lower(&graph, NativeTarget::Codex, LoweringOptions::allow_lossy()).unwrap();
+        assert_eq!(plan.artifacts.len(), 1);
+        assert_eq!(plan.artifacts[0].contributing_packages.len(), 2);
+        assert!(plan.findings.iter().any(|finding| {
+            finding.reason_code == CapabilityReasonCode::ExecutableBitUnrepresentable
+        }));
     }
 
     #[test]
