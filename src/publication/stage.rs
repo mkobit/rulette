@@ -415,11 +415,101 @@ fn cleanup_temporary(
 
 #[cfg(test)]
 mod tests {
-    use super::StageState;
+    use super::{collect_losses, ScopedAcceptedLoss, StageRequest, StageState};
+    use crate::emitters::lowering::{
+        lower, CapabilityReasonCode, CapabilitySeverity, LoweringOptions, NativeTarget,
+    };
+    use crate::ir::graph::{
+        CompilationGraph, Package, PackageKind, PackageRoot, Resource, ResourceContent,
+        ResourcePath, SemanticIdentity, SemanticItem, SourceProvenance,
+    };
+    use crate::publication::{ArtifactDescriptor, PublicationScope};
+    use std::collections::BTreeMap;
+    use std::path::Path;
 
     #[test]
     fn a_published_stage_is_never_cleaned_as_a_temporary_failure() {
         assert!(StageState::Temporary.cleans_owned_temporary());
         assert!(!StageState::Published.cleans_owned_temporary());
+    }
+
+    fn described_rule(name: &str) -> Package {
+        let primary = Resource::primary_instruction(
+            ResourcePath::parse(format!("{name}.md")).unwrap(),
+            ResourceContent::Text(format!("{name} body.")),
+            false,
+        );
+        let primary_path = primary.path.clone();
+        Package::new(
+            PackageKind::Rule,
+            SemanticIdentity::parse(format!("rule:{name}")).unwrap(),
+            SourceProvenance::new("claude", format!(".claude/rules/{name}.md")).unwrap(),
+            PackageRoot::root(),
+            SemanticItem::Rule {
+                primary_instruction: primary_path.clone(),
+                description: Some(format!("{name} description")),
+                activation: None,
+                frontend_payload: None,
+            },
+            BTreeMap::from([(primary_path, primary)]),
+            None,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn bundled_rule_losses_link_every_package_to_the_shared_entry() {
+        let graph =
+            CompilationGraph::new([described_rule("alpha"), described_rule("zeta")]).unwrap();
+        let lowering = lower(&graph, NativeTarget::Codex, LoweringOptions::allow_lossy()).unwrap();
+        let losses = lowering
+            .findings
+            .iter()
+            .filter(|finding| finding.severity != CapabilitySeverity::Supported)
+            .map(|finding| ScopedAcceptedLoss {
+                scope: PublicationScope::Project,
+                finding,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(losses.len(), 2);
+        let request = StageRequest {
+            graph: &graph,
+            lowerings: Vec::new(),
+            roots: Vec::new(),
+            accepted_losses: losses,
+            stage_dir: Path::new("unused-stage"),
+        };
+        let lowerings =
+            BTreeMap::from([((NativeTarget::Codex, PublicationScope::Project), &lowering)]);
+        let artifact = &lowering.artifacts[0];
+        let descriptor = ArtifactDescriptor {
+            class: artifact.class,
+            native_path: artifact.path.clone(),
+        };
+        let entry_lookup = artifact
+            .contributing_packages
+            .iter()
+            .cloned()
+            .map(|package_id| {
+                (
+                    (
+                        NativeTarget::Codex,
+                        PublicationScope::Project,
+                        package_id,
+                        descriptor.clone(),
+                    ),
+                    "shared-entry".to_owned(),
+                )
+            })
+            .collect();
+
+        let plan_losses = collect_losses(&request, &lowerings, &entry_lookup).unwrap();
+        assert_eq!(plan_losses.len(), 2);
+        assert!(plan_losses.iter().all(|loss| {
+            loss.entry_id.as_deref() == Some("shared-entry")
+                && loss.reason_code == CapabilityReasonCode::RuleDescriptionUnrepresentable
+                && loss.artifact.as_ref() == Some(&descriptor)
+        }));
+        assert_ne!(plan_losses[0].package_id, plan_losses[1].package_id);
     }
 }
