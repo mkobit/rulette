@@ -4,6 +4,7 @@ Multi-entity governance across Rulette's five core harnesses (Claude Code, Curso
 Currently, `src/ir/mod.rs` and hook handling hardcode the five hook events of Claude Code (`PreToolUse`, `PostToolUse`, `Notification`, `Stop`, and `SubagentStop`).
 Furthermore, `src/cli/commands/hook_eval.rs` and `src/emitters/hooks.rs` only support `PreToolUse` for shell command approval.
 The five core harnesses implement disparate hook architectures:
+
 - Claude Code supports five lifecycle and tool events in `.claude/settings.json` and `hooks/hooks.json`.
 - Cursor defines distinct camelCase events (`beforeShellExecution`, `preToolUse`, `postToolUse`, `beforeSubmitPrompt`, and `afterResponse`) in `.cursor/hooks.json`.
 - Antigravity supports `PreToolUse`, `PostToolUse`, `SessionStart`, `SessionStop`, `SubagentStart`, `SubagentStop`, and `Notification` in `.agents/hooks.json` and `hooks.json`.

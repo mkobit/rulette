@@ -631,6 +631,7 @@ dependencies = [
  "json5",
  "predicates",
  "pulldown-cmark",
+ "regex",
  "rustix",
  "schemars",
  "serde",

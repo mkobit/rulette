@@ -26,6 +26,9 @@ pub use ir::graph::{
     ResourcePath, ResourceRole, SemanticIdentity, SemanticItem, SourceProvenance, TargetActivation,
     TargetActivationOverrides, GRAPH_VERSION,
 };
+pub use ir::hooks::{
+    HookAction, HookDefinition, HookEventKind, HookMatcher, HookScope, TargetHookPolicy,
+};
 pub use ir::permissions::{
     CanonicalTool, NormalizedPattern, PermissionAction, PermissionPolicy, PermissionScope,
     PrecedenceTier, ResolvedPermissionPolicy, ResolvedPermissionRule, SpecificityClass,

@@ -167,10 +167,12 @@ pub enum TargetHookPolicy {
 ### 2. Compilation graph integration
 
 The compilation graph in `src/ir/graph.rs` integrates hooks as first-class entities:
+
 - Add `PackageKind::Hook`.
 - Map `PackageKind::Hook.semantic_kind()` to `Some("hook")`.
 - Update `SemanticIdentity::parse` to accept `"hook"`.
 - Add `SemanticItem::Hook`:
+
   ```rust
   SemanticItem::Hook {
       policy: TargetHookPolicy,
@@ -178,6 +180,7 @@ The compilation graph in `src/ir/graph.rs` integrates hooks as first-class entit
       frontend_payload: Option<FrontendPayload>,
   }
   ```
+
 - Calculate `PackageId` digests using the canonical serialized representation of `TargetHookPolicy`.
 - Enforce unique hook IDs within a compilation unit.
 
@@ -203,6 +206,7 @@ When a target does not natively support an event, the backend evaluates lowering
 
 Rulette classifies capability results as `Supported`, `Lossy`, or `Dropped`.
 The system provides seven stable machine-readable reason codes in `CapabilityReasonCode`:
+
 1. `hook-event-unsupported`: Target harness does not support the canonical event.
 2. `hook-target-unsupported`: Target harness does not support declarative static hook manifests.
 3. `hook-matcher-unsupported`: Target harness does not support the specified matcher type.
@@ -216,6 +220,7 @@ The system provides seven stable machine-readable reason codes in `CapabilityRea
 Gating hooks (`PreToolUse` and `BeforeShellExecution`) enforce security policies on tool execution.
 If a security gating hook cannot be represented on a target, silent omission risks unconstrained command execution.
 Rulette enforces the Fail-Closed Security Invariant:
+
 - Under strict mode (`allow_lossy: false`), transformation fails immediately if any security gating hook drops.
 - Under lossy mode (`allow_lossy: true`), the compiler drops the hook, records a `Dropped` finding with `hook-event-unsupported` or `hook-target-unsupported`, and includes the finding in `rulette.plan.json`.
 

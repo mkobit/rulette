@@ -1,6 +1,7 @@
 ## Execution blueprint and dependency map
 
 This task breakdown structures downstream implementation into sequential layers:
+
 - Layer 1 (Task 1) defines the pure hook domain types and canonical taxonomy.
 - Layer 2 (Task 2) integrates hooks into the compilation graph and schema generators.
 - Layer 3 (Task 3) implements native frontend hook parsers across core harnesses.
@@ -10,17 +11,17 @@ This task breakdown structures downstream implementation into sequential layers:
 
 ## 1. Layer 1: Pure hook domain types and canonical taxonomy
 
-- [ ] 1.1 Create `src/ir/hooks.rs` and export public types through `src/ir/mod.rs` and `src/lib.rs`:
+- [x] 1.1 Create `src/ir/hooks.rs` and export public types through `src/ir/mod.rs` and `src/lib.rs`:
   - Define `HookEventKind` with nine canonical events (`PreToolUse`, `PostToolUse`, `BeforeShellExecution`, `PromptSubmit`, `TurnStop`, `SessionStart`, `SessionStop`, `SubagentStart`, `SubagentStop`, and `Notification`).
   - Implement `HookMatcher` (`All`, `Tool`, `Regex`, and `CommandPrefix`).
   - Implement `HookAction` (`Command` with timeout and status message, and `Unsupported`).
   - Implement `HookScope` (`Project`, `User`, `Plugin`, `SkillTurn`, and `Enterprise`).
   - Implement `HookDefinition` with `fail_closed` and `priority` fields.
   - Implement `TargetHookPolicy` (`Bare` and `Wrapped`).
-- [ ] 1.2 Implement serialization and deserialization helpers for hook types:
+- [x] 1.2 Implement serialization and deserialization helpers for hook types:
   - Add JSON schema derivation using `schemars::JsonSchema`.
   - Enforce fail-closed validation on empty IDs, invalid regex patterns, and negative timeouts.
-- [ ] 1.3 Write unit tests in `src/ir/hooks.rs`:
+- [x] 1.3 Write unit tests in `src/ir/hooks.rs`:
   - Verify round-trip JSON serialization for all canonical events.
   - Verify rejection of malformed hook definitions.
 
