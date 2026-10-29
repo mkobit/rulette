@@ -2,7 +2,12 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 pub mod graph;
+pub mod hooks;
 pub mod permissions;
+
+pub use hooks::{
+    HookAction, HookDefinition, HookEventKind, HookMatcher, HookScope, TargetHookPolicy,
+};
 
 pub use permissions::{
     CanonicalTool, NormalizedPattern, PermissionAction, PermissionPolicy, PermissionScope,
