@@ -1,4 +1,4 @@
-use super::ActivationMode;
+use super::{ActivationMode, TargetHookPolicy};
 use anyhow::{bail, Result};
 use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde::de::Deserializer;
@@ -43,8 +43,8 @@ impl SemanticIdentity {
         let Some((kind, logical_name)) = value.split_once(':') else {
             bail!("semantic identity must have the form `<kind>:<logical-name>`");
         };
-        if !matches!(kind, "rule" | "skill" | "unsupported") {
-            bail!("semantic identity kind must be `rule`, `skill`, or `unsupported`");
+        if !matches!(kind, "rule" | "skill" | "hook" | "unsupported") {
+            bail!("semantic identity kind must be `rule`, `skill`, `hook`, or `unsupported`");
         }
         if logical_name.is_empty()
             || logical_name.chars().any(char::is_control)
@@ -198,6 +198,7 @@ fn has_platform_prefix(value: &str) -> bool {
 pub enum PackageKind {
     Rule,
     Skill,
+    Hook,
     Unsupported,
 }
 
@@ -206,6 +207,7 @@ impl PackageKind {
         match self {
             Self::Rule => Some("rule"),
             Self::Skill => Some("skill"),
+            Self::Hook => Some("hook"),
             Self::Unsupported => Some("unsupported"),
         }
     }
@@ -504,6 +506,11 @@ pub enum SemanticItem {
         #[serde(skip_serializing_if = "Option::is_none")]
         frontend_payload: Option<FrontendPayload>,
     },
+    Hook {
+        policy: TargetHookPolicy,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        frontend_payload: Option<FrontendPayload>,
+    },
     Unsupported {
         native_kind: String,
     },
@@ -520,7 +527,7 @@ impl SemanticItem {
                 primary_instruction,
                 ..
             } => Some(primary_instruction),
-            Self::Unsupported { .. } => None,
+            Self::Hook { .. } | Self::Unsupported { .. } => None,
         }
     }
 
@@ -546,6 +553,9 @@ impl SemanticItem {
                 if !(1..=1024).contains(&length) {
                     bail!("skill discovery description must contain 1 to 1024 characters");
                 }
+            }
+            Self::Hook { policy, .. } => {
+                policy.validate()?;
             }
             Self::Unsupported { .. } => {}
         }
@@ -685,6 +695,25 @@ impl Package {
         )
     }
 
+    pub fn hook(
+        semantic_identity: SemanticIdentity,
+        provenance: SourceProvenance,
+        policy: TargetHookPolicy,
+    ) -> Result<Self> {
+        Self::new(
+            PackageKind::Hook,
+            semantic_identity,
+            provenance,
+            PackageRoot::root(),
+            SemanticItem::Hook {
+                policy,
+                frontend_payload: None,
+            },
+            BTreeMap::new(),
+            None,
+        )
+    }
+
     pub fn new(
         kind: PackageKind,
         semantic_identity: SemanticIdentity,
@@ -694,7 +723,7 @@ impl Package {
         resources: BTreeMap<ResourcePath, Resource>,
         frontend_payload: Option<FrontendPayload>,
     ) -> Result<Self> {
-        let id = package_id(&kind, &semantic_identity, &resources);
+        let id = package_id(&kind, &semantic_identity, &semantic_item, &resources);
         let package = Self {
             id,
             kind,
@@ -711,6 +740,13 @@ impl Package {
 
     pub fn id(&self) -> &PackageId {
         &self.id
+    }
+
+    pub fn hook_policy(&self) -> Option<&TargetHookPolicy> {
+        match &self.semantic_item {
+            SemanticItem::Hook { policy, .. } => Some(policy),
+            _ => None,
+        }
     }
 
     pub fn package_root(&self) -> &PackageRoot {
@@ -731,6 +767,10 @@ impl Package {
                     ..
                 }
                 | SemanticItem::Rule {
+                    frontend_payload: Some(payload),
+                    ..
+                }
+                | SemanticItem::Hook {
                     frontend_payload: Some(payload),
                     ..
                 } => payload.plugin_name(),
@@ -790,6 +830,18 @@ impl Package {
                     bail!("semantic item must reference the package primary instruction");
                 }
             }
+            SemanticItem::Hook {
+                policy,
+                frontend_payload,
+            } => {
+                if let Some(payload) = frontend_payload {
+                    payload.validate()?;
+                }
+                if !primary_paths.is_empty() {
+                    bail!("a hook package must not contain a primary instruction");
+                }
+                policy.validate()?;
+            }
             SemanticItem::Unsupported { native_kind } => {
                 if native_kind.is_empty() || native_kind.chars().any(char::is_control) {
                     bail!("unsupported native kind must be non-empty and control-character free");
@@ -800,7 +852,14 @@ impl Package {
             }
         }
 
-        if self.id != package_id(&self.kind, &self.semantic_identity, &self.resources) {
+        if self.id
+            != package_id(
+                &self.kind,
+                &self.semantic_identity,
+                &self.semantic_item,
+                &self.resources,
+            )
+        {
             bail!("package ID does not match canonical package content");
         }
 
@@ -811,12 +870,17 @@ impl Package {
 fn package_id(
     kind: &PackageKind,
     semantic_identity: &SemanticIdentity,
+    semantic_item: &SemanticItem,
     resources: &BTreeMap<ResourcePath, Resource>,
 ) -> PackageId {
     let mut hasher = Sha256::new();
     hash_component(&mut hasher, GRAPH_VERSION.as_bytes());
     hash_component(&mut hasher, package_kind_name(kind).as_bytes());
     hash_component(&mut hasher, semantic_identity.as_str().as_bytes());
+    if let SemanticItem::Hook { policy, .. } = semantic_item {
+        let policy_bytes = serde_json::to_vec(policy).expect("hook policy serializes to JSON");
+        hash_component(&mut hasher, &policy_bytes);
+    }
     for (path, resource) in resources {
         hash_component(&mut hasher, path.as_str().as_bytes());
         hash_component(&mut hasher, &[u8::from(resource.executable)]);
@@ -834,6 +898,7 @@ fn package_kind_name(kind: &PackageKind) -> &'static str {
     match kind {
         PackageKind::Rule => "rule",
         PackageKind::Skill => "skill",
+        PackageKind::Hook => "hook",
         PackageKind::Unsupported => "unsupported",
     }
 }
@@ -964,6 +1029,16 @@ impl CompilationGraph {
                 bail!("unsupported package must have an unsupported-semantic diagnostic");
             }
         }
+        let mut seen_hook_ids = BTreeSet::new();
+        for package in self.packages.values() {
+            if let SemanticItem::Hook { policy, .. } = &package.semantic_item {
+                for hook in policy.default_hooks() {
+                    if !seen_hook_ids.insert(&hook.id) {
+                        bail!("duplicate hook ID `{}` in compilation graph", hook.id);
+                    }
+                }
+            }
+        }
         Ok(())
     }
 
@@ -1004,6 +1079,20 @@ impl CompilationGraph {
 
     pub fn rules(&self) -> Vec<&Package> {
         self.rule_packages()
+    }
+
+    pub fn hook_packages(&self) -> Vec<&Package> {
+        let mut hooks: Vec<&Package> = self
+            .packages
+            .values()
+            .filter(|package| package.kind == PackageKind::Hook)
+            .collect();
+        hooks.sort_by_key(|package| package.rule_ordering_key());
+        hooks
+    }
+
+    pub fn hooks(&self) -> Vec<&Package> {
+        self.hook_packages()
     }
 
     pub fn plugin_skill_invocations(&self) -> Vec<String> {
@@ -1188,9 +1277,12 @@ fn base64_decode(encoded: &str) -> Result<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use super::{
-        CompilationGraph, DiagnosticSeverity, GraphDiagnostic, Package, PackageId, Resource,
-        ResourceContent, ResourcePath, SemanticIdentity, SourceProvenance,
+        CompilationGraph, DiagnosticSeverity, GraphDiagnostic, Package, PackageId, PackageKind,
+        PackageRoot, Resource, ResourceContent, ResourcePath, SemanticIdentity, SemanticItem,
+        SourceProvenance,
     };
 
     fn supported_rule_package() -> Package {
@@ -1618,5 +1710,191 @@ mod tests {
         );
 
         assert!(pkg_res.is_err());
+    }
+
+    #[test]
+    fn hook_package_id_is_sensitive_to_policy_changes() {
+        use crate::ir::hooks::{HookAction, HookDefinition, HookEventKind, TargetHookPolicy};
+
+        let hook1 = HookDefinition::new(
+            "block-rm",
+            HookEventKind::BeforeShellExecution,
+            HookAction::command("deny-rm.sh"),
+        );
+        let hook2 = HookDefinition::new(
+            "block-rm",
+            HookEventKind::BeforeShellExecution,
+            HookAction::command("deny-rm-v2.sh"),
+        );
+
+        let policy_a = TargetHookPolicy::bare(vec![hook1.clone()]);
+        let policy_b = TargetHookPolicy::bare(vec![hook2]);
+        let policy_c = TargetHookPolicy::bare(vec![hook1.clone()]);
+
+        let pkg_a = Package::hook(
+            SemanticIdentity::parse("hook:guard").unwrap(),
+            SourceProvenance::new("cursor", ".cursor/hooks.json").unwrap(),
+            policy_a,
+        )
+        .unwrap();
+
+        let pkg_b = Package::hook(
+            SemanticIdentity::parse("hook:guard").unwrap(),
+            SourceProvenance::new("cursor", ".cursor/hooks.json").unwrap(),
+            policy_b,
+        )
+        .unwrap();
+
+        let pkg_c = Package::hook(
+            SemanticIdentity::parse("hook:guard").unwrap(),
+            SourceProvenance::new("cursor", ".cursor/hooks.json").unwrap(),
+            policy_c,
+        )
+        .unwrap();
+
+        assert_eq!(pkg_a.id(), pkg_c.id());
+        assert_ne!(pkg_a.id(), pkg_b.id());
+
+        let mut overrides = BTreeMap::new();
+        overrides.insert("claude".to_string(), vec![hook1]);
+        let policy_wrapped = TargetHookPolicy::wrapped(vec![], overrides);
+
+        let pkg_wrapped = Package::hook(
+            SemanticIdentity::parse("hook:guard").unwrap(),
+            SourceProvenance::new("cursor", ".cursor/hooks.json").unwrap(),
+            policy_wrapped,
+        )
+        .unwrap();
+
+        assert_ne!(pkg_a.id(), pkg_wrapped.id());
+    }
+
+    #[test]
+    fn hook_package_graph_round_trips_canonical_json_and_toml() {
+        use crate::ir::hooks::{
+            HookAction, HookDefinition, HookEventKind, HookMatcher, TargetHookPolicy,
+        };
+
+        let mut hook = HookDefinition::new(
+            "lint-check",
+            HookEventKind::PreToolUse,
+            HookAction::Command {
+                command: "mise run check".to_owned(),
+                timeout_seconds: Some(30),
+                status_message: Some("Running checks".to_owned()),
+            },
+        );
+        hook.matcher = Some(HookMatcher::Tool("bash".to_owned()));
+
+        let mut overrides = BTreeMap::new();
+        overrides.insert("claude".to_owned(), vec![hook.clone()]);
+
+        let policy = TargetHookPolicy::wrapped(vec![hook], overrides);
+
+        let hook_pkg = Package::hook(
+            SemanticIdentity::parse("hook:ci-guard").unwrap(),
+            SourceProvenance::new("claude", ".claude/settings.json").unwrap(),
+            policy,
+        )
+        .unwrap();
+
+        let graph = CompilationGraph::new([hook_pkg.clone(), supported_rule_package()]).unwrap();
+
+        assert_eq!(graph.hook_packages().len(), 1);
+        assert_eq!(graph.hooks().len(), 1);
+        assert_eq!(graph.rule_packages().len(), 1);
+
+        let json = graph.to_canonical_json().unwrap();
+        let from_json = CompilationGraph::from_json(&json).unwrap();
+        assert_eq!(from_json.to_canonical_json().unwrap(), json);
+        assert_eq!(from_json.hooks().len(), 1);
+        assert_eq!(from_json.hooks()[0].id(), hook_pkg.id());
+
+        let toml_str = graph.to_toml().unwrap();
+        let from_toml = CompilationGraph::from_toml(&toml_str).unwrap();
+        assert_eq!(from_toml.to_canonical_json().unwrap(), json);
+        assert_eq!(from_toml.hooks().len(), 1);
+    }
+
+    #[test]
+    fn hook_package_validation_enforces_invariants() {
+        use crate::ir::hooks::{HookAction, HookDefinition, HookEventKind, TargetHookPolicy};
+
+        let resource_path = ResourcePath::parse("hook.sh").unwrap();
+        let mut resources = BTreeMap::new();
+        resources.insert(
+            resource_path.clone(),
+            Resource::primary_instruction(
+                resource_path.clone(),
+                ResourceContent::Text("#!/bin/sh\n".to_owned()),
+                true,
+            ),
+        );
+
+        let hook = HookDefinition::new(
+            "guard",
+            HookEventKind::PreToolUse,
+            HookAction::command("deny.sh"),
+        );
+        let policy = TargetHookPolicy::bare(vec![hook]);
+
+        let pkg_err = Package::new(
+            PackageKind::Hook,
+            SemanticIdentity::parse("hook:guard").unwrap(),
+            SourceProvenance::new("cursor", ".cursor/hooks.json").unwrap(),
+            PackageRoot::root(),
+            SemanticItem::Hook {
+                policy,
+                frontend_payload: None,
+            },
+            resources,
+            None,
+        );
+        assert!(pkg_err.is_err());
+
+        let h1 = HookDefinition::new(
+            "dup",
+            HookEventKind::PreToolUse,
+            HookAction::command("a.sh"),
+        );
+        let h2 = HookDefinition::new(
+            "dup",
+            HookEventKind::PostToolUse,
+            HookAction::command("b.sh"),
+        );
+        let bad_policy = TargetHookPolicy::bare(vec![h1, h2]);
+
+        let bad_pkg = Package::hook(
+            SemanticIdentity::parse("hook:guard").unwrap(),
+            SourceProvenance::new("cursor", ".cursor/hooks.json").unwrap(),
+            bad_policy,
+        );
+        assert!(bad_pkg.is_err());
+    }
+
+    #[test]
+    fn graph_validation_rejects_duplicate_hook_ids_across_packages() {
+        use crate::ir::hooks::{HookAction, HookDefinition, HookEventKind, TargetHookPolicy};
+
+        let h1 = HookDefinition::new(
+            "common-id",
+            HookEventKind::PreToolUse,
+            HookAction::command("a.sh"),
+        );
+        let p1 = Package::hook(
+            SemanticIdentity::parse("hook:pkg1").unwrap(),
+            SourceProvenance::new("claude", ".claude/settings.json").unwrap(),
+            TargetHookPolicy::bare(vec![h1.clone()]),
+        )
+        .unwrap();
+
+        let p2 = Package::hook(
+            SemanticIdentity::parse("hook:pkg2").unwrap(),
+            SourceProvenance::new("cursor", ".cursor/hooks.json").unwrap(),
+            TargetHookPolicy::bare(vec![h1]),
+        )
+        .unwrap();
+
+        assert!(CompilationGraph::new([p1, p2]).is_err());
     }
 }
