@@ -625,15 +625,21 @@ mod tests {
         policy.validate().expect("policy should validate");
 
         // Exact match
-        assert_eq!(policy.resolve("cursor"), &[cursor_hook.clone()]);
-        assert_eq!(policy.resolve("antigravity"), &[antigravity_hook.clone()]);
+        assert_eq!(policy.resolve("cursor"), std::slice::from_ref(&cursor_hook));
+        assert_eq!(
+            policy.resolve("antigravity"),
+            std::slice::from_ref(&antigravity_hook)
+        );
 
         // Prefix match
         assert_eq!(policy.resolve("cursor-small"), &[cursor_hook]);
 
         // Fallback to default
-        assert_eq!(policy.resolve("claude"), &[default_hook.clone()]);
-        assert_eq!(policy.resolve("codex"), &[default_hook.clone()]);
+        assert_eq!(
+            policy.resolve("claude"),
+            std::slice::from_ref(&default_hook)
+        );
+        assert_eq!(policy.resolve("codex"), std::slice::from_ref(&default_hook));
 
         // JSON roundtrip
         let json = serde_json::to_string(&policy).expect("serialize policy");
@@ -644,7 +650,7 @@ mod tests {
         // Bare policy
         let bare = TargetHookPolicy::bare(vec![default_hook.clone()]);
         bare.validate().expect("bare policy should validate");
-        assert_eq!(bare.resolve("cursor"), &[default_hook.clone()]);
+        assert_eq!(bare.resolve("cursor"), std::slice::from_ref(&default_hook));
         assert_eq!(bare.resolve("antigravity"), &[default_hook]);
 
         let bare_json = serde_json::to_string(&bare).expect("serialize bare");

@@ -265,6 +265,7 @@ pub fn lower(
                 artifacts.extend(skill_artifacts);
                 findings.extend(skill_findings);
             }
+            SemanticItem::Hook { .. } => {}
             SemanticItem::Unsupported { native_kind } => {
                 findings.push(dropped_finding(
                     package,
@@ -1320,6 +1321,7 @@ fn lower_agent_plugin(graph: &CompilationGraph, options: LoweringOptions) -> Res
                 artifacts.extend(skill_artifacts);
                 findings.extend(skill_findings);
             }
+            SemanticItem::Hook { .. } => {}
             SemanticItem::Rule {
                 description,
                 primary_instruction,

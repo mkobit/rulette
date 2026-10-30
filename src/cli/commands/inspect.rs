@@ -231,6 +231,7 @@ fn package_kind_name(kind: &PackageKind) -> &'static str {
     match kind {
         PackageKind::Rule => "rule",
         PackageKind::Skill => "skill",
+        PackageKind::Hook => "hook",
         PackageKind::Unsupported => "unsupported",
     }
 }

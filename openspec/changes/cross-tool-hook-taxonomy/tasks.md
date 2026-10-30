@@ -27,16 +27,16 @@ This task breakdown structures downstream implementation into sequential layers:
 
 ## 2. Layer 2: Compilation graph and schema integration
 
-- [ ] 2.1 Extend `src/ir/graph.rs` to support hook packages:
+- [x] 2.1 Extend `src/ir/graph.rs` to support hook packages:
   - Add `PackageKind::Hook` and map `PackageKind::Hook.semantic_kind()` to `Some("hook")`.
   - Update `SemanticIdentity::parse` to accept `"hook"`.
   - Add `SemanticItem::Hook` containing `TargetHookPolicy` and optional `FrontendPayload`.
   - Update `Package::validate()` to verify hook package invariants.
   - Update `Package::package_id()` to hash canonical hook policy bytes.
   - Implement constructor `Package::hook()`.
-- [ ] 2.2 Update schema generator in `src/cli/commands/schema.rs`:
+- [x] 2.2 Update schema generator in `src/cli/commands/schema.rs`:
   - Register new hook types in generated JSON schemas.
-- [ ] 2.3 Write unit tests in `src/ir/graph.rs`:
+- [x] 2.3 Write unit tests in `src/ir/graph.rs`:
   - Verify `PackageId` sensitivity to changes in hook policy.
   - Verify graph JSON and TOML round-trip with hook packages.
 
