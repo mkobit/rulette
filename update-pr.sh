@@ -46,7 +46,6 @@ Based on the actual files and configuration currently committed to this reposito
 - **Standalone execution:** The project environment (sandboxes, tests, validation) works perfectly without the personal overlay. `cargo test sbx` and `mise run validate-sbx` all pass using strictly the project's own configuration.
 
 **4. Duplicated installation mechanics**
-- The `.jules/env_setup.sh` script duplicates some of the environment setup (downloading mise manually, version `v2026.5.15`) that is also managed by the official sandbox `.sbx/kit/spec.yaml` (which uses mise `v2026.9.1` and handles rust/bun/beads via mise commands). This redundancy could potentially be abstracted into a single reusable kit or initialization script in the future to ensure single-source-of-truth for tool versions.
 
 ### References
 - [Docker AI Sandboxes: Environment files](https://docs.docker.com/ai/sandboxes/configuration/environment-files/)
