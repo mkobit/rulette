@@ -193,6 +193,27 @@ fn has_platform_prefix(value: &str) -> bool {
     bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':'
 }
 
+/// Validates that a glob pattern is a safe workspace-relative pattern without
+/// parent traversal (`..`), leading slashes, platform prefixes, or control characters.
+pub fn validate_safe_relative_glob(pattern: &str) -> Result<()> {
+    if pattern.trim().is_empty() {
+        bail!("glob pattern must not be empty");
+    }
+    if pattern.chars().any(char::is_control) {
+        bail!("glob pattern must not contain control characters");
+    }
+    if pattern.starts_with('/') || pattern.starts_with('\\') {
+        bail!("glob pattern must be relative and must not start with a path separator");
+    }
+    if has_platform_prefix(pattern) {
+        bail!("glob pattern must not start with a platform prefix");
+    }
+    if pattern.contains("..") {
+        bail!("glob pattern must not contain parent directory traversal (`..`)");
+    }
+    Ok(())
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum PackageKind {
@@ -488,6 +509,73 @@ impl FrontendPayload {
     }
 }
 
+/// Typed metadata and execution policies for agent skills.
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct SkillMetadata {
+    /// Human-facing display name for graphical user interfaces.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    /// Restricted tool identifiers or patterns authorized during skill execution.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub allowed_tools: Option<Vec<String>>,
+    /// File path globs that scope skill relevance.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub paths: Option<Vec<String>>,
+    /// Prevents autonomous model selection and requires explicit user invocation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disable_model_invocation: Option<bool>,
+    /// Exposes skill as an interactive slash command or UI action.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_invocable: Option<bool>,
+    /// Execution context isolation policy (for example, "fork").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<String>,
+    /// Dedicated custom agent identifier bound to this skill.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<String>,
+    /// Icon asset path or identifier for UI presentation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    /// Hexadecimal or named accent color for UI presentation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    /// Default prompt text pre-populated when invoking the skill.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_prompt: Option<String>,
+}
+
+impl SkillMetadata {
+    pub fn is_empty(&self) -> bool {
+        self.display_name.is_none()
+            && self.allowed_tools.is_none()
+            && self.paths.is_none()
+            && self.disable_model_invocation.is_none()
+            && self.user_invocable.is_none()
+            && self.context.is_none()
+            && self.agent.is_none()
+            && self.icon.is_none()
+            && self.color.is_none()
+            && self.default_prompt.is_none()
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        if let Some(paths) = &self.paths {
+            for pattern in paths {
+                crate::ir::validate_safe_relative_glob(pattern)?;
+            }
+        }
+        if let Some(tools) = &self.allowed_tools {
+            for tool in tools {
+                if tool.trim().is_empty() || tool.chars().any(char::is_control) {
+                    bail!("skill allowed_tools contains invalid tool identifier");
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case", tag = "kind", deny_unknown_fields)]
 pub enum SemanticItem {
@@ -503,6 +591,8 @@ pub enum SemanticItem {
     Skill {
         primary_instruction: ResourcePath,
         description: String,
+        #[serde(default, skip_serializing_if = "SkillMetadata::is_empty")]
+        metadata: SkillMetadata,
         #[serde(skip_serializing_if = "Option::is_none")]
         frontend_payload: Option<FrontendPayload>,
     },
@@ -548,11 +638,16 @@ impl SemanticItem {
                     validate_activation(activation)?;
                 }
             }
-            Self::Skill { description, .. } => {
+            Self::Skill {
+                description,
+                metadata,
+                ..
+            } => {
                 let length = description.chars().count();
                 if !(1..=1024).contains(&length) {
                     bail!("skill discovery description must contain 1 to 1024 characters");
                 }
+                metadata.validate()?;
             }
             Self::Hook { policy, .. } => {
                 policy.validate()?;
@@ -877,9 +972,17 @@ fn package_id(
     hash_component(&mut hasher, GRAPH_VERSION.as_bytes());
     hash_component(&mut hasher, package_kind_name(kind).as_bytes());
     hash_component(&mut hasher, semantic_identity.as_str().as_bytes());
-    if let SemanticItem::Hook { policy, .. } = semantic_item {
-        let policy_bytes = serde_json::to_vec(policy).expect("hook policy serializes to JSON");
-        hash_component(&mut hasher, &policy_bytes);
+    match semantic_item {
+        SemanticItem::Hook { policy, .. } => {
+            let policy_bytes = serde_json::to_vec(policy).expect("hook policy serializes to JSON");
+            hash_component(&mut hasher, &policy_bytes);
+        }
+        SemanticItem::Skill { metadata, .. } => {
+            let metadata_bytes =
+                serde_json::to_vec(metadata).expect("skill metadata serializes to JSON");
+            hash_component(&mut hasher, &metadata_bytes);
+        }
+        SemanticItem::Rule { .. } | SemanticItem::Unsupported { .. } => {}
     }
     for (path, resource) in resources {
         hash_component(&mut hasher, path.as_str().as_bytes());
@@ -1607,7 +1710,7 @@ mod tests {
 
     #[test]
     fn plugin_skill_invocations_round_trip_and_preserve_canonical_metadata() {
-        use super::{FrontendPayload, PackageKind, PackageRoot, SemanticItem};
+        use super::{FrontendPayload, PackageKind, PackageRoot, SemanticItem, SkillMetadata};
 
         let invocation = super::plugin_skill_invocation("my-plugin", "test-skill").unwrap();
         assert_eq!(invocation, "/my-plugin:test-skill");
@@ -1636,6 +1739,7 @@ mod tests {
             SemanticItem::Skill {
                 primary_instruction: resource_path,
                 description: "Test skill description".to_owned(),
+                metadata: SkillMetadata::default(),
                 frontend_payload: Some(payload.clone()),
             },
             resources,
@@ -1672,7 +1776,7 @@ mod tests {
 
     #[test]
     fn graph_validation_rejects_invalid_plugin_name_in_payload() {
-        use super::{FrontendPayload, PackageKind, PackageRoot, SemanticItem};
+        use super::{FrontendPayload, PackageKind, PackageRoot, SemanticItem, SkillMetadata};
 
         let mut fields = std::collections::BTreeMap::new();
         fields.insert(
@@ -1703,6 +1807,7 @@ mod tests {
             SemanticItem::Skill {
                 primary_instruction: resource_path,
                 description: "Test skill description".to_owned(),
+                metadata: SkillMetadata::default(),
                 frontend_payload: Some(payload.clone()),
             },
             resources,
@@ -1896,5 +2001,244 @@ mod tests {
         .unwrap();
 
         assert!(CompilationGraph::new([p1, p2]).is_err());
+    }
+
+    fn skill_package_with_metadata(metadata: super::SkillMetadata) -> anyhow::Result<Package> {
+        let resource_path = ResourcePath::parse("SKILL.md").unwrap();
+        let mut resources = BTreeMap::new();
+        resources.insert(
+            resource_path.clone(),
+            Resource::primary_instruction(
+                resource_path.clone(),
+                ResourceContent::Text("# Code Reviewer\nReview diffs.\n".to_owned()),
+                false,
+            ),
+        );
+        Package::new(
+            PackageKind::Skill,
+            SemanticIdentity::parse("skill:code-reviewer").unwrap(),
+            SourceProvenance::new("claude", ".claude/skills/code-reviewer/SKILL.md").unwrap(),
+            PackageRoot::parse(".claude/skills/code-reviewer").unwrap(),
+            SemanticItem::Skill {
+                primary_instruction: resource_path,
+                description: "Reviews pull requests and diffs.".to_owned(),
+                metadata,
+                frontend_payload: None,
+            },
+            resources,
+            None,
+        )
+    }
+
+    #[test]
+    fn skill_metadata_round_trips_canonical_json_and_toml() {
+        use super::SkillMetadata;
+
+        assert!(SkillMetadata::default().is_empty());
+
+        let empty_graph =
+            CompilationGraph::new([skill_package_with_metadata(SkillMetadata::default()).unwrap()])
+                .unwrap();
+        let empty_json = empty_graph.to_canonical_json().unwrap();
+        assert!(!empty_json.contains("\"metadata\""));
+        assert_eq!(
+            CompilationGraph::from_json(&empty_json)
+                .unwrap()
+                .to_canonical_json()
+                .unwrap(),
+            empty_json
+        );
+        let empty_toml = empty_graph.to_toml().unwrap();
+        assert_eq!(
+            CompilationGraph::from_toml(&empty_toml)
+                .unwrap()
+                .to_canonical_json()
+                .unwrap(),
+            empty_json
+        );
+
+        let populated = SkillMetadata {
+            display_name: Some("Code Reviewer".to_owned()),
+            allowed_tools: Some(vec!["Bash(git *)".to_owned(), "mcp:github".to_owned()]),
+            paths: Some(vec![
+                "src/**/*.rs".to_owned(),
+                "crates/**/src/*.rs".to_owned(),
+            ]),
+            disable_model_invocation: Some(true),
+            user_invocable: Some(true),
+            context: Some("fork".to_owned()),
+            agent: Some("security-auditor".to_owned()),
+            icon: Some("./assets/icon.svg".to_owned()),
+            color: Some("#10A37F".to_owned()),
+            default_prompt: Some("Review the current git staged changes.".to_owned()),
+        };
+        assert!(!populated.is_empty());
+
+        let pkg = skill_package_with_metadata(populated.clone()).unwrap();
+        let graph = CompilationGraph::new([pkg]).unwrap();
+
+        let json = graph.to_canonical_json().unwrap();
+        let from_json = CompilationGraph::from_json(&json).unwrap();
+        assert_eq!(from_json, graph);
+        assert_eq!(from_json.to_canonical_json().unwrap(), json);
+
+        let toml_str = graph.to_toml().unwrap();
+        let from_toml = CompilationGraph::from_toml(&toml_str).unwrap();
+        assert_eq!(from_toml, graph);
+        assert_eq!(from_toml.to_canonical_json().unwrap(), json);
+
+        let round_tripped_pkg = from_toml.packages.values().next().unwrap();
+        let SemanticItem::Skill { metadata, .. } = &round_tripped_pkg.semantic_item else {
+            panic!("expected skill semantic item");
+        };
+        assert_eq!(metadata, &populated);
+
+        let mut raw: serde_json::Value = serde_json::from_str(&json).unwrap();
+        raw["packages"]
+            .as_object_mut()
+            .unwrap()
+            .values_mut()
+            .next()
+            .unwrap()["semantic_item"]["metadata"]["unknown_field"] = serde_json::json!(true);
+        assert!(CompilationGraph::from_json(&raw.to_string()).is_err());
+    }
+
+    #[test]
+    fn skill_package_id_changes_when_skill_metadata_fields_change() {
+        use super::SkillMetadata;
+
+        let base_a = skill_package_with_metadata(SkillMetadata::default()).unwrap();
+        let base_b = skill_package_with_metadata(SkillMetadata::default()).unwrap();
+        assert_eq!(base_a.id(), base_b.id());
+
+        let variants = [
+            SkillMetadata {
+                display_name: Some("Reviewer A".to_owned()),
+                ..SkillMetadata::default()
+            },
+            SkillMetadata {
+                display_name: Some("Reviewer B".to_owned()),
+                ..SkillMetadata::default()
+            },
+            SkillMetadata {
+                allowed_tools: Some(vec!["Bash(git *)".to_owned()]),
+                ..SkillMetadata::default()
+            },
+            SkillMetadata {
+                allowed_tools: Some(vec!["Read".to_owned()]),
+                ..SkillMetadata::default()
+            },
+            SkillMetadata {
+                paths: Some(vec!["src/**/*.rs".to_owned()]),
+                ..SkillMetadata::default()
+            },
+            SkillMetadata {
+                paths: Some(vec!["tests/**/*.rs".to_owned()]),
+                ..SkillMetadata::default()
+            },
+            SkillMetadata {
+                disable_model_invocation: Some(true),
+                ..SkillMetadata::default()
+            },
+            SkillMetadata {
+                disable_model_invocation: Some(false),
+                ..SkillMetadata::default()
+            },
+            SkillMetadata {
+                user_invocable: Some(true),
+                ..SkillMetadata::default()
+            },
+            SkillMetadata {
+                context: Some("fork".to_owned()),
+                ..SkillMetadata::default()
+            },
+            SkillMetadata {
+                agent: Some("reviewer".to_owned()),
+                ..SkillMetadata::default()
+            },
+            SkillMetadata {
+                icon: Some("./assets/icon.svg".to_owned()),
+                ..SkillMetadata::default()
+            },
+            SkillMetadata {
+                color: Some("#10A37F".to_owned()),
+                ..SkillMetadata::default()
+            },
+            SkillMetadata {
+                default_prompt: Some("Review staged changes.".to_owned()),
+                ..SkillMetadata::default()
+            },
+        ];
+
+        let mut seen = std::collections::BTreeSet::new();
+        assert!(seen.insert(base_a.id().clone()));
+        for metadata in variants {
+            let pkg = skill_package_with_metadata(metadata).unwrap();
+            assert_ne!(pkg.id(), base_a.id());
+            assert!(
+                seen.insert(pkg.id().clone()),
+                "each distinct SkillMetadata variant must produce a unique PackageId"
+            );
+        }
+    }
+
+    #[test]
+    fn skill_metadata_rejects_unsafe_paths_and_invalid_tools() {
+        use super::{validate_safe_relative_glob, SkillMetadata};
+
+        for valid_glob in [
+            "src/api/**/*.ts",
+            "**/*.test.ts",
+            "./src/*.rs",
+            "crates/core/src/lib.rs",
+        ] {
+            assert!(
+                validate_safe_relative_glob(valid_glob).is_ok(),
+                "{valid_glob:?} should be accepted"
+            );
+        }
+
+        for unsafe_glob in [
+            "foo/../../bar",
+            "../secret.md",
+            "../*",
+            "..",
+            "/etc/passwd",
+            "\\Windows\\System32",
+            "C:/Users/**",
+            "",
+            "   ",
+            "src/\0bad",
+            "src/\nbad",
+        ] {
+            assert!(
+                validate_safe_relative_glob(unsafe_glob).is_err(),
+                "{unsafe_glob:?} must be rejected by validate_safe_relative_glob"
+            );
+            let metadata = SkillMetadata {
+                paths: Some(vec![unsafe_glob.to_owned()]),
+                ..SkillMetadata::default()
+            };
+            assert!(
+                metadata.validate().is_err(),
+                "{unsafe_glob:?} must be rejected by SkillMetadata::validate"
+            );
+            assert!(
+                skill_package_with_metadata(metadata).is_err(),
+                "{unsafe_glob:?} must be rejected before package construction"
+            );
+        }
+
+        for bad_tool in ["", "   ", "Bash\0", "Bash\nrm"] {
+            let metadata = SkillMetadata {
+                allowed_tools: Some(vec![bad_tool.to_owned()]),
+                ..SkillMetadata::default()
+            };
+            assert!(
+                metadata.validate().is_err(),
+                "{bad_tool:?} must be rejected by SkillMetadata::validate"
+            );
+            assert!(skill_package_with_metadata(metadata).is_err());
+        }
     }
 }

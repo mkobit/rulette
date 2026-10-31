@@ -1,7 +1,7 @@
 use crate::inputs::ArtifactObservation;
 use crate::ir::graph::{
     FrontendPayload, Package, PackageKind, PackageRoot, Resource, ResourceContent, ResourcePath,
-    SemanticIdentity, SemanticItem, SourceProvenance,
+    SemanticIdentity, SemanticItem, SkillMetadata, SourceProvenance,
 };
 use crate::parsers::frontend::{NativeCompilation, NativeFrontend, NativeObservationDisposition};
 use crate::parsers::skills::DirectSkillRoots;
@@ -183,6 +183,7 @@ fn compile_skill_package(
         SemanticItem::Skill {
             primary_instruction: ResourcePath::parse("SKILL.md")?,
             description,
+            metadata: SkillMetadata::default(),
             frontend_payload: payload("opencode.skill-frontmatter", parsed.extra),
         },
         resources,

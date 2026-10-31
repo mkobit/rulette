@@ -1,4 +1,5 @@
 use crate::inputs::ArtifactObservation;
+use crate::ir::SkillMetadata;
 use crate::parsers::frontend::{NativeCompilation, NativeFrontend, NativeObservationDisposition};
 use crate::parsers::skills::DirectSkillRoots;
 use crate::{ActivationMode, PortableActivation};
@@ -155,7 +156,7 @@ fn rule_package(observation: &ArtifactObservation) -> Result<Package> {
         PackageRoot::parse(root)?,
         SemanticItem::Rule {
             primary_instruction: primary_path,
-            description: None,
+            description: document.description,
             activation: document.activation,
             frontend_payload: document.frontmatter,
         },
@@ -166,6 +167,7 @@ fn rule_package(observation: &ArtifactObservation) -> Result<Package> {
 
 struct RuleDocument {
     body: String,
+    description: Option<String>,
     activation: Option<TargetActivation>,
     frontmatter: Option<FrontendPayload>,
 }
@@ -174,6 +176,7 @@ impl RuleDocument {
     fn plain(body: &str) -> Self {
         Self {
             body: body.to_owned(),
+            description: None,
             activation: None,
             frontmatter: None,
         }
@@ -186,39 +189,32 @@ fn parse_rule_document(input: &str) -> Result<RuleDocument> {
     }
 
     let (frontmatter, body) = split_frontmatter(input)?;
-    let mut fields: BTreeMap<String, serde_json::Value> =
-        serde_yaml::from_str(frontmatter).context("Claude rule frontmatter must be valid YAML")?;
-    let activation = fields
-        .remove("paths")
-        .map(activation_from_paths)
-        .transpose()?;
+    let mut fields: BTreeMap<String, serde_json::Value> = if frontmatter.trim().is_empty() {
+        BTreeMap::new()
+    } else {
+        serde_yaml::from_str::<Option<BTreeMap<String, serde_json::Value>>>(frontmatter)
+            .context("Claude rule frontmatter must be valid YAML")?
+            .unwrap_or_default()
+    };
+    let description = optional_string(&mut fields, "description", "Claude rule")?;
+    let activation = match fields.remove("paths") {
+        None | Some(serde_json::Value::Null) => None,
+        Some(value) => Some(activation_from_paths(value)?),
+    };
     let frontmatter = (!fields.is_empty()).then(|| FrontendPayload {
         namespace: "claude.rule-frontmatter".to_owned(),
         fields,
     });
     Ok(RuleDocument {
         body: body.to_owned(),
+        description,
         activation,
         frontmatter,
     })
 }
 
 fn activation_from_paths(value: serde_json::Value) -> Result<TargetActivation> {
-    let globs = match value {
-        serde_json::Value::String(path) => vec![path],
-        serde_json::Value::Array(paths) => paths
-            .into_iter()
-            .map(|path| {
-                path.as_str()
-                    .map(ToOwned::to_owned)
-                    .context("Claude rule paths entries must be strings")
-            })
-            .collect::<Result<Vec<_>>>()?,
-        _ => bail!("Claude rule paths must be a string or an array of strings"),
-    };
-    if globs.is_empty() || globs.iter().any(|glob| glob.is_empty()) {
-        bail!("Claude rule paths must contain at least one non-empty glob")
-    }
+    let globs = parse_glob_value(value, "Claude rule", "paths")?;
     Ok(TargetActivation::Bare(PortableActivation {
         mode: vec![ActivationMode::Glob],
         globs: Some(globs),
@@ -269,6 +265,7 @@ fn skill_package(
         SemanticItem::Skill {
             primary_instruction: primary_path,
             description: document.description,
+            metadata: document.metadata,
             frontend_payload: payload,
         },
         resources,
@@ -478,6 +475,7 @@ fn split_parent(path: &str) -> Result<(&str, &str)> {
 struct SkillDocument {
     name: String,
     description: String,
+    metadata: SkillMetadata,
     frontmatter: BTreeMap<String, serde_json::Value>,
     body: String,
 }
@@ -488,12 +486,127 @@ fn parse_skill_document(input: &str) -> Result<SkillDocument> {
         .context("Claude SKILL.md frontmatter must be valid YAML")?;
     let name = required_string(&mut fields, "name")?;
     let description = required_string(&mut fields, "description")?;
+    let metadata = SkillMetadata {
+        display_name: None,
+        allowed_tools: optional_tool_list(&mut fields, "allowed-tools")?,
+        paths: optional_glob_list(&mut fields, "paths", "Claude skill")?,
+        disable_model_invocation: optional_bool(
+            &mut fields,
+            "disable-model-invocation",
+            "Claude skill",
+        )?,
+        user_invocable: optional_bool(&mut fields, "user-invocable", "Claude skill")?,
+        context: optional_string(&mut fields, "context", "Claude skill")?,
+        agent: optional_string(&mut fields, "agent", "Claude skill")?,
+        icon: None,
+        color: None,
+        default_prompt: None,
+    };
+    metadata.validate()?;
     Ok(SkillDocument {
         name,
         description,
+        metadata,
         frontmatter: fields,
         body: body.to_owned(),
     })
+}
+
+fn parse_glob_value(
+    value: serde_json::Value,
+    context_kind: &str,
+    key: &str,
+) -> Result<Vec<String>> {
+    let globs = match value {
+        serde_json::Value::String(raw) => crate::parsers::split_glob_list(&raw),
+        serde_json::Value::Array(entries) => entries
+            .into_iter()
+            .map(|entry| {
+                entry
+                    .as_str()
+                    .map(|s| s.trim().to_owned())
+                    .with_context(|| format!("{context_kind} `{key}` entries must be strings"))
+            })
+            .collect::<Result<Vec<_>>>()?,
+        _ => bail!("{context_kind} `{key}` must be a string or an array of strings"),
+    };
+    if globs.is_empty() || globs.iter().any(|glob| glob.is_empty()) {
+        bail!("{context_kind} `{key}` must contain at least one non-empty glob");
+    }
+    crate::parsers::validate_glob_list(&globs)?;
+    Ok(globs)
+}
+
+fn optional_glob_list(
+    fields: &mut BTreeMap<String, serde_json::Value>,
+    key: &str,
+    context_kind: &str,
+) -> Result<Option<Vec<String>>> {
+    match fields.remove(key) {
+        None | Some(serde_json::Value::Null) => Ok(None),
+        Some(value) => parse_glob_value(value, context_kind, key).map(Some),
+    }
+}
+
+fn optional_tool_list(
+    fields: &mut BTreeMap<String, serde_json::Value>,
+    key: &str,
+) -> Result<Option<Vec<String>>> {
+    match fields.remove(key) {
+        None | Some(serde_json::Value::Null) => Ok(None),
+        Some(serde_json::Value::String(raw)) => {
+            let tools = crate::parsers::split_tool_list(&raw);
+            if tools.is_empty() {
+                bail!("Claude skill `{key}` must contain at least one non-empty tool");
+            }
+            Ok(Some(tools))
+        }
+        Some(serde_json::Value::Array(entries)) => {
+            let tools = entries
+                .into_iter()
+                .map(|entry| {
+                    entry
+                        .as_str()
+                        .map(|s| s.trim().to_owned())
+                        .with_context(|| format!("Claude skill `{key}` entries must be strings"))
+                })
+                .collect::<Result<Vec<_>>>()?;
+            if tools.is_empty() || tools.iter().any(|tool| tool.is_empty()) {
+                bail!("Claude skill `{key}` must contain at least one non-empty tool");
+            }
+            Ok(Some(tools))
+        }
+        Some(_) => bail!("Claude skill `{key}` must be a string or an array of strings"),
+    }
+}
+
+fn optional_bool(
+    fields: &mut BTreeMap<String, serde_json::Value>,
+    key: &str,
+    context_kind: &str,
+) -> Result<Option<bool>> {
+    match fields.remove(key) {
+        None | Some(serde_json::Value::Null) => Ok(None),
+        Some(serde_json::Value::Bool(flag)) => Ok(Some(flag)),
+        Some(_) => bail!("{context_kind} `{key}` must be a boolean"),
+    }
+}
+
+fn optional_string(
+    fields: &mut BTreeMap<String, serde_json::Value>,
+    key: &str,
+    context_kind: &str,
+) -> Result<Option<String>> {
+    match fields.remove(key) {
+        None | Some(serde_json::Value::Null) => Ok(None),
+        Some(serde_json::Value::String(value)) => {
+            if value.trim().is_empty() || value.chars().any(char::is_control) {
+                bail!("{context_kind} `{key}` must be non-empty and control-character free");
+            }
+            Ok(Some(value))
+        }
+        Some(_) => bail!("{context_kind} `{key}` must be a string"),
+    }
 }
 
 fn split_frontmatter(input: &str) -> Result<(&str, &str)> {
@@ -659,7 +772,7 @@ mod tests {
         let graph = parse_graph(&[
             observation(
                 ".claude/skills/release-workflow/SKILL.md",
-                "---\nname: release-workflow\ndescription: Prepare a release.\nuser-invocable: false\n---\n# Release\n\nShip it.\n",
+                "---\nname: release-workflow\ndescription: Prepare a release.\nuser-invocable: false\ncustom-field: preserve-me\n---\n# Release\n\nShip it.\n",
                 false,
             ),
             observation(
@@ -694,16 +807,19 @@ mod tests {
         assert!(companion.executable);
 
         let SemanticItem::Skill {
+            metadata,
             frontend_payload: Some(payload),
             ..
         } = &package.semantic_item
         else {
-            panic!("skill retains its native frontmatter payload");
+            panic!("skill retains typed metadata and unknown frontmatter payload");
         };
+        assert_eq!(metadata.user_invocable, Some(false));
         assert_eq!(payload.namespace, "claude.skill-frontmatter");
+        assert!(!payload.fields.contains_key("user-invocable"));
         assert_eq!(
-            payload.fields.get("user-invocable"),
-            Some(&serde_json::Value::Bool(false))
+            payload.fields.get("custom-field"),
+            Some(&serde_json::Value::String("preserve-me".to_owned()))
         );
     }
 
@@ -851,5 +967,126 @@ mod tests {
             Some(&serde_json::Value::String("preserve-me".to_owned()))
         );
         assert_eq!(graph.diagnostics.len(), 7);
+    }
+
+    #[test]
+    fn parses_claude_skill_frontmatter_into_typed_skill_metadata_and_validates_paths() {
+        let graph = parse_graph(&[
+            observation(
+                ".claude/skills/code-review/SKILL.md",
+                "---\nname: code-review\ndescription: Review staged changes.\nallowed-tools:\n  - Bash(git *)\n  - Read\npaths:\n  - src/**/*.rs\n  - crates/**/*.rs\ndisable-model-invocation: true\nuser-invocable: true\ncontext: fork\nagent: reviewer\n---\n# Review\n",
+                false,
+            ),
+            observation(
+                ".claude/skills/git-helper/SKILL.md",
+                "---\nname: git-helper\ndescription: Inspect git history.\nallowed-tools: \"Bash(git status *), Bash(git diff *), Read\"\npaths: \"src/{api,core}/**/*.rs, tests/**/*.rs\"\n---\n# Git Helper\n",
+                false,
+            ),
+        ])
+        .expect("Claude skills with typed metadata parse cleanly");
+
+        let review = package_by_identity(&graph, "skill:code-review");
+        let SemanticItem::Skill {
+            metadata,
+            frontend_payload,
+            ..
+        } = &review.semantic_item
+        else {
+            panic!("expected skill semantic item");
+        };
+        assert!(
+            frontend_payload.is_none(),
+            "known Claude skill frontmatter fields should not leak into frontend_payload"
+        );
+        assert_eq!(
+            metadata,
+            &SkillMetadata {
+                display_name: None,
+                allowed_tools: Some(vec!["Bash(git *)".to_owned(), "Read".to_owned()]),
+                paths: Some(vec!["src/**/*.rs".to_owned(), "crates/**/*.rs".to_owned()]),
+                disable_model_invocation: Some(true),
+                user_invocable: Some(true),
+                context: Some("fork".to_owned()),
+                agent: Some("reviewer".to_owned()),
+                icon: None,
+                color: None,
+                default_prompt: None,
+            }
+        );
+
+        let helper = package_by_identity(&graph, "skill:git-helper");
+        let SemanticItem::Skill {
+            metadata: helper_metadata,
+            ..
+        } = &helper.semantic_item
+        else {
+            panic!("expected skill semantic item");
+        };
+        assert_eq!(
+            helper_metadata.allowed_tools,
+            Some(vec![
+                "Bash(git status *)".to_owned(),
+                "Bash(git diff *)".to_owned(),
+                "Read".to_owned(),
+            ])
+        );
+        assert_eq!(
+            helper_metadata.paths,
+            Some(vec![
+                "src/{api,core}/**/*.rs".to_owned(),
+                "tests/**/*.rs".to_owned(),
+            ])
+        );
+
+        let unsafe_err = parse_graph(&[observation(
+            ".claude/skills/bad-paths/SKILL.md",
+            "---\nname: bad-paths\ndescription: Unsafe skill.\npaths:\n  - ../secrets/**\n---\n# Bad\n",
+            false,
+        )])
+        .expect_err("skill paths with parent directory traversal must be rejected");
+        assert!(unsafe_err.to_string().contains(".."));
+    }
+
+    #[test]
+    fn parses_claude_scoped_rules_with_description_brace_globs_and_rejects_unsafe_paths() {
+        let graph = parse_graph(&[observation(
+            ".claude/rules/scoped.md",
+            "---\ndescription: API and core Rust conventions\npaths: \"src/{api,core}/**/*.rs, crates/**/*.rs\"\n---\nUse structured errors.\n",
+            false,
+        )])
+        .expect("Claude scoped rule parses into Glob activation");
+
+        let package = package_by_identity(&graph, "rule:.claude/rules/scoped.md");
+        assert_eq!(package.kind, PackageKind::Rule);
+        let SemanticItem::Rule {
+            description,
+            activation: Some(TargetActivation::Bare(activation)),
+            frontend_payload,
+            ..
+        } = &package.semantic_item
+        else {
+            panic!("expected rule with portable Glob activation");
+        };
+        assert_eq!(
+            description.as_deref(),
+            Some("API and core Rust conventions")
+        );
+        assert_eq!(activation.mode, vec![ActivationMode::Glob]);
+        assert_eq!(
+            activation.globs,
+            Some(vec![
+                "src/{api,core}/**/*.rs".to_owned(),
+                "crates/**/*.rs".to_owned(),
+            ])
+        );
+        assert!(frontend_payload.is_none());
+
+        for bad_rule in [
+            "---\npaths:\n  - ../../etc/passwd\n---\nUnsafe.\n",
+            "---\npaths:\n  - /etc/passwd\n---\nUnsafe.\n",
+        ] {
+            parse_graph(&[observation(".claude/rules/bad.md", bad_rule, false)])
+                .expect_err("unsafe rule paths must be rejected");
+        }
     }
 }

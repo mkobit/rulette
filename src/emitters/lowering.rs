@@ -1637,6 +1637,7 @@ mod tests {
         lower, CapabilityReasonCode, CapabilitySeverity, LoweringOptions, NativeArtifactClass,
         NativeTarget,
     };
+    use crate::ir::SkillMetadata;
     use crate::{
         ActivationMode, CompilationGraph, FrontendPayload, Package, PackageKind, PackageRoot,
         PortableActivation, Resource, ResourceContent, ResourcePath, SemanticIdentity,
@@ -1868,6 +1869,7 @@ mod tests {
             SemanticItem::Skill {
                 primary_instruction: primary_path,
                 description: "Review a change before it ships.".to_owned(),
+                metadata: SkillMetadata::default(),
                 frontend_payload: None,
             },
             resources,
@@ -1949,6 +1951,7 @@ mod tests {
             SemanticItem::Skill {
                 primary_instruction: primary_path,
                 description: "Review a change before it ships.".to_owned(),
+                metadata: SkillMetadata::default(),
                 frontend_payload: None,
             },
             resources,
@@ -2146,6 +2149,7 @@ mod tests {
             SemanticItem::Skill {
                 primary_instruction: skill_path.clone(),
                 description: "A helper skill".to_owned(),
+                metadata: SkillMetadata::default(),
                 frontend_payload: None,
             },
             BTreeMap::from([(
