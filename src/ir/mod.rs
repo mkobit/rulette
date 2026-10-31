@@ -5,6 +5,7 @@ pub mod graph;
 pub mod hooks;
 pub mod permissions;
 
+pub use graph::{validate_safe_relative_glob, SkillMetadata};
 pub use hooks::{
     HookAction, HookDefinition, HookEventKind, HookMatcher, HookScope, TargetHookPolicy,
 };

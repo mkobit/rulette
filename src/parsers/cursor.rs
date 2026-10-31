@@ -1,7 +1,7 @@
 use crate::inputs::ArtifactObservation;
 use crate::ir::graph::{
     FrontendPayload, Package, PackageKind, PackageRoot, PortableActivation, Resource,
-    ResourceContent, ResourcePath, SemanticIdentity, SemanticItem, SourceProvenance,
+    ResourceContent, ResourcePath, SemanticIdentity, SemanticItem, SkillMetadata, SourceProvenance,
     TargetActivation,
 };
 use crate::parsers::frontend::{NativeCompilation, NativeFrontend, NativeObservationDisposition};
@@ -101,7 +101,7 @@ impl SkillGroupKey {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
 struct CursorRuleFrontmatter {
     #[serde(default)]
     description: Option<String>,
@@ -125,31 +125,30 @@ enum CursorGlobs {
 impl CursorGlobs {
     fn into_vec(self) -> Vec<String> {
         match self {
-            Self::Single(globs) => globs
-                .split(',')
-                .map(str::trim)
-                .filter(|glob| !glob.is_empty())
-                .map(ToOwned::to_owned)
+            Self::Single(globs) => crate::parsers::split_glob_list(&globs),
+            Self::Many(globs) => globs
+                .into_iter()
+                .map(|glob| glob.trim().to_owned())
                 .collect(),
-            Self::Many(globs) => globs,
         }
     }
 }
 
 fn compile_rule(observation: &ArtifactObservation) -> Result<Package> {
     let source = text(observation, "Cursor rule")?;
-    let (frontmatter, body) = split_frontmatter(source);
-    let parsed = frontmatter
-        .map(serde_yaml::from_str::<CursorRuleFrontmatter>)
-        .transpose()
-        .context("could not parse Cursor rule frontmatter")?
-        .unwrap_or(CursorRuleFrontmatter {
-            description: None,
-            globs: None,
-            always_apply: None,
-            activation: None,
-            extra: BTreeMap::new(),
-        });
+    let (frontmatter, body) = crate::parsers::split_optional_frontmatter(source);
+    let parsed = match frontmatter {
+        None | Some("") => CursorRuleFrontmatter::default(),
+        Some(fm) => serde_yaml::from_str::<Option<CursorRuleFrontmatter>>(fm)
+            .context("could not parse Cursor rule frontmatter")?
+            .unwrap_or_default(),
+    };
+    let globs = parsed.globs.map(CursorGlobs::into_vec);
+    if let Some(ref values) = globs {
+        if !values.is_empty() {
+            crate::parsers::validate_glob_list(values)?;
+        }
+    }
     let primary_path = ResourcePath::parse(file_name(observation.source_path.as_str()))?;
     let resource = Resource::primary_instruction(
         primary_path.clone(),
@@ -158,9 +157,12 @@ fn compile_rule(observation: &ArtifactObservation) -> Result<Package> {
     );
     let mut resources = BTreeMap::new();
     resources.insert(primary_path.clone(), resource);
-    let activation = parsed.activation.or_else(|| {
-        activation_from_cursor(parsed.always_apply, parsed.globs.map(CursorGlobs::into_vec))
-    });
+    let activation = parsed
+        .activation
+        .or_else(|| activation_from_cursor(parsed.always_apply, globs));
+    if let Some(ref target_activation) = activation {
+        validate_target_activation_globs(target_activation)?;
+    }
     Package::new(
         PackageKind::Rule,
         SemanticIdentity::parse(format!(
@@ -178,6 +180,27 @@ fn compile_rule(observation: &ArtifactObservation) -> Result<Package> {
         resources,
         None,
     )
+}
+
+fn validate_target_activation_globs(activation: &TargetActivation) -> Result<()> {
+    match activation {
+        TargetActivation::Bare(portable) => {
+            if let Some(ref globs) = portable.globs {
+                crate::parsers::validate_glob_list(globs)?;
+            }
+        }
+        TargetActivation::Wrapped(overrides) => {
+            if let Some(ref globs) = overrides.default.globs {
+                crate::parsers::validate_glob_list(globs)?;
+            }
+            for portable in overrides.overrides.values() {
+                if let Some(ref globs) = portable.globs {
+                    crate::parsers::validate_glob_list(globs)?;
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 fn activation_from_cursor(
@@ -215,18 +238,55 @@ fn compile_skill_package(
         return Ok(None);
     };
     let primary = &inputs[primary_index];
-    let (frontmatter, body) = split_frontmatter(text(primary, "Cursor skill")?);
-    let parsed = frontmatter
-        .map(serde_yaml::from_str::<SkillFrontmatter>)
-        .transpose()
-        .context("could not parse Cursor skill frontmatter")?
-        .unwrap_or_default();
-    let name = parsed
-        .name
-        .unwrap_or_else(|| skill_name_from_root(root).to_owned());
+    let (frontmatter, body) =
+        crate::parsers::split_optional_frontmatter(text(primary, "Cursor skill")?);
+    let parsed = match frontmatter {
+        None | Some("") => SkillFrontmatter::default(),
+        Some(fm) => serde_yaml::from_str::<Option<SkillFrontmatter>>(fm)
+            .context("could not parse Cursor skill frontmatter")?
+            .unwrap_or_default(),
+    };
+    let name = match parsed.name {
+        Some(explicit) => {
+            if explicit.trim().is_empty() {
+                bail!("Cursor skill `name` must be non-empty");
+            }
+            explicit
+        }
+        None => skill_name_from_root(root).to_owned(),
+    };
     let description = parsed
         .description
+        .filter(|value| !value.is_empty())
         .ok_or_else(|| anyhow!("Cursor skill `{name}` is missing a discovery description"))?;
+    let mut merged_paths = Vec::new();
+    if let Some(paths_value) = parsed.paths {
+        for glob in parse_skill_globs(paths_value, "paths")? {
+            if !merged_paths.contains(&glob) {
+                merged_paths.push(glob);
+            }
+        }
+    }
+    if let Some(globs_value) = parsed.globs {
+        for glob in parse_skill_globs(globs_value, "globs")? {
+            if !merged_paths.contains(&glob) {
+                merged_paths.push(glob);
+            }
+        }
+    }
+    let metadata = SkillMetadata {
+        display_name: None,
+        allowed_tools: None,
+        paths: (!merged_paths.is_empty()).then_some(merged_paths),
+        disable_model_invocation: parsed.disable_model_invocation,
+        user_invocable: None,
+        context: None,
+        agent: None,
+        icon: validate_optional_skill_string(parsed.icon, "icon")?,
+        color: validate_optional_skill_string(parsed.color, "color")?,
+        default_prompt: None,
+    };
+    metadata.validate()?;
     let mut resources = BTreeMap::new();
     for index in members {
         let observation = &inputs[*index];
@@ -260,6 +320,7 @@ fn compile_skill_package(
         SemanticItem::Skill {
             primary_instruction: primary_path,
             description,
+            metadata,
             frontend_payload: payload("cursor.skill-frontmatter", parsed.extra),
         },
         resources,
@@ -270,10 +331,43 @@ fn compile_skill_package(
 
 #[derive(Default, Deserialize)]
 struct SkillFrontmatter {
+    #[serde(default)]
     name: Option<String>,
+    #[serde(default)]
     description: Option<String>,
+    #[serde(default)]
+    paths: Option<CursorGlobs>,
+    #[serde(default)]
+    globs: Option<CursorGlobs>,
+    #[serde(rename = "disable-model-invocation", default)]
+    disable_model_invocation: Option<bool>,
+    #[serde(default)]
+    icon: Option<String>,
+    #[serde(default)]
+    color: Option<String>,
     #[serde(flatten)]
     extra: BTreeMap<String, serde_json::Value>,
+}
+
+fn parse_skill_globs(value: CursorGlobs, field: &str) -> Result<Vec<String>> {
+    let globs = value.into_vec();
+    if globs.is_empty() || globs.iter().any(|glob| glob.is_empty()) {
+        bail!("Cursor skill `{field}` must contain at least one non-empty glob");
+    }
+    crate::parsers::validate_glob_list(&globs)?;
+    Ok(globs)
+}
+
+fn validate_optional_skill_string(value: Option<String>, field: &str) -> Result<Option<String>> {
+    match value {
+        None => Ok(None),
+        Some(raw) => {
+            if raw.trim().is_empty() || raw.chars().any(char::is_control) {
+                bail!("Cursor skill `{field}` must be non-empty and control-character free");
+            }
+            Ok(Some(raw))
+        }
+    }
 }
 
 fn unsupported_package(
@@ -333,24 +427,6 @@ fn text<'a>(observation: &'a ArtifactObservation, kind: &str) -> Result<&'a str>
             observation.source_path.as_str()
         )
     })
-}
-
-fn split_frontmatter(input: &str) -> (Option<&str>, &str) {
-    let Some(remainder) = input
-        .strip_prefix("---\n")
-        .or_else(|| input.strip_prefix("---\r\n"))
-    else {
-        return (None, input);
-    };
-    let Some(end) = remainder.find("---") else {
-        return (None, input);
-    };
-    let body = &remainder[end + 3..];
-    let body = body
-        .strip_prefix("\r\n")
-        .or_else(|| body.strip_prefix('\n'))
-        .unwrap_or(body);
-    (Some(remainder[..end].trim()), body)
 }
 
 fn relative_to_root(path: &ResourcePath, root: &str) -> Option<String> {
@@ -650,5 +726,178 @@ mod tests {
         assert!(error
             .to_string()
             .contains("duplicate Cursor skill resource `SKILL.md`"));
+    }
+
+    #[test]
+    fn compiles_cursor_scoped_rules_into_glob_activation_and_rejects_unsafe_globs() {
+        let graph = compile_cursor_graph(&[
+            observation(
+                ".cursor/rules/api.mdc",
+                "---\ndescription: API conventions\nalwaysApply: false\nglobs:\n  - src/api/**/*.ts\n  - src/shared/**/*.ts\n---\nValidate payloads.\n",
+                false,
+            ),
+            observation(
+                ".cursor/rules/frontend.mdc",
+                "---\ndescription: UI conventions\nglobs: \"web/{components,pages}/**/*.tsx, web/styles/**/*.css\"\n---\nUse design tokens.\n",
+                false,
+            ),
+            observation(
+                ".cursor/rules/manual.mdc",
+                "---\ndescription: Manual helper\nalwaysApply: false\nglobs: \"\"\n---\nRun manually.\n",
+                false,
+            ),
+        ])
+        .expect("Cursor scoped and manual rules parse cleanly");
+
+        let api = graph
+            .packages
+            .values()
+            .find(|pkg| pkg.semantic_identity.as_str() == "rule:api")
+            .unwrap();
+        assert_eq!(api.kind, PackageKind::Rule);
+        let SemanticItem::Rule {
+            description: api_desc,
+            activation: Some(TargetActivation::Bare(api_act)),
+            frontend_payload: api_payload,
+            ..
+        } = &api.semantic_item
+        else {
+            panic!("expected rule with portable activation");
+        };
+        assert_eq!(api_desc.as_deref(), Some("API conventions"));
+        assert_eq!(api_act.mode, vec![crate::ActivationMode::Glob]);
+        assert_eq!(
+            api_act.globs,
+            Some(vec![
+                "src/api/**/*.ts".to_owned(),
+                "src/shared/**/*.ts".to_owned(),
+            ])
+        );
+        assert!(api_payload.is_none());
+
+        let frontend = graph
+            .packages
+            .values()
+            .find(|pkg| pkg.semantic_identity.as_str() == "rule:frontend")
+            .unwrap();
+        let SemanticItem::Rule {
+            activation: Some(TargetActivation::Bare(frontend_act)),
+            ..
+        } = &frontend.semantic_item
+        else {
+            panic!("expected rule with portable activation");
+        };
+        assert_eq!(frontend_act.mode, vec![crate::ActivationMode::Glob]);
+        assert_eq!(
+            frontend_act.globs,
+            Some(vec![
+                "web/{components,pages}/**/*.tsx".to_owned(),
+                "web/styles/**/*.css".to_owned(),
+            ])
+        );
+
+        let manual = graph
+            .packages
+            .values()
+            .find(|pkg| pkg.semantic_identity.as_str() == "rule:manual")
+            .unwrap();
+        let SemanticItem::Rule {
+            activation: Some(TargetActivation::Bare(manual_act)),
+            ..
+        } = &manual.semantic_item
+        else {
+            panic!("expected rule with portable activation");
+        };
+        assert_eq!(manual_act.mode, vec![crate::ActivationMode::Manual]);
+        assert!(manual_act.globs.is_none());
+
+        compile_cursor_graph(&[observation(
+            ".cursor/rules/unsafe.mdc",
+            "---\nalwaysApply: false\nglobs:\n  - ../../etc/passwd\n---\nUnsafe.\n",
+            false,
+        )])
+        .expect_err("Cursor rule globs with parent traversal must be rejected");
+    }
+
+    #[test]
+    fn parses_cursor_skill_frontmatter_metadata_and_validates_paths() {
+        let graph = compile_cursor_graph(&[
+            observation(
+                ".cursor/skills/ui-audit/SKILL.md",
+                "---\nname: ui-audit\ndescription: Audit UI components\npaths:\n  - src/ui/**/*.tsx\nglobs: \"src/ui/**/*.tsx, src/{theme,tokens}/**/*.ts\"\ndisable-model-invocation: true\nicon: ./assets/audit.svg\ncolor: \"#7C3AED\"\ncustom-cursor: retained\n---\n# UI Audit\n",
+                false,
+            ),
+            observation(
+                ".agents/skills/db-migrate/SKILL.md",
+                "---\ndescription: Run database migrations\nglobs:\n  - db/migrations/**/*.sql\ndisable-model-invocation: false\n---\n# DB Migrate\n",
+                false,
+            ),
+        ])
+        .expect("Cursor skills with typed metadata parse cleanly");
+
+        let ui = graph
+            .packages
+            .values()
+            .find(|pkg| pkg.semantic_identity.as_str() == "skill:ui-audit")
+            .unwrap();
+        let SemanticItem::Skill {
+            metadata,
+            frontend_payload: Some(payload),
+            ..
+        } = &ui.semantic_item
+        else {
+            panic!("expected skill with metadata and unknown payload");
+        };
+        assert_eq!(
+            metadata,
+            &SkillMetadata {
+                display_name: None,
+                allowed_tools: None,
+                paths: Some(vec![
+                    "src/ui/**/*.tsx".to_owned(),
+                    "src/{theme,tokens}/**/*.ts".to_owned(),
+                ]),
+                disable_model_invocation: Some(true),
+                user_invocable: None,
+                context: None,
+                agent: None,
+                icon: Some("./assets/audit.svg".to_owned()),
+                color: Some("#7C3AED".to_owned()),
+                default_prompt: None,
+            }
+        );
+        assert_eq!(payload.namespace, "cursor.skill-frontmatter");
+        assert_eq!(payload.fields.len(), 1);
+        assert_eq!(
+            payload.fields.get("custom-cursor"),
+            Some(&serde_json::json!("retained"))
+        );
+
+        let db = graph
+            .packages
+            .values()
+            .find(|pkg| pkg.semantic_identity.as_str() == "skill:db-migrate")
+            .unwrap();
+        let SemanticItem::Skill {
+            metadata: db_metadata,
+            frontend_payload: db_payload,
+            ..
+        } = &db.semantic_item
+        else {
+            panic!("expected skill semantic item");
+        };
+        assert_eq!(
+            db_metadata.paths,
+            Some(vec!["db/migrations/**/*.sql".to_owned()])
+        );
+        assert_eq!(db_metadata.disable_model_invocation, Some(false));
+        assert!(db_payload.is_none());
+
+        compile_cursor_graph(&[observation(
+            ".cursor/skills/unsafe/SKILL.md",
+            "---\nname: unsafe\ndescription: Unsafe skill\npaths:\n  - ../outside/**\n---\n# Unsafe\n",
+            false,
+        )])
+        .expect_err("Cursor skill paths with parent traversal must be rejected");
     }
 }

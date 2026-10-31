@@ -2,7 +2,7 @@ use crate::inputs::ArtifactObservation;
 use crate::ir::graph::{
     validate_skill_name, DiagnosticSeverity, FrontendPayload, GraphDiagnostic, Package,
     PackageKind, PackageRoot, Resource, ResourceContent, ResourcePath, SemanticIdentity,
-    SemanticItem, SourceProvenance,
+    SemanticItem, SkillMetadata, SourceProvenance,
 };
 use crate::parsers::frontend::{NativeCompilation, NativeFrontend, NativeObservationDisposition};
 use anyhow::{Context, Result};
@@ -348,6 +348,7 @@ pub(crate) fn compile_native(observations: &[ArtifactObservation]) -> Result<Nat
             SemanticItem::Skill {
                 primary_instruction: primary_path,
                 description,
+                metadata: SkillMetadata::default(),
                 frontend_payload: payload,
             },
             resources,

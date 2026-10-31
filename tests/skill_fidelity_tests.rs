@@ -68,6 +68,7 @@ fn make_skill_package(
         SemanticItem::Skill {
             primary_instruction: primary_resource_path,
             description: description.to_owned(),
+            metadata: Default::default(),
             frontend_payload: payload,
         },
         resources,
@@ -801,4 +802,57 @@ fn direct_directory_skill_inputs_supported_across_single_and_multi_skill_layouts
     let lowering_multi =
         lower(&graph_multi, NativeTarget::Codex, LoweringOptions::strict()).unwrap();
     assert_eq!(lowering_multi.artifacts.len(), 3);
+}
+
+#[test]
+fn codex_auto_detected_skill_ingests_openai_yaml_sidecar_without_unrecognized_diagnostics() {
+    let obs = [
+        make_obs(
+            ".agents/skills/reviewer/SKILL.md",
+            b"---\nname: reviewer\ndescription: Review pull requests\n---\n# Reviewer\n",
+            false,
+        ),
+        make_obs(
+            ".agents/skills/reviewer/agents/openai.yaml",
+            br##"interface:
+  display_name: "PR Reviewer"
+  icon_small: "./assets/icon.svg"
+  brand_color: "#10A37F"
+  default_prompt: "Review staged diff."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "github"
+policy:
+  allow_implicit_invocation: false
+"##,
+            false,
+        ),
+    ];
+
+    let graph = compile_graph(&obs, DecoderSelection::Auto)
+        .expect("auto-detection compiles .agents/skills with agents/openai.yaml cleanly");
+    assert!(
+        graph.diagnostics.is_empty(),
+        "agents/openai.yaml must be consumed as PackageContent with zero diagnostics"
+    );
+    assert_eq!(graph.packages.len(), 1);
+    let pkg = graph.packages.values().next().unwrap();
+    assert!(
+        !pkg.resources
+            .contains_key(&ResourcePath::parse("agents/openai.yaml").unwrap()),
+        "sidecar should populate SkillMetadata rather than remain an opaque resource"
+    );
+    let SemanticItem::Skill { metadata, .. } = &pkg.semantic_item else {
+        panic!("expected skill package");
+    };
+    assert_eq!(metadata.display_name.as_deref(), Some("PR Reviewer"));
+    assert_eq!(metadata.icon.as_deref(), Some("./assets/icon.svg"));
+    assert_eq!(metadata.color.as_deref(), Some("#10A37F"));
+    assert_eq!(
+        metadata.default_prompt.as_deref(),
+        Some("Review staged diff.")
+    );
+    assert_eq!(metadata.disable_model_invocation, Some(true));
+    assert_eq!(metadata.allowed_tools, Some(vec!["mcp:github".to_owned()]));
 }

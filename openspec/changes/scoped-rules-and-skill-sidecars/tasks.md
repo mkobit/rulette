@@ -12,36 +12,36 @@ This task breakdown structures downstream implementation into sequential layers:
 
 ## 1. Layer 1: Pure intermediate representation types for skill metadata
 
-- [ ] 1.1 Extend `src/ir/graph.rs` with `SkillMetadata`:
+- [x] 1.1 Extend `src/ir/graph.rs` with `SkillMetadata`:
   - Implement fields: `display_name`, `allowed_tools`, `paths`, `disable_model_invocation`, `user_invocable`, `context`, `agent`, `icon`, `color`, and `default_prompt`.
   - Add `SkillMetadata::is_empty(&self) -> bool` helper.
   - Implement `SkillMetadata::validate(&self) -> Result<()>` checking glob safety and tool string grammar.
   - Derive `Serialize`, `Deserialize`, `JsonSchema`, `Clone`, `Debug`, `Eq`, and `PartialEq`.
-- [ ] 1.2 Update `SemanticItem::Skill` in `src/ir/graph.rs`:
+- [x] 1.2 Update `SemanticItem::Skill` in `src/ir/graph.rs`:
   - Add `metadata: SkillMetadata` field with `#[serde(default, skip_serializing_if = "SkillMetadata::is_empty")]`.
   - Update `SemanticItem::validate()` to validate `SkillMetadata`.
   - Incorporate serialized `SkillMetadata` digest into `PackageId` hash calculation in `Package::package_id()`.
-- [ ] 1.3 Write unit tests in `src/ir/graph.rs`:
+- [x] 1.3 Write unit tests in `src/ir/graph.rs`:
   - Verify JSON and TOML serialization round-trip with populated `SkillMetadata`.
   - Verify `PackageId` changes when `SkillMetadata` fields change.
   - Verify rejection of unsafe path traversal in skill `paths`.
 
 ## 2. Layer 2: Frontend parsers update for skill metadata and sidecars
 
-- [ ] 2.1 Update OpenAI Codex parser in `src/parsers/codex.rs`:
+- [x] 2.1 Update OpenAI Codex parser in `src/parsers/codex.rs`:
   - Ingest `agents/openai.yaml` when present in `.codex/skills/<id>/` or `.agents/skills/<id>/`.
   - Deserialize `interface`, `policy`, and `dependencies.tools` blocks into `SkillMetadata`.
   - Mark `agents/openai.yaml` observation disposition as `NativeObservationDisposition::PackageContent`.
-- [ ] 2.2 Update Claude Code parser in `src/parsers/claude.rs`:
+- [x] 2.2 Update Claude Code parser in `src/parsers/claude.rs`:
   - Ingest scoped rules from `.claude/rules/*.md` into `PackageKind::Rule` with `ActivationMode::Glob`.
   - Parse `allowed-tools`, `paths`, `disable-model-invocation`, `user-invocable`, `context`, and `agent` from `SKILL.md` frontmatter into `SkillMetadata`.
-- [ ] 2.3 Update Cursor parser in `src/parsers/cursor.rs`:
+- [x] 2.3 Update Cursor parser in `src/parsers/cursor.rs`:
   - Parse `paths`, `globs`, `disable-model-invocation`, `icon`, and `color` from `SKILL.md` frontmatter into `SkillMetadata`.
   - Ingest scoped rules from `.cursor/rules/*.mdc` with `alwaysApply: false`.
-- [ ] 2.4 Update Google Antigravity parser in `src/parsers/antigravity.rs`:
+- [x] 2.4 Update Google Antigravity parser in `src/parsers/antigravity.rs`:
   - Parse `name` and `description` from `SKILL.md` frontmatter and reject unrepresentable fields under strict mode.
   - Ingest scoped rules from `.agents/rules/*.md` with `trigger: glob`.
-- [ ] 2.5 Write frontend parser unit tests in `src/parsers/`:
+- [x] 2.5 Write frontend parser unit tests in `src/parsers/`:
   - Verify round-trip parsing of Codex skills with `agents/openai.yaml`.
   - Verify parsing of scoped rules across Claude, Cursor, and Antigravity frontends.
 

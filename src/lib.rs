@@ -21,10 +21,11 @@ pub use emitters::lowering::{
     LoweringPlan, NativeArtifact, NativeArtifactClass, NativeTarget,
 };
 pub use ir::graph::{
-    validate_plugin_name, CompilationGraph, DiagnosticSeverity, FrontendPayload, GraphDiagnostic,
-    Package, PackageId, PackageKind, PackageRoot, PortableActivation, Resource, ResourceContent,
-    ResourcePath, ResourceRole, SemanticIdentity, SemanticItem, SourceProvenance, TargetActivation,
-    TargetActivationOverrides, GRAPH_VERSION,
+    validate_plugin_name, validate_safe_relative_glob, CompilationGraph, DiagnosticSeverity,
+    FrontendPayload, GraphDiagnostic, Package, PackageId, PackageKind, PackageRoot,
+    PortableActivation, Resource, ResourceContent, ResourcePath, ResourceRole, SemanticIdentity,
+    SemanticItem, SkillMetadata, SourceProvenance, TargetActivation, TargetActivationOverrides,
+    GRAPH_VERSION,
 };
 pub use ir::hooks::{
     HookAction, HookDefinition, HookEventKind, HookMatcher, HookScope, TargetHookPolicy,

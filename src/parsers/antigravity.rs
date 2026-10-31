@@ -1,7 +1,7 @@
 use crate::inputs::ArtifactObservation;
 use crate::ir::graph::{
     FrontendPayload, Package, PackageKind, PackageRoot, PortableActivation, Resource,
-    ResourceContent, ResourcePath, SemanticIdentity, SemanticItem, SourceProvenance,
+    ResourceContent, ResourcePath, SemanticIdentity, SemanticItem, SkillMetadata, SourceProvenance,
     TargetActivation,
 };
 use crate::parsers::frontend::{NativeCompilation, NativeFrontend, NativeObservationDisposition};
@@ -30,28 +30,24 @@ enum GlobsValue {
 impl GlobsValue {
     pub fn into_vec(self) -> Vec<String> {
         match self {
-            GlobsValue::Single(s) => s
-                .split(',')
-                .map(|g| g.trim().to_string())
-                .filter(|g| !g.is_empty())
-                .collect(),
-            GlobsValue::Many(v) => v,
+            GlobsValue::Single(s) => crate::parsers::split_glob_list(&s),
+            GlobsValue::Many(v) => v.into_iter().map(|g| g.trim().to_owned()).collect(),
         }
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 struct AntigravityRuleFrontmatter {
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     description: Option<String>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     trigger: Option<AntigravityTrigger>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     globs: Option<GlobsValue>,
 
-    #[serde(rename = "rulette:activation", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "rulette:activation", default)]
     pub activation: Option<TargetActivation>,
 
     #[serde(flatten)]
@@ -73,7 +69,9 @@ pub(crate) fn compile_native(inputs: &[ArtifactObservation]) -> Result<NativeCom
     let mut dispositions = vec![None; inputs.len()];
     let mut skill_groups: BTreeMap<SkillGroupKey, Vec<usize>> = BTreeMap::new();
     for (index, observation) in inputs.iter().enumerate() {
-        if let Some((root, _)) = direct_roots.match_skill(Some(".antigravity/skills/"), observation)
+        if let Some((root, _)) = direct_roots
+            .match_skill(Some(".antigravity/skills/"), observation)
+            .or_else(|| direct_roots.match_skill(Some(".agent/skills/"), observation))
         {
             skill_groups
                 .entry(SkillGroupKey::from_observation(root, observation))
@@ -152,20 +150,20 @@ impl SkillGroupKey {
 
 fn compile_rule(observation: &ArtifactObservation) -> Result<Package> {
     let source = text(observation, "Antigravity rule")?;
-    let (frontmatter, body) = split_frontmatter(source);
-    let parsed = frontmatter
-        .map(serde_yaml::from_str::<AntigravityRuleFrontmatter>)
-        .transpose()
-        .context("could not parse Antigravity rule frontmatter")?
-        .unwrap_or(AntigravityRuleFrontmatter {
-            description: None,
-            trigger: None,
-            globs: None,
-            activation: None,
-            extra: BTreeMap::new(),
-        });
+    let (frontmatter, body) = crate::parsers::split_optional_frontmatter(source);
+    let parsed = match frontmatter {
+        None | Some("") => AntigravityRuleFrontmatter::default(),
+        Some(fm) => serde_yaml::from_str::<Option<AntigravityRuleFrontmatter>>(fm)
+            .context("could not parse Antigravity rule frontmatter")?
+            .unwrap_or_default(),
+    };
     let description = parsed.description;
     let globs = parsed.globs.map(GlobsValue::into_vec);
+    if let Some(ref values) = globs {
+        if !values.is_empty() {
+            crate::parsers::validate_glob_list(values)?;
+        }
+    }
     let activation = parsed
         .activation
         .or_else(|| {
@@ -178,7 +176,7 @@ fn compile_rule(observation: &ArtifactObservation) -> Result<Package> {
             })
         })
         .or_else(|| {
-            globs.map(|globs| {
+            globs.filter(|values| !values.is_empty()).map(|globs| {
                 TargetActivation::Bare(PortableActivation {
                     mode: vec![ActivationMode::Glob],
                     globs: Some(globs),
@@ -187,6 +185,9 @@ fn compile_rule(observation: &ArtifactObservation) -> Result<Package> {
                 })
             })
         });
+    if let Some(ref target_activation) = activation {
+        validate_target_activation_globs(target_activation)?;
+    }
     let primary_path = ResourcePath::parse(file_name(observation.source_path.as_str()))?;
     let mut resources = BTreeMap::new();
     resources.insert(
@@ -214,6 +215,27 @@ fn compile_rule(observation: &ArtifactObservation) -> Result<Package> {
         resources,
         None,
     )
+}
+
+fn validate_target_activation_globs(activation: &TargetActivation) -> Result<()> {
+    match activation {
+        TargetActivation::Bare(portable) => {
+            if let Some(ref globs) = portable.globs {
+                crate::parsers::validate_glob_list(globs)?;
+            }
+        }
+        TargetActivation::Wrapped(overrides) => {
+            if let Some(ref globs) = overrides.default.globs {
+                crate::parsers::validate_glob_list(globs)?;
+            }
+            for portable in overrides.overrides.values() {
+                if let Some(ref globs) = portable.globs {
+                    crate::parsers::validate_glob_list(globs)?;
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 fn activation_from_trigger(
@@ -247,17 +269,26 @@ fn compile_skill_package(
         return Ok(None);
     };
     let primary = &inputs[primary_index];
-    let (frontmatter, body) = split_frontmatter(text(primary, "Antigravity skill")?);
-    let parsed = frontmatter
-        .map(serde_yaml::from_str::<SkillFrontmatter>)
-        .transpose()
-        .context("could not parse Antigravity skill frontmatter")?
-        .unwrap_or_default();
-    let name = parsed
-        .name
-        .unwrap_or_else(|| skill_name_from_root(root).to_owned());
+    let (frontmatter, body) =
+        crate::parsers::split_optional_frontmatter(text(primary, "Antigravity skill")?);
+    let parsed = match frontmatter {
+        None | Some("") => SkillFrontmatter::default(),
+        Some(fm) => serde_yaml::from_str::<Option<SkillFrontmatter>>(fm)
+            .context("could not parse Antigravity skill frontmatter")?
+            .unwrap_or_default(),
+    };
+    let name = match parsed.name {
+        Some(explicit) => {
+            if explicit.trim().is_empty() {
+                bail!("Antigravity skill `name` must be non-empty");
+            }
+            explicit
+        }
+        None => skill_name_from_root(root).to_owned(),
+    };
     let description = parsed
         .description
+        .filter(|value| !value.trim().is_empty())
         .ok_or_else(|| anyhow!("Antigravity skill `{name}` is missing a discovery description"))?;
     let mut resources = BTreeMap::new();
     for index in members {
@@ -291,6 +322,7 @@ fn compile_skill_package(
         SemanticItem::Skill {
             primary_instruction: ResourcePath::parse("SKILL.md")?,
             description,
+            metadata: SkillMetadata::default(),
             frontend_payload: payload("antigravity.skill-frontmatter", parsed.extra),
         },
         resources,
@@ -301,7 +333,9 @@ fn compile_skill_package(
 
 #[derive(Default, Deserialize)]
 struct SkillFrontmatter {
+    #[serde(default)]
     name: Option<String>,
+    #[serde(default)]
     description: Option<String>,
     #[serde(flatten)]
     extra: BTreeMap<String, serde_json::Value>,
@@ -365,24 +399,6 @@ fn text<'a>(observation: &'a ArtifactObservation, kind: &str) -> Result<&'a str>
             observation.source_path.as_str()
         )
     })
-}
-
-fn split_frontmatter(input: &str) -> (Option<&str>, &str) {
-    let Some(remainder) = input
-        .strip_prefix("---\n")
-        .or_else(|| input.strip_prefix("---\r\n"))
-    else {
-        return (None, input);
-    };
-    let Some(end) = remainder.find("---") else {
-        return (None, input);
-    };
-    let body = &remainder[end + 3..];
-    let body = body
-        .strip_prefix("\r\n")
-        .or_else(|| body.strip_prefix('\n'))
-        .unwrap_or(body);
-    (Some(remainder[..end].trim()), body)
 }
 
 fn relative_to_root(path: &ResourcePath, root: &str) -> Option<String> {
@@ -713,5 +729,148 @@ globs:
         assert!(error
             .to_string()
             .contains("duplicate Antigravity skill resource `SKILL.md`"));
+    }
+
+    #[test]
+    fn compiles_antigravity_agents_scoped_rules_into_glob_activation_and_validates_globs() {
+        let graph = compile_antigravity_graph(&[
+            observation(
+                ".agents/rules/backend.md",
+                "---\ndescription: Backend service guidelines\ntrigger: glob\nglobs:\n  - crates/server/**/*.rs\n  - crates/db/**/*.rs\n---\nKeep handlers stateless.\n",
+                false,
+            ),
+            observation(
+                ".agents/rules/implicit-glob.md",
+                "---\ndescription: Implicit glob rule\nglobs: \"src/{api,core}/**/*.ts, tests/**/*.ts\"\n---\nValidate inputs.\n",
+                false,
+            ),
+        ])
+        .expect("Antigravity .agents/rules/*.md scoped rules parse into Glob activation");
+
+        let backend = graph
+            .packages
+            .values()
+            .find(|pkg| pkg.semantic_identity.as_str() == "rule:backend")
+            .unwrap();
+        assert_eq!(backend.kind, PackageKind::Rule);
+        assert_eq!(backend.package_root.as_str(), ".agents/rules");
+        let SemanticItem::Rule {
+            description,
+            activation: Some(TargetActivation::Bare(activation)),
+            frontend_payload,
+            ..
+        } = &backend.semantic_item
+        else {
+            panic!("expected rule with portable Glob activation");
+        };
+        assert_eq!(description.as_deref(), Some("Backend service guidelines"));
+        assert_eq!(activation.mode, vec![crate::ActivationMode::Glob]);
+        assert_eq!(
+            activation.globs,
+            Some(vec![
+                "crates/server/**/*.rs".to_owned(),
+                "crates/db/**/*.rs".to_owned(),
+            ])
+        );
+        assert!(frontend_payload.is_none());
+
+        let implicit = graph
+            .packages
+            .values()
+            .find(|pkg| pkg.semantic_identity.as_str() == "rule:implicit-glob")
+            .unwrap();
+        let SemanticItem::Rule {
+            activation: Some(TargetActivation::Bare(implicit_act)),
+            ..
+        } = &implicit.semantic_item
+        else {
+            panic!("expected rule with portable Glob activation");
+        };
+        assert_eq!(implicit_act.mode, vec![crate::ActivationMode::Glob]);
+        assert_eq!(
+            implicit_act.globs,
+            Some(vec![
+                "src/{api,core}/**/*.ts".to_owned(),
+                "tests/**/*.ts".to_owned(),
+            ])
+        );
+
+        compile_antigravity_graph(&[observation(
+            ".agents/rules/unsafe.md",
+            "---\ntrigger: glob\nglobs:\n  - ../../etc/passwd\n---\nUnsafe.\n",
+            false,
+        )])
+        .expect_err("Antigravity rule globs with parent traversal must be rejected");
+    }
+
+    #[test]
+    fn parses_antigravity_skills_under_agents_and_rejects_unrepresentable_frontmatter_under_strict_lowering(
+    ) {
+        let graph = compile_antigravity_graph(&[
+            observation(
+                ".agents/skills/code-search/SKILL.md",
+                "---\nname: code-search\ndescription: Search repository symbols.\n---\n# Code Search\n",
+                false,
+            ),
+            observation(
+                ".agent/skills/inferred-skill/SKILL.md",
+                "---\ndescription: Skill using directory name.\nunrepresentable_field: true\n---\n# Inferred\n",
+                false,
+            ),
+        ])
+        .expect("Antigravity skills under .agents/skills and .agent/skills parse cleanly");
+
+        let code_search = graph
+            .packages
+            .values()
+            .find(|pkg| pkg.semantic_identity.as_str() == "skill:code-search")
+            .unwrap();
+        assert_eq!(
+            code_search.package_root.as_str(),
+            ".agents/skills/code-search"
+        );
+        let SemanticItem::Skill {
+            description,
+            metadata,
+            frontend_payload,
+            ..
+        } = &code_search.semantic_item
+        else {
+            panic!("expected skill semantic item");
+        };
+        assert_eq!(description, "Search repository symbols.");
+        assert!(metadata.is_empty());
+        assert!(frontend_payload.is_none());
+
+        let inferred = graph
+            .packages
+            .values()
+            .find(|pkg| pkg.semantic_identity.as_str() == "skill:inferred-skill")
+            .unwrap();
+        assert_eq!(
+            inferred.package_root.as_str(),
+            ".agent/skills/inferred-skill"
+        );
+        let SemanticItem::Skill {
+            frontend_payload: Some(payload),
+            ..
+        } = &inferred.semantic_item
+        else {
+            panic!("expected unrepresentable frontmatter retained in payload");
+        };
+        assert_eq!(payload.namespace, "antigravity.skill-frontmatter");
+        assert_eq!(
+            payload.fields.get("unrepresentable_field"),
+            Some(&serde_json::Value::Bool(true))
+        );
+
+        crate::lower(
+            &graph,
+            crate::NativeTarget::Claude,
+            crate::LoweringOptions::strict(),
+        )
+        .expect_err(
+            "unrepresentable Antigravity skill frontmatter must fail strict cross-target lowering",
+        );
     }
 }
