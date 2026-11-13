@@ -2,12 +2,13 @@
   "name": "rulette",
   "private": true,
   "devDependencies": {
-    "@fission-ai/openspec": "1.14.3",
-    "markdownlint-cli2": "0.23.3"
+    "@fission-ai/openspec": "1.16.0",
+    "markdownlint-cli2": "0.24.0"
   },
   "overrides": {
     "katex": "^0.18.2",
     "markdown-it": "15.0.3",
-    "smol-toml": "1.9.0"
+    "re2js": ">=2.8.7",
+    "smol-toml": "1.9.1"
   }
 }
