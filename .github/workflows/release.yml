@@ -54,7 +54,7 @@ jobs:
         run: cargo llvm-cov
 
       - name: Install security audit tool
-        uses: taiki-e/install-action@86f7a0ffb25f40114606501a311ebcfaf882ea32
+        uses: taiki-e/install-action@682ce6c3c696a4cd5168a05f98e51aa02b877941
         with:
           tool: cargo-audit
 

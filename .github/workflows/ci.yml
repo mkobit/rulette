@@ -77,7 +77,7 @@ jobs:
 
       - name: Install cargo-llvm-cov
         if: matrix.os == 'ubuntu-latest'
-        uses: taiki-e/install-action@86f7a0ffb25f40114606501a311ebcfaf882ea32
+        uses: taiki-e/install-action@682ce6c3c696a4cd5168a05f98e51aa02b877941
         with:
           tool: cargo-llvm-cov
 
@@ -98,7 +98,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install cargo-audit
-        uses: taiki-e/install-action@86f7a0ffb25f40114606501a311ebcfaf882ea32
+        uses: taiki-e/install-action@682ce6c3c696a4cd5168a05f98e51aa02b877941
         with:
           tool: cargo-audit
 
