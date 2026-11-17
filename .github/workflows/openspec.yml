@@ -29,8 +29,8 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: ./.github/actions/setup-mise
+      - uses: actions/checkout@v7.0.1
+      - uses: $/.github/actions/setup-mise
         with:
           version: ${{ env.MISE_VERSION }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
