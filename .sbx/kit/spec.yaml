@@ -2,7 +2,7 @@
 schemaVersion: "2"
 kind: mixin
 name: rulette-toolchain
-version: "0.2.0"
+version: "0.2.1"
 description: Bootstrap mise, bun, beads, and rust toolchain for rulette
 
 permissions:
