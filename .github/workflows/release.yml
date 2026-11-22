@@ -44,9 +44,6 @@ jobs:
       - name: Run quality gates
         run: mise run check
 
-      - name: Validate OpenSpec changes
-        run: mise run spec-validate
-
       - name: Install coverage tool
         run: cargo install cargo-llvm-cov --locked
 

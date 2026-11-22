@@ -11,9 +11,6 @@ workflows:
         - 'jdx/mise-action@v5.2.9'
         - 'swatinem/rust-cache@v2.9.3'
         - 'taiki-e/install-action@v2.90.5'
-    '.github/workflows/openspec.yml':
-        - 'actions/checkout@v7.0.1'
-        - 'jdx/mise-action@v5.2.9'
     '.github/workflows/release.yml':
         - 'actions/checkout@v7.0.1'
         - 'actions/download-artifact@v8.0.2'
