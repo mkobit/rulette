@@ -5,7 +5,6 @@
     "audit": "bun audit --ignore GHSA-fc5q-39xc-vjpf"
   },
   "devDependencies": {
-    "@fission-ai/openspec": "1.16.0",
     "markdownlint-cli2": "0.24.0"
   },
   "overrides": {

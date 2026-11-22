@@ -50,9 +50,9 @@ depends = ["validate-sbx"]
 description = "Compatibility alias for validate-sbx"
 
 [tasks.check]
-depends = ["install-tools", "spec-validate"]
+depends = ["install-tools"]
 run = "bun x --no-install markdownlint-cli2 && cargo fmt --check && cargo clippy -- -D warnings && cargo test"
-description = "Run quality gates in CI order (spec-validate -> lint:md -> fmt -> lint:rust -> test)"
+description = "Run quality gates in CI order (lint:md -> fmt -> lint:rust -> test)"
 
 [tasks.bd-push]
 run = "bd dolt push"
@@ -65,16 +65,6 @@ description = "Session-completion sync: rebase, push beads, push git, show statu
 [tasks.bd-check]
 run = "bd ready && bd lint"
 description = "Show unblocked work and validate the beads database"
-
-[tasks.spec-list]
-depends = ["install-tools"]
-run = "bun x --no-install @fission-ai/openspec list"
-description = "List OpenSpec changes"
-
-[tasks.spec-validate]
-depends = ["install-tools"]
-run = "bun x --no-install @fission-ai/openspec validate --strict --all"
-description = "Validate OpenSpec changes strictly"
 
 [tasks."release:package"]
 run = "scripts/package-static-release.sh"

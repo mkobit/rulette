@@ -79,7 +79,6 @@ fn release_workflow_smokes_the_exact_verified_artifact_before_creating_a_release
         "musl-tools binutils file",
         "rustup target add x86_64-unknown-linux-musl",
         "mise run check",
-        "mise run spec-validate",
         "cargo llvm-cov",
         "cargo audit",
         "mise run release:package",
@@ -106,7 +105,6 @@ fn release_workflow_orders_validation_packaging_smoke_and_publication() {
     for step in [
         "Validate release tag",
         "mise run check",
-        "mise run spec-validate",
         "cargo llvm-cov",
         "cargo audit",
         "mise run release:package",
@@ -138,7 +136,6 @@ fn workflow_step_positions(workflow: &str) -> std::collections::BTreeMap<&'stati
     [
         ("Validate release tag", "Validate release tag"),
         ("mise run check", "mise run check"),
-        ("mise run spec-validate", "mise run spec-validate"),
         ("cargo llvm-cov", "cargo llvm-cov"),
         ("cargo audit", "run: cargo audit"),
         ("mise run release:package", "mise run release:package"),
