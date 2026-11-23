@@ -2,7 +2,8 @@ use crate::inputs::ArtifactObservation;
 use crate::ir::graph::{
     validate_skill_name, DiagnosticSeverity, FrontendPayload, GraphDiagnostic, Package,
     PackageKind, PackageRoot, Resource, ResourceContent, ResourcePath, SemanticIdentity,
-    SemanticItem, SkillMetadata, SourceProvenance,
+    SemanticItem, SkillMetadata, SourceProvenance, NAMESPACE_AGENT_PLUGIN_MANIFEST,
+    NAMESPACE_AGENT_PLUGIN_MARKETPLACE,
 };
 use crate::parsers::frontend::{NativeCompilation, NativeFrontend, NativeObservationDisposition};
 use anyhow::{Context, Result};
@@ -37,15 +38,17 @@ pub(crate) fn compile_native(observations: &[ArtifactObservation]) -> Result<Nat
 
     for (index, observation) in ordered_observations {
         let path = observation.source_path.as_str();
-        if path == "plugin.json" {
+        if path == "plugin.json" || path == ".claude-plugin/plugin.json" {
             let manifest_text = std::str::from_utf8(&observation.bytes)
-                .context("Agent Plugin manifest plugin.json must be valid UTF-8")?;
-            let wire: PluginManifestWireV1 = serde_json::from_str(manifest_text)
-                .context("Agent Plugin manifest plugin.json must match PluginManifestWireV1")?;
+                .with_context(|| format!("Agent Plugin manifest {path} must be valid UTF-8"))?;
+            let wire: PluginManifestWireV1 =
+                serde_json::from_str(manifest_text).with_context(|| {
+                    format!("Agent Plugin manifest {path} must match PluginManifestWireV1")
+                })?;
             let domain_manifest = PluginManifest::try_from(wire.clone())
                 .context("Agent Plugin manifest validation failed")?;
 
-            let resource_path = ResourcePath::parse("plugin.json")?;
+            let resource_path = ResourcePath::parse(path)?;
             let mut resources = BTreeMap::new();
             resources.insert(
                 resource_path.clone(),
@@ -63,7 +66,7 @@ pub(crate) fn compile_native(observations: &[ArtifactObservation]) -> Result<Nat
 
             let package = Package::new(
                 PackageKind::Unsupported,
-                SemanticIdentity::parse("unsupported:agent-plugin-manifest/plugin.json")?,
+                SemanticIdentity::parse(format!("unsupported:agent-plugin-manifest/{path}"))?,
                 provenance(observation)?,
                 PackageRoot::root(),
                 SemanticItem::Unsupported {
@@ -71,7 +74,7 @@ pub(crate) fn compile_native(observations: &[ArtifactObservation]) -> Result<Nat
                 },
                 resources,
                 Some(FrontendPayload {
-                    namespace: "agent-plugin.manifest".to_owned(),
+                    namespace: NAMESPACE_AGENT_PLUGIN_MANIFEST.to_owned(),
                     fields: payload_fields,
                 }),
             )?;
@@ -84,6 +87,52 @@ pub(crate) fn compile_native(observations: &[ArtifactObservation]) -> Result<Nat
                     package_id: Some(package.id.clone()),
                 });
             }
+
+            packages.push(package);
+            dispositions[index] = Some(NativeObservationDisposition::RetainedUnsupportedContent);
+        } else if path == ".claude-plugin/marketplace.json" || path == "marketplace.json" {
+            let catalog_text = std::str::from_utf8(&observation.bytes).with_context(|| {
+                format!("Agent Plugin marketplace catalog {path} must be valid UTF-8")
+            })?;
+            let wire: MarketplaceCatalogWireV1 =
+                serde_json::from_str(catalog_text).with_context(|| {
+                    format!(
+                        "Agent Plugin marketplace catalog {path} must match MarketplaceCatalogWireV1"
+                    )
+                })?;
+            let domain_catalog = MarketplaceCatalog::try_from(wire)
+                .context("Agent Plugin marketplace catalog validation failed")?;
+
+            let resource_path = ResourcePath::parse(path)?;
+            let mut resources = BTreeMap::new();
+            resources.insert(
+                resource_path.clone(),
+                Resource::opaque(
+                    resource_path,
+                    ResourceContent::Text(catalog_text.to_owned()),
+                    observation.executable,
+                ),
+            );
+
+            let mut payload_fields = BTreeMap::new();
+            if let serde_json::Value::Object(map) = serde_json::to_value(&domain_catalog)? {
+                payload_fields = map.into_iter().collect();
+            }
+
+            let package = Package::new(
+                PackageKind::Unsupported,
+                SemanticIdentity::parse(format!("unsupported:agent-plugin-marketplace/{path}"))?,
+                provenance(observation)?,
+                PackageRoot::root(),
+                SemanticItem::Unsupported {
+                    native_kind: "marketplace".to_owned(),
+                },
+                resources,
+                Some(FrontendPayload {
+                    namespace: NAMESPACE_AGENT_PLUGIN_MARKETPLACE.to_owned(),
+                    fields: payload_fields,
+                }),
+            )?;
 
             packages.push(package);
             dispositions[index] = Some(NativeObservationDisposition::RetainedUnsupportedContent);
@@ -917,5 +966,77 @@ mod tests {
         assert!(messages.iter().any(|m| m.contains("first_unknown")));
         assert!(messages.iter().any(|m| m.contains("second_unknown")));
         assert!(messages.iter().any(|m| m.contains("third_unknown")));
+    }
+
+    #[test]
+    fn parses_claude_plugin_marketplace_and_manifest() {
+        let manifest = serde_json::json!({
+            "$schema": PLUGIN_MANIFEST_SCHEMA_V1,
+            "name": "claude-bundle"
+        });
+        let catalog = serde_json::json!({
+            "name": "team-marketplace",
+            "description": "Team plugin catalog",
+            "plugins": [
+                {
+                    "name": "claude-bundle",
+                    "source": "plugins/claude-bundle"
+                }
+            ]
+        });
+
+        let graph = compile_agent_plugin_graph(&[
+            observation(
+                ".claude-plugin/plugin.json",
+                serde_json::to_vec(&manifest).unwrap(),
+                false,
+            ),
+            observation(
+                ".claude-plugin/marketplace.json",
+                serde_json::to_vec(&catalog).unwrap(),
+                false,
+            ),
+        ])
+        .unwrap();
+
+        assert_eq!(graph.packages.len(), 2);
+        let marketplace_pkg = graph
+            .packages
+            .values()
+            .find(|p| {
+                p.semantic_identity.as_str()
+                    == "unsupported:agent-plugin-marketplace/.claude-plugin/marketplace.json"
+            })
+            .unwrap();
+        let payload = marketplace_pkg.frontend_payload.as_ref().unwrap();
+        assert_eq!(payload.namespace, NAMESPACE_AGENT_PLUGIN_MARKETPLACE);
+        assert_eq!(
+            payload.fields.get("name").and_then(|v| v.as_str()),
+            Some("team-marketplace")
+        );
+    }
+
+    #[test]
+    fn rejects_marketplace_path_traversal_escape() {
+        let catalog = serde_json::json!({
+            "name": "unsafe-marketplace",
+            "plugins": [
+                {
+                    "name": "escaped-plugin",
+                    "source": "../outside"
+                }
+            ]
+        });
+
+        let err = compile_agent_plugin_graph(&[observation(
+            ".claude-plugin/marketplace.json",
+            serde_json::to_vec(&catalog).unwrap(),
+            false,
+        )])
+        .unwrap_err();
+
+        assert!(err
+            .to_string()
+            .contains("Agent Plugin marketplace catalog validation failed"));
     }
 }

@@ -398,7 +398,7 @@ fn native_frontend_candidates(observation: &ArtifactObservation) -> BTreeSet<Nat
     if has_path_component(path, ".codex") || matches!(file_name, Some("AGENTS.md")) {
         candidates.insert(NativeFrontend::Codex);
     }
-    if matches!(file_name, Some("plugin.json")) {
+    if matches!(file_name, Some("plugin.json" | "marketplace.json")) {
         candidates.insert(NativeFrontend::AgentPlugin);
     }
     candidates
@@ -881,6 +881,44 @@ mod tests {
             package.semantic_identity.as_str(),
             "unsupported:agent-plugin-manifest/plugin.json"
         );
+    }
+
+    #[test]
+    fn graph_compilation_auto_detects_claude_plugin_marketplace_and_manifest() {
+        let observations = [
+            ArtifactObservation::new(
+                br#"{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"sample-plugin"}"#.to_vec(),
+                ".claude-plugin/plugin.json",
+                false,
+                InputOrigin::Filesystem,
+                "fixtures/claude-plugin-project",
+                None,
+            )
+            .unwrap(),
+            ArtifactObservation::new(
+                br#"{"name":"sample-marketplace","plugins":[{"name":"sample-plugin","source":"plugins/sample-plugin"}]}"#.to_vec(),
+                ".claude-plugin/marketplace.json",
+                false,
+                InputOrigin::Filesystem,
+                "fixtures/claude-plugin-project",
+                None,
+            )
+            .unwrap(),
+        ];
+
+        let graph = compile_graph(&observations, DecoderSelection::Auto).unwrap();
+
+        assert_eq!(graph.packages.len(), 2);
+        assert!(graph.packages.values().any(|p| {
+            p.provenance.frontend == "agent-plugin"
+                && p.semantic_identity.as_str()
+                    == "unsupported:agent-plugin-manifest/.claude-plugin/plugin.json"
+        }));
+        assert!(graph.packages.values().any(|p| {
+            p.provenance.frontend == "agent-plugin"
+                && p.semantic_identity.as_str()
+                    == "unsupported:agent-plugin-marketplace/.claude-plugin/marketplace.json"
+        }));
     }
 
     #[test]
