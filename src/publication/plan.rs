@@ -464,6 +464,7 @@ fn parse_artifact_class(value: &str) -> Result<NativeArtifactClass> {
         "skill-instruction" => Ok(NativeArtifactClass::SkillInstruction),
         "skill-resource" => Ok(NativeArtifactClass::SkillResource),
         "plugin-manifest" => Ok(NativeArtifactClass::PluginManifest),
+        "marketplace-catalog" => Ok(NativeArtifactClass::MarketplaceCatalog),
         "mcp-config" => Ok(NativeArtifactClass::McpConfig),
         "client-extension" => Ok(NativeArtifactClass::ClientExtension),
         _ => bail!("unsupported native artifact class `{value}`"),
@@ -477,6 +478,7 @@ fn artifact_class_name(class: NativeArtifactClass) -> &'static str {
         NativeArtifactClass::SkillInstruction => "skill-instruction",
         NativeArtifactClass::SkillResource => "skill-resource",
         NativeArtifactClass::PluginManifest => "plugin-manifest",
+        NativeArtifactClass::MarketplaceCatalog => "marketplace-catalog",
         NativeArtifactClass::McpConfig => "mcp-config",
         NativeArtifactClass::ClientExtension => "client-extension",
     }

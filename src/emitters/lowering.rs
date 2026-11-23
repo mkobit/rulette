@@ -1,8 +1,11 @@
 use crate::ir::graph::{
     CompilationGraph, Package, PackageId, PortableActivation, ResourceContent, ResourcePath,
-    SemanticItem, SourceProvenance,
+    SemanticItem, SourceProvenance, NAMESPACE_AGENT_PLUGIN_MARKETPLACE,
 };
-use crate::parsers::agent_plugin::{McpConfigWireV1, McpServerWireV1, PluginManifestWireV1};
+use crate::parsers::agent_plugin::{
+    MarketplaceCatalog, MarketplaceCatalogWireV1, McpConfigWireV1, McpServerWireV1,
+    PluginManifestWireV1,
+};
 use crate::ActivationMode;
 use anyhow::{bail, Result};
 use std::collections::BTreeMap;
@@ -40,6 +43,7 @@ pub enum NativeArtifactClass {
     SkillInstruction,
     SkillResource,
     PluginManifest,
+    MarketplaceCatalog,
     McpConfig,
     ClientExtension,
 }
@@ -1127,9 +1131,25 @@ fn artifact_class_name(class: NativeArtifactClass) -> &'static str {
         NativeArtifactClass::SkillInstruction => "skill-instruction",
         NativeArtifactClass::SkillResource => "skill-resource",
         NativeArtifactClass::PluginManifest => "plugin-manifest",
+        NativeArtifactClass::MarketplaceCatalog => "marketplace-catalog",
         NativeArtifactClass::McpConfig => "mcp-config",
         NativeArtifactClass::ClientExtension => "client-extension",
     }
+}
+
+fn is_marketplace_package(package: &Package) -> bool {
+    package
+        .semantic_identity
+        .as_str()
+        .starts_with("unsupported:agent-plugin-marketplace/")
+        || matches!(
+            &package.semantic_item,
+            SemanticItem::Unsupported { native_kind } if native_kind == "marketplace"
+        )
+        || package
+            .frontend_payload
+            .as_ref()
+            .is_some_and(|payload| payload.namespace == NAMESPACE_AGENT_PLUGIN_MARKETPLACE)
 }
 
 fn is_manifest_package(package: &Package) -> bool {
@@ -1218,11 +1238,15 @@ fn lower_agent_plugin(graph: &CompilationGraph, options: LoweringOptions) -> Res
     if manifest_packages.len() > 1 {
         bail!("aggregation collision: multiple manifest packages found for agent-plugin");
     } else if let Some(manifest_pkg) = manifest_packages.first() {
-        let manifest_bytes = if let Some(resource) = manifest_pkg
-            .resources
-            .values()
-            .find(|r| r.path.as_str() == "plugin.json")
-        {
+        let manifest_resource = manifest_pkg.resources.values().find(|r| {
+            r.path.as_str() == "plugin.json" || r.path.as_str() == ".claude-plugin/plugin.json"
+        });
+        let target_path_str = manifest_resource
+            .map(|r| r.path.as_str())
+            .unwrap_or("plugin.json");
+        let target_path = ResourcePath::parse(target_path_str)?;
+
+        let manifest_bytes = if let Some(resource) = manifest_resource {
             resource_content_bytes(&resource.content)
         } else if let Some(payload) = &manifest_pkg.frontend_payload {
             let map: serde_json::Map<String, serde_json::Value> =
@@ -1237,22 +1261,19 @@ fn lower_agent_plugin(graph: &CompilationGraph, options: LoweringOptions) -> Res
         artifacts.push(NativeArtifact {
             target,
             class: NativeArtifactClass::PluginManifest,
-            path: ResourcePath::parse("plugin.json")?,
+            path: target_path.clone(),
             bytes: manifest_bytes,
             executable: false,
             source_package: manifest_pkg.id.clone(),
             contributing_packages: vec![manifest_pkg.id.clone()],
         });
 
-        if manifest_pkg
-            .resources
-            .contains_key(&ResourcePath::parse("plugin.json")?)
-        {
+        if manifest_resource.is_some() {
             findings.push(supported_finding(
                 manifest_pkg,
                 target,
-                ResourcePath::parse("plugin.json")?,
-                ResourcePath::parse("plugin.json")?,
+                target_path.clone(),
+                target_path,
             ));
         } else {
             findings.push(capability_finding(
@@ -1261,12 +1282,12 @@ fn lower_agent_plugin(graph: &CompilationGraph, options: LoweringOptions) -> Res
                 CapabilitySeverity::Supported,
                 CapabilityReasonCode::Representable,
                 None,
-                Some(ResourcePath::parse("plugin.json")?),
+                Some(target_path),
                 "plugin manifest is preserved as plugin.json",
             ));
         }
         for resource in manifest_pkg.resources.values() {
-            if resource.path.as_str() != "plugin.json" {
+            if resource.path.as_str() != target_path_str {
                 findings.push(dropped_finding(
                     manifest_pkg,
                     target,
@@ -1276,40 +1297,117 @@ fn lower_agent_plugin(graph: &CompilationGraph, options: LoweringOptions) -> Res
                 ));
             }
         }
-    } else {
-        // Zero manifest packages
-        if let Some(first_pkg) = graph.packages.values().next() {
-            findings.push(loss_finding(
-                first_pkg,
-                target,
-                CapabilityReasonCode::SynthesizedManifest,
-                None,
-                Some(ResourcePath::parse("plugin.json")?),
-                "agent-plugin target requires a manifest, so a minimal plugin.json was synthesized",
-            ));
+    } else if let Some(first_pkg) = graph.packages.values().find(|p| !is_marketplace_package(p)) {
+        // Zero manifest packages and non-marketplace packages exist
+        findings.push(loss_finding(
+            first_pkg,
+            target,
+            CapabilityReasonCode::SynthesizedManifest,
+            None,
+            Some(ResourcePath::parse("plugin.json")?),
+            "agent-plugin target requires a manifest, so a minimal plugin.json was synthesized",
+        ));
 
-            let synthesized_name = {
-                let raw = logical_name(first_pkg);
-                let after_slash = raw.rsplit_once('/').map(|(_, after)| after).unwrap_or(raw);
-                let sanitized = sanitize_skill_name(after_slash);
-                if sanitized.is_empty() {
-                    "agent-plugin".to_string()
-                } else {
-                    sanitized
-                }
-            };
-            let wire = PluginManifestWireV1::new(synthesized_name);
-            let mut manifest_str = serde_json::to_string_pretty(&wire)?;
-            manifest_str.push('\n');
-            artifacts.push(NativeArtifact {
+        let synthesized_name = {
+            let raw = logical_name(first_pkg);
+            let after_slash = raw.rsplit_once('/').map(|(_, after)| after).unwrap_or(raw);
+            let sanitized = sanitize_skill_name(after_slash);
+            if sanitized.is_empty() {
+                "agent-plugin".to_string()
+            } else {
+                sanitized
+            }
+        };
+        let wire = PluginManifestWireV1::new(synthesized_name);
+        let mut manifest_str = serde_json::to_string_pretty(&wire)?;
+        manifest_str.push('\n');
+        artifacts.push(NativeArtifact {
+            target,
+            class: NativeArtifactClass::PluginManifest,
+            path: ResourcePath::parse("plugin.json")?,
+            bytes: manifest_str.into_bytes(),
+            executable: false,
+            source_package: first_pkg.id.clone(),
+            contributing_packages: vec![first_pkg.id.clone()],
+        });
+    }
+
+    // 1b. Marketplace Catalog
+    let marketplace_packages: Vec<&Package> = graph
+        .packages
+        .values()
+        .filter(|p| is_marketplace_package(p))
+        .collect();
+
+    if marketplace_packages.len() > 1 {
+        bail!(
+            "aggregation collision: multiple marketplace catalog packages found for agent-plugin"
+        );
+    } else if let Some(marketplace_pkg) = marketplace_packages.first() {
+        let marketplace_resource = marketplace_pkg.resources.values().find(|r| {
+            r.path.as_str() == ".claude-plugin/marketplace.json"
+                || r.path.as_str() == "marketplace.json"
+        });
+        let target_path_str = marketplace_resource
+            .map(|r| r.path.as_str())
+            .unwrap_or(".claude-plugin/marketplace.json");
+        let target_path = ResourcePath::parse(target_path_str)?;
+
+        let catalog_bytes = if let Some(resource) = marketplace_resource {
+            let bytes = resource_content_bytes(&resource.content);
+            let wire: MarketplaceCatalogWireV1 = serde_json::from_slice(&bytes)?;
+            let _ = MarketplaceCatalog::try_from(wire)?;
+            bytes
+        } else if let Some(payload) = &marketplace_pkg.frontend_payload {
+            let val = serde_json::Value::Object(payload.fields.clone().into_iter().collect());
+            let domain: MarketplaceCatalog = serde_json::from_value(val)?;
+            let wire = MarketplaceCatalogWireV1::from(domain.clone());
+            let _ = MarketplaceCatalog::try_from(wire.clone())?;
+            let mut s = serde_json::to_string_pretty(&wire)?;
+            s.push('\n');
+            s.into_bytes()
+        } else {
+            bail!("marketplace catalog package is missing catalog content");
+        };
+
+        artifacts.push(NativeArtifact {
+            target,
+            class: NativeArtifactClass::MarketplaceCatalog,
+            path: target_path.clone(),
+            bytes: catalog_bytes,
+            executable: false,
+            source_package: marketplace_pkg.id.clone(),
+            contributing_packages: vec![marketplace_pkg.id.clone()],
+        });
+
+        if marketplace_resource.is_some() {
+            findings.push(supported_finding(
+                marketplace_pkg,
                 target,
-                class: NativeArtifactClass::PluginManifest,
-                path: ResourcePath::parse("plugin.json")?,
-                bytes: manifest_str.into_bytes(),
-                executable: false,
-                source_package: first_pkg.id.clone(),
-                contributing_packages: vec![first_pkg.id.clone()],
-            });
+                target_path.clone(),
+                target_path,
+            ));
+        } else {
+            findings.push(capability_finding(
+                marketplace_pkg,
+                target,
+                CapabilitySeverity::Supported,
+                CapabilityReasonCode::Representable,
+                None,
+                Some(target_path),
+                "marketplace catalog is preserved as .claude-plugin/marketplace.json",
+            ));
+        }
+        for resource in marketplace_pkg.resources.values() {
+            if resource.path.as_str() != target_path_str {
+                findings.push(dropped_finding(
+                    marketplace_pkg,
+                    target,
+                    CapabilityReasonCode::UnsupportedSemantic,
+                    Some(resource.path.clone()),
+                    "marketplace package contains extra resource not representable in agent-plugin",
+                ));
+            }
         }
     }
 
@@ -1424,6 +1522,7 @@ fn lower_agent_plugin(graph: &CompilationGraph, options: LoweringOptions) -> Res
             }
             SemanticItem::Unsupported { native_kind } => {
                 if !is_manifest_package(package)
+                    && !is_marketplace_package(package)
                     && !is_mcp_package(package)
                     && !is_extension_package(package)
                 {
@@ -2636,5 +2735,90 @@ mod tests {
             .unwrap();
         assert_eq!(ext_art.class, NativeArtifactClass::ClientExtension);
         assert_eq!(ext_art.bytes, b"{\"key\":\"val\"}");
+    }
+
+    #[test]
+    fn agent_plugin_marketplace_lowering_preserves_paths_and_rejects_traversal() {
+        let catalog_bytes = br#"{
+  "name": "team-marketplace",
+  "plugins": [
+    {
+      "name": "alpha",
+      "source": "plugins/alpha"
+    }
+  ]
+}
+"#
+        .to_vec();
+        let catalog_path = ResourcePath::parse(".claude-plugin/marketplace.json").unwrap();
+        let catalog_pkg = Package::new(
+            PackageKind::Unsupported,
+            SemanticIdentity::parse(
+                "unsupported:agent-plugin-marketplace/.claude-plugin/marketplace.json",
+            )
+            .unwrap(),
+            SourceProvenance::new("agent-plugin", ".claude-plugin/marketplace.json").unwrap(),
+            PackageRoot::root(),
+            SemanticItem::Unsupported {
+                native_kind: "marketplace".to_owned(),
+            },
+            BTreeMap::from([(
+                catalog_path.clone(),
+                Resource::opaque(catalog_path, ResourceContent::Bytes(catalog_bytes), false),
+            )]),
+            None,
+        )
+        .unwrap();
+
+        let graph = CompilationGraph::new([catalog_pkg]).unwrap();
+        let plan = lower(&graph, NativeTarget::AgentPlugin, LoweringOptions::strict()).unwrap();
+        assert_eq!(plan.artifacts.len(), 1);
+        assert_eq!(
+            plan.artifacts[0].class,
+            NativeArtifactClass::MarketplaceCatalog
+        );
+        assert_eq!(
+            plan.artifacts[0].path.as_str(),
+            ".claude-plugin/marketplace.json"
+        );
+
+        let escaped_bytes = br#"{
+  "name": "bad-marketplace",
+  "plugins": [
+    {
+      "name": "alpha",
+      "source": "../outside"
+    }
+  ]
+}
+"#
+        .to_vec();
+        let escaped_path = ResourcePath::parse(".claude-plugin/marketplace.json").unwrap();
+        let escaped_pkg = Package::new(
+            PackageKind::Unsupported,
+            SemanticIdentity::parse(
+                "unsupported:agent-plugin-marketplace/.claude-plugin/marketplace.json",
+            )
+            .unwrap(),
+            SourceProvenance::new("agent-plugin", ".claude-plugin/marketplace.json").unwrap(),
+            PackageRoot::root(),
+            SemanticItem::Unsupported {
+                native_kind: "marketplace".to_owned(),
+            },
+            BTreeMap::from([(
+                escaped_path.clone(),
+                Resource::opaque(escaped_path, ResourceContent::Bytes(escaped_bytes), false),
+            )]),
+            None,
+        )
+        .unwrap();
+
+        let bad_graph = CompilationGraph::new([escaped_pkg]).unwrap();
+        assert!(lower(
+            &bad_graph,
+            NativeTarget::AgentPlugin,
+            LoweringOptions::strict()
+        )
+        .is_err());
     }
 }

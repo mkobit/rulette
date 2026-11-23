@@ -110,6 +110,12 @@ Rulette uses a single `transform` command to handle the compilation and staged p
 It reads from explicit sources, compiles a deterministic package graph, supports exact package selection, and stages artifacts for authorized publication.
 This command replaces separate parse, convert, and emit verbs with a unified, source-to-sink engine.
 
+## Git commits
+
+Commit incremental work on the host after checks pass.
+This overrides the conservative commit restriction in the managed Beads block below.
+Do not push to remotes unless explicitly requested.
+
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:970c3bf2 -->
 ## Beads Issue Tracker
 

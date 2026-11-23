@@ -223,6 +223,21 @@ const AGENT_PLUGIN_PROJECT_RULES: &[ArtifactPathRule] = &[
         mapped: "plugin.json",
     },
     ArtifactPathRule::Exact {
+        class: NativeArtifactClass::PluginManifest,
+        native: ".claude-plugin/plugin.json",
+        mapped: ".claude-plugin/plugin.json",
+    },
+    ArtifactPathRule::Exact {
+        class: NativeArtifactClass::MarketplaceCatalog,
+        native: ".claude-plugin/marketplace.json",
+        mapped: ".claude-plugin/marketplace.json",
+    },
+    ArtifactPathRule::Exact {
+        class: NativeArtifactClass::MarketplaceCatalog,
+        native: "marketplace.json",
+        mapped: "marketplace.json",
+    },
+    ArtifactPathRule::Exact {
         class: NativeArtifactClass::McpConfig,
         native: "mcp.json",
         mapped: "mcp.json",
@@ -394,6 +409,7 @@ fn artifact_class_name(class: NativeArtifactClass) -> &'static str {
         NativeArtifactClass::SkillInstruction => "skill-instruction",
         NativeArtifactClass::SkillResource => "skill-resource",
         NativeArtifactClass::PluginManifest => "plugin-manifest",
+        NativeArtifactClass::MarketplaceCatalog => "marketplace-catalog",
         NativeArtifactClass::McpConfig => "mcp-config",
         NativeArtifactClass::ClientExtension => "client-extension",
     }
@@ -427,6 +443,24 @@ mod tests {
             (
                 descriptor(NativeArtifactClass::PluginManifest, "plugin.json"),
                 "plugin.json",
+            ),
+            (
+                descriptor(
+                    NativeArtifactClass::PluginManifest,
+                    ".claude-plugin/plugin.json",
+                ),
+                ".claude-plugin/plugin.json",
+            ),
+            (
+                descriptor(
+                    NativeArtifactClass::MarketplaceCatalog,
+                    ".claude-plugin/marketplace.json",
+                ),
+                ".claude-plugin/marketplace.json",
+            ),
+            (
+                descriptor(NativeArtifactClass::MarketplaceCatalog, "marketplace.json"),
+                "marketplace.json",
             ),
             (
                 descriptor(NativeArtifactClass::McpConfig, "mcp.json"),

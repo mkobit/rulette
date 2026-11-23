@@ -175,6 +175,7 @@ fn artifact_class_name(class: NativeArtifactClass) -> &'static str {
         NativeArtifactClass::SkillInstruction => "skill-instruction",
         NativeArtifactClass::SkillResource => "skill-resource",
         NativeArtifactClass::PluginManifest => "plugin-manifest",
+        NativeArtifactClass::MarketplaceCatalog => "marketplace-catalog",
         NativeArtifactClass::McpConfig => "mcp-config",
         NativeArtifactClass::ClientExtension => "client-extension",
     }
