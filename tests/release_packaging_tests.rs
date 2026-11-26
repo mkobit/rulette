@@ -74,7 +74,8 @@ fn release_notes_document_static_portability_and_explicit_publication_safety() {
 fn release_workflow_smokes_the_exact_verified_artifact_before_creating_a_release() {
     let workflow = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
     for required in [
-        "tags: ['v*']",
+        "'[0-9]+.[0-9]+.[0-9]+'",
+        "'[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+'",
         "permissions: {}",
         "musl-tools binutils file",
         "rustup target add x86_64-unknown-linux-musl",
@@ -87,7 +88,9 @@ fn release_workflow_smokes_the_exact_verified_artifact_before_creating_a_release
         "${GITHUB_REF_NAME}",
         "dist/rulette-${GITHUB_REF_NAME}-x86_64-unknown-linux-musl.tar.gz",
         "dist/rulette-${GITHUB_REF_NAME}-x86_64-unknown-linux-musl.tar.gz.sha256",
-        "v${package_version}",
+        "${package_version}",
+        "--verify-tag",
+        "--prerelease",
     ] {
         assert!(workflow.contains(required), "missing {required}");
     }
@@ -190,7 +193,7 @@ fn package_script_builds_locked_musl_and_writes_archive_checksum() {
         "GNU tar",
         "gzip -n",
         "sha256sum",
-        "rulette-v${release_version}-x86_64-unknown-linux-musl.tar.gz",
+        "rulette-${release_version}-x86_64-unknown-linux-musl.tar.gz",
         "cargo-package-version.sh",
     ] {
         assert!(script.contains(required), "missing {required}");
@@ -626,8 +629,8 @@ chmod 0644 target/x86_64-unknown-linux-musl/release/rulette
         String::from_utf8_lossy(&output.stderr)
     );
 
-    let archive = repository.join("dist/rulette-v0.1.0-x86_64-unknown-linux-musl.tar.gz");
-    let checksum = repository.join("dist/rulette-v0.1.0-x86_64-unknown-linux-musl.tar.gz.sha256");
+    let archive = repository.join("dist/rulette-0.1.0-x86_64-unknown-linux-musl.tar.gz");
+    let checksum = repository.join("dist/rulette-0.1.0-x86_64-unknown-linux-musl.tar.gz.sha256");
     assert!(archive.is_file());
     assert!(checksum.is_file());
     let published_names = std::fs::read_dir(archive.parent().unwrap())
@@ -637,8 +640,8 @@ chmod 0644 target/x86_64-unknown-linux-musl/release/rulette
     assert_eq!(
         published_names,
         std::collections::BTreeSet::from([
-            "rulette-v0.1.0-x86_64-unknown-linux-musl.tar.gz".to_owned(),
-            "rulette-v0.1.0-x86_64-unknown-linux-musl.tar.gz.sha256".to_owned(),
+            "rulette-0.1.0-x86_64-unknown-linux-musl.tar.gz".to_owned(),
+            "rulette-0.1.0-x86_64-unknown-linux-musl.tar.gz.sha256".to_owned(),
         ])
     );
     assert!(Command::new("sha256sum")

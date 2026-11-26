@@ -10,7 +10,7 @@ readonly repository_root="$(cd "${script_dir}/.." && pwd)"
 cd "${repository_root}"
 release_version="$("${script_dir}/cargo-package-version.sh")"
 readonly release_version
-readonly archive_name="rulette-v${release_version}-x86_64-unknown-linux-musl.tar.gz"
+readonly archive_name="rulette-${release_version}-x86_64-unknown-linux-musl.tar.gz"
 readonly archive_path="${dist_dir}/${archive_name}"
 readonly checksum_path="${archive_path}.sha256"
 mkdir -p "${dist_dir}"

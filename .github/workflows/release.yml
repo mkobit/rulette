@@ -2,7 +2,9 @@ name: Release
 
 on:
   push:
-    tags: ['v*']
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+'
 
 permissions: {}
 
@@ -19,6 +21,9 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - uses: $/.github/actions/setup-mise
         with:
@@ -34,12 +39,23 @@ jobs:
       - name: Validate release tag
         run: |
           set -euo pipefail
-          readonly package_version="$(scripts/cargo-package-version.sh)"
-          readonly expected_tag="v${package_version}"
-          if [[ "${GITHUB_REF_NAME}" != "${expected_tag}" ]]; then
-            printf 'release tag %s does not match Cargo package version %s\n' "${GITHUB_REF_NAME}" "${expected_tag}" >&2
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            printf 'The release tag must point to a commit in main.\n' >&2
             exit 1
           fi
+          package_version="$(scripts/cargo-package-version.sh)"
+          readonly package_version
+          if [[ "${GITHUB_REF_NAME}" != "${package_version}" ]]; then
+            printf 'release tag %s does not match Cargo package version %s\n' "${GITHUB_REF_NAME}" "${package_version}" >&2
+            exit 1
+          fi
+
+          readonly pattern='^([1-9][0-9]{3})\.([1-9][0-9]?)\.([1-9][0-9]?)(-rc\.[1-9][0-9]*)?$'
+          if [[ ! "${package_version}" =~ ${pattern} ]]; then
+            printf 'use an unpadded CalVer date with an optional -rc.N suffix\n' >&2
+            exit 1
+          fi
+          date -u -d "${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]}" +'%F' >/dev/null
 
       - name: Run quality gates
         run: mise run check
@@ -95,9 +111,13 @@ jobs:
       - name: Create GitHub release
         run: |
           set -euo pipefail
+          release_flags=(--repo "${GITHUB_REPOSITORY}" --verify-tag --generate-notes)
+          if [[ "${GITHUB_REF_NAME}" == *-rc.* ]]; then
+            release_flags+=(--prerelease)
+          fi
           gh release create "${GITHUB_REF_NAME}" \
             "verified-release/rulette-${GITHUB_REF_NAME}-x86_64-unknown-linux-musl.tar.gz" \
             "verified-release/rulette-${GITHUB_REF_NAME}-x86_64-unknown-linux-musl.tar.gz.sha256" \
-            --generate-notes
+            "${release_flags[@]}"
         env:
           GH_TOKEN: ${{ github.token }}
